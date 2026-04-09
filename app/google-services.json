@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121679114636",
+    "project_id": "divvyup-7b20b",
+    "storage_bucket": "divvyup-7b20b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121679114636:android:ea3639443dd2a82e5026a9",
+        "android_client_info": {
+          "package_name": "com.example.divvyup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmoviPaY3qmxMn9BDB2qFMD0_nQ3CIIGk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
