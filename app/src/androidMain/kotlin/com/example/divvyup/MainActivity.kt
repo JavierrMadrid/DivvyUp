@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                 data.getQueryParameter("token")
 
             data.scheme.equals("https", ignoreCase = true) &&
-                data.host?.contains("github.io") == true ->
+                data.host.equals("javierrmadrid.github.io", ignoreCase = true) ->
                 data.getQueryParameter("token")
 
             else -> return
@@ -230,8 +230,7 @@ class MainActivity : ComponentActivity() {
 
                 // Construir el enlace HTTPS con nombre del grupo para mejor preview en mensajería
                 val encodedName = Uri.encode(groupName)
-                // GitHub Pages sirve text/html correctamente (Supabase Edge Runtime fuerza text/plain)
-                val httpsLink = "https://TU_USUARIO.github.io/divvyup-invite/" +
+                val httpsLink = "https://javierrmadrid.github.io/DivvyUp/invite-link/join.html" +
                     "?token=$token" +
                     "&group=$encodedName"
 

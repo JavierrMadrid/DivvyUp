@@ -43,8 +43,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="TU_USUARIO.github.io"
-                    android:pathPrefix="/divvyup-invite" />
+                    android:host="javierrmadrid.github.io"
+                    android:pathPrefix="/DivvyUp/invite-link" />
             </intent-filter>
         </activity>
     </application>
