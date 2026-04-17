@@ -81,6 +81,7 @@
 | `spends` | 10-500 por grupo | Gastos registrados |
 | `spend_shares` | N × participantes por gasto | Reparto detallado de cada gasto |
 | `settlements` | 0-50 por grupo | Liquidaciones entre participantes |
+| `participant_user_links` | 1 por usuario y grupo | Vínculo entre cuenta autenticada y participante |
 
 ## Relaciones
 
@@ -96,6 +97,8 @@
 | participants → spend_shares | 1:N | `spend_shares.participant_id` | ✅ | CASCADE |
 | participants → settlements (from) | 1:N | `settlements.from_participant_id` | ✅ | — |
 | participants → settlements (to) | 1:N | `settlements.to_participant_id` | ✅ | — |
+| groups → participant_user_links | 1:N | `participant_user_links.group_id` | ✅ | CASCADE |
+| participants → participant_user_links | 1:1 | `participant_user_links.participant_id` | ✅ (UNIQUE) | CASCADE |
 
 ## Índices
 
@@ -105,7 +108,10 @@ Todos los FK tienen índice creado explícitamente. Índices adicionales:
 |--------|----------|-----------|
 | `spends_date_idx` | `(group_id, date)` | Filtrado por rango de fechas dentro de un grupo |
 | `settlements_date_idx` | `(group_id, date)` | Filtrado de liquidaciones por fecha |
+| `participant_user_links_group_id_idx` | `(group_id)` | Búsqueda de vínculos por grupo |
+| `participant_user_links_user_id_idx` | `(user_id)` | Resolver participante de un usuario |
 | UNIQUE en `spend_shares` | `(spend_id, participant_id)` | Evitar duplicados en reparto |
+| UNIQUE en `participant_user_links` | `(group_id, user_id)` y `(participant_id)` | Un usuario/participante por grupo |
 
 ## Tipos de Reparto (split_type)
 
@@ -147,8 +153,20 @@ Todos los FK tienen índice creado explícitamente. Índices adicionales:
 
 ### ¿Por qué RLS habilitado desde el principio?
 - Buena práctica de seguridad: nunca dejar tablas sin RLS
-- Las políticas permisivas actuales se reemplazarán cuando se añada auth
-- Evita olvidarse de activar RLS cuando se añada autenticación
+- Las políticas de V006 implementan aislamiento real por usuario (tenant isolation)
+- Un usuario solo puede ver/modificar grupos de los que es dueño (`owner_user_id`) o participante vinculado (`participant_user_links`)
+
+### Lógica de pertenencia a un grupo (usada en todas las RLS de V006)
+```sql
+-- El usuario pertenece al grupo si:
+g.owner_user_id = (select auth.uid())   -- es el dueño
+OR exists (
+  select 1 from participant_user_links pul
+  where pul.group_id = g.id
+    and pul.user_id = (select auth.uid())  -- o es participante vinculado
+)
+```
+`(select auth.uid())` se evalúa una vez por statement (no por fila) para mayor rendimiento.
 
 ---
 
@@ -185,6 +203,7 @@ create policy "auth_own_data" on groups
   for all to authenticated
   using ((select auth.uid()) = owner_id);
 ```
+**Implementado en V006:** políticas con aislamiento real por usuario.
 
 ### 🔒 Vistas — `security_invoker = on`
 **Skill:** `security-rls-basics` (Supabase specific)

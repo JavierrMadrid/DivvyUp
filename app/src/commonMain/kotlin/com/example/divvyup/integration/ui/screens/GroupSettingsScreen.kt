@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,10 +59,18 @@ fun GroupSettingsScreen(
     viewModel: GroupDetailViewModel,
     onBack: () -> Unit,
     onNavigateToAddParticipant: () -> Unit,
+    onShareInvite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val group = uiState.group
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.settingsSavedMessage) {
+        val message = uiState.settingsSavedMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeSettingsSavedMessage()
+    }
 
     // Estado local de edición del grupo (no se aplican hasta "Guardar cambios")
     var groupName        by rememberSaveable(group?.name)        { mutableStateOf(group?.name ?: "") }
@@ -83,6 +92,7 @@ fun GroupSettingsScreen(
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -92,9 +102,14 @@ fun GroupSettingsScreen(
                 Button(
                     onClick = {
                         if (groupName.isBlank()) { nameError = true; return@Button }
-                        viewModel.updateGroup(groupName, groupDescription, groupCurrency)
-                        viewModel.setDefaultSplitPercentages(pendingSplitPercentages)
+                        viewModel.saveGroupSettings(
+                            name = groupName,
+                            description = groupDescription,
+                            currency = groupCurrency,
+                            defaultSplitPercentages = pendingSplitPercentages
+                        )
                     },
+                    enabled = !uiState.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
@@ -102,8 +117,16 @@ fun GroupSettingsScreen(
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
                     colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text("Guardar cambios", fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -164,6 +187,7 @@ fun GroupSettingsScreen(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                             colors = appOutlinedTextFieldColors()
                         )
                         if (nameError) {
@@ -180,6 +204,7 @@ fun GroupSettingsScreen(
                             maxLines = 3,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                             colors = appOutlinedTextFieldColors()
                         )
                         // Selector de moneda
@@ -214,6 +239,19 @@ fun GroupSettingsScreen(
                                 }
                             }
                         }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Button(
+                            onClick = onShareInvite,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                            colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Compartir enlace de invitación", fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -225,6 +263,7 @@ fun GroupSettingsScreen(
                         uiState.participants.forEachIndexed { index, participant ->
                             val avatarColor = settingsAvatarPalette[participant.name.length % settingsAvatarPalette.size]
                             val pct = pendingSplitPercentages[participant.id]
+                            val isMe = uiState.myParticipantId == participant.id
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -235,7 +274,7 @@ fun GroupSettingsScreen(
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clip(CircleShape)
-                                        .background(avatarColor),
+                                        .background(if (isMe) JungleGreen else avatarColor),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -247,11 +286,30 @@ fun GroupSettingsScreen(
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        participant.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            participant.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        if (isMe) {
+                                            Surface(
+                                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                                color = JungleGreen
+                                            ) {
+                                                Text(
+                                                    "Yo",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                     participant.email?.let {
                                         Text(
                                             it,
@@ -274,7 +332,27 @@ fun GroupSettingsScreen(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                         )
                                     }
-                                    Spacer(Modifier.width(6.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                                // Botón "Soy yo" — selecciona este participante como el usuario actual
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isMe) JungleGreen else Color.Transparent),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.selectMyParticipant(participant.id) },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Person,
+                                            contentDescription = "Soy yo",
+                                            tint = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                                 IconButton(
                                     onClick = { showDeleteParticipantConfirm = participant.id },
@@ -595,6 +673,7 @@ private fun AddCategoryDialog(
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         colors = appOutlinedTextFieldColors()
                     )
                 }

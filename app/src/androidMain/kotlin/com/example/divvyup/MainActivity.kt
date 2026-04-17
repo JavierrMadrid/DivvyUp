@@ -1,13 +1,21 @@
 package com.example.divvyup
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.rememberNavController
 import com.example.divvyup.application.CategoryService
 import com.example.divvyup.application.GroupService
+import com.example.divvyup.application.InvitationService
 import com.example.divvyup.application.SettlementService
 import com.example.divvyup.application.SpendService
 import com.example.divvyup.integration.cache.CachedCategoryRepository
@@ -17,80 +25,230 @@ import com.example.divvyup.integration.cache.CachedSettlementRepository
 import com.example.divvyup.integration.cache.CachedSpendRepository
 import com.example.divvyup.integration.supabase.SupabaseCategoryRepository
 import com.example.divvyup.integration.supabase.SupabaseGroupRepository
+import com.example.divvyup.integration.supabase.SupabaseInviteTokenRepository
 import com.example.divvyup.integration.supabase.SupabaseParticipantRepository
+import com.example.divvyup.integration.supabase.SupabaseParticipantUserLinkRepository
 import com.example.divvyup.integration.supabase.SupabaseSettlementRepository
 import com.example.divvyup.integration.supabase.SupabaseSpendRepository
+import com.example.divvyup.integration.ui.auth.AndroidGoogleSignInHandler
+import com.example.divvyup.integration.ui.auth.AndroidSessionManager
 import com.example.divvyup.integration.ui.navigation.AppNavigation
 import com.example.divvyup.integration.ui.theme.DivvyUpTheme
+import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var authViewModel: AuthViewModel
+    private lateinit var supabaseClient: SupabaseClient
+    private lateinit var invitationService: InvitationService
+    private val pendingInviteToken = MutableStateFlow<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // ── Manual DI wiring (AGENTS.md — no DI framework) ──────────────────────
-        val supabaseClient = createSupabaseClient(
-            supabaseUrl    = BuildConfig.SUPABASE_URL,
-            supabaseKey    = BuildConfig.SUPABASE_ANON_KEY
+        supabaseClient = createSupabaseClient(
+            supabaseUrl = BuildConfig.SUPABASE_URL,
+            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
         ) {
             install(Postgrest)
+            install(Auth) {
+                sessionManager = AndroidSessionManager(this@MainActivity)
+            }
         }
 
         val postgrest = supabaseClient.postgrest
+        val auth = supabaseClient.auth
 
-        // Repositories — envueltos en decoradores de caché en memoria con TTL
-        val groupRepository       = CachedGroupRepository(SupabaseGroupRepository(postgrest))
-        val participantRepository = CachedParticipantRepository(SupabaseParticipantRepository(postgrest))
-        val categoryRepository    = CachedCategoryRepository(SupabaseCategoryRepository(postgrest))
-        val spendRepository       = CachedSpendRepository(SupabaseSpendRepository(postgrest))
-        val settlementRepository  = CachedSettlementRepository(SupabaseSettlementRepository(postgrest))
+        val groupRepository          = CachedGroupRepository(SupabaseGroupRepository(postgrest))
+        val participantRepository    = CachedParticipantRepository(SupabaseParticipantRepository(postgrest))
+        val categoryRepository       = CachedCategoryRepository(SupabaseCategoryRepository(postgrest))
+        val spendRepository          = CachedSpendRepository(SupabaseSpendRepository(postgrest))
+        val settlementRepository     = CachedSettlementRepository(SupabaseSettlementRepository(postgrest))
+        val participantUserLinkRepo  = SupabaseParticipantUserLinkRepository(postgrest)
+        val inviteTokenRepository    = SupabaseInviteTokenRepository(postgrest)
 
-        // Services
         val groupService      = GroupService(groupRepository)
         val spendService      = SpendService(spendRepository, participantRepository)
         val settlementService = SettlementService(
-            settlementRepository = settlementRepository,
-            spendRepository = spendRepository,
+            settlementRepository  = settlementRepository,
+            spendRepository       = spendRepository,
             participantRepository = participantRepository,
-            categoryRepository = categoryRepository
+            categoryRepository    = categoryRepository
         )
-        val categoryService   = CategoryService(categoryRepository)
+        val categoryService = CategoryService(categoryRepository)
+        invitationService   = InvitationService(
+            groupRepository               = groupRepository,
+            participantRepository         = participantRepository,
+            participantUserLinkRepository = participantUserLinkRepo,
+            inviteTokenRepository         = inviteTokenRepository
+        )
 
-        // ── UI ───────────────────────────────────────────────────────────────────
         setContent {
             DivvyUpTheme {
                 val navController = rememberNavController()
+                val vm = remember {
+                    AuthViewModel(
+                        auth = auth,
+                        googleSignInHandler = AndroidGoogleSignInHandler(
+                            context = this@MainActivity,
+                            webClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+                        ),
+                        onAnonymousMigration = { oldUserId, newUserId ->
+                            participantUserLinkRepo.migrateAnonymousLinks(oldUserId, newUserId)
+                        }
+                    )
+                }
+                authViewModel = vm
+                val pendingToken by pendingInviteToken.collectAsState()
 
                 val groupListViewModel = remember {
                     GroupListViewModel(
                         groupService          = groupService,
                         spendService          = spendService,
                         participantRepository = participantRepository,
-                        categoryService       = categoryService
+                        categoryService       = categoryService,
+                        currentUserIdProvider = {
+                            supabaseClient.auth.currentSessionOrNull()?.user?.id
+                        },
+                        cacheInvalidator      = { groupRepository.invalidateListCache() }
                     )
                 }
 
                 AppNavigation(
-                    navController = navController,
-                    groupListViewModel = groupListViewModel,
+                    navController        = navController,
+                    authViewModel        = vm,
+                    groupListViewModel   = groupListViewModel,
                     participantRepository = participantRepository,
+                    participantUserLinkRepository = participantUserLinkRepo,
+                    invitationService    = invitationService,
                     detailViewModelFactory = { groupId ->
                         GroupDetailViewModel(
-                            groupId            = groupId,
-                            groupService       = groupService,
-                            spendService       = spendService,
-                            settlementService  = settlementService,
-                            categoryService    = categoryService,
-                            participantRepository = participantRepository
+                            groupId               = groupId,
+                            groupService          = groupService,
+                            spendService          = spendService,
+                            settlementService     = settlementService,
+                            categoryService       = categoryService,
+                            participantRepository = participantRepository,
+                            myParticipantIdProvider = {
+                                val userId = supabaseClient.auth.currentSessionOrNull()?.user?.id
+                                    ?: return@GroupDetailViewModel null
+                                participantUserLinkRepo.findParticipantIdByGroupAndUser(groupId, userId)
+                            },
+                            currentUserIdProvider = {
+                                supabaseClient.auth.currentSessionOrNull()?.user?.id
+                            },
+                            participantUserLinkRepository = participantUserLinkRepo
                         )
-                    }
+                    },
+                    currentUserIdProvider = {
+                        supabaseClient.auth.currentSessionOrNull()?.user?.id
+                    },
+                    pendingInviteToken       = pendingToken,
+                    consumePendingInviteToken = { pendingInviteToken.value = null },
+                    onShareGroupInvite       = { groupId, groupName -> startShareInvite(groupId, groupName) }
                 )
+            }
+        }
+
+        // Si la app se abre desde deep link en cold start
+        consumeIncomingIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        consumeIncomingIntent(intent)
+    }
+
+    // ── Intent dispatching ────────────────────────────────────────────────
+
+    private fun consumeIncomingIntent(intent: Intent?) {
+        consumeOAuthIntent(intent)
+        consumeJoinIntent(intent)
+    }
+
+    private fun consumeOAuthIntent(intent: Intent?) {
+        if (intent?.data == null || !::authViewModel.isInitialized) return
+        if (intent.data?.host != "auth-callback") return
+
+        supabaseClient.handleDeeplinks(
+            intent = intent,
+            onSessionSuccess = {
+                println("DEBUG MainActivity: Sesion OAuth importada correctamente")
+                authViewModel.checkSession()
+            },
+            onError = { error ->
+                println("DEBUG MainActivity: Error en OAuth deeplink: ${error.message}")
+            }
+        )
+    }
+
+    private fun consumeJoinIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+
+        // Acepta el deep link custom (divvyup://join?token=) y el enlace HTTPS de GitHub Pages
+        val token: String? = when {
+            data.scheme.equals("divvyup", ignoreCase = true) &&
+                data.host.equals("join", ignoreCase = true) ->
+                data.getQueryParameter("token")
+
+            data.scheme.equals("https", ignoreCase = true) &&
+                data.host?.contains("github.io") == true ->
+                data.getQueryParameter("token")
+
+            else -> return
+        }
+        pendingInviteToken.value = token ?: return
+        println("DEBUG MainActivity: Invitacion recibida token=$token")
+    }
+
+    // ── Compartir enlace ──────────────────────────────────────────────────
+
+    private fun startShareInvite(groupId: Long, groupName: String) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val userId = supabaseClient.auth.currentSessionOrNull()?.user?.id
+                    ?: return@launch
+
+                // generateInviteLink devuelve divvyup://join?token=TOKEN
+                val deepLink = invitationService.generateInviteLink(groupId, userId)
+                val token = deepLink.toUri().getQueryParameter("token") ?: return@launch
+
+                // Construir el enlace HTTPS con nombre del grupo para mejor preview en mensajería
+                val encodedName = Uri.encode(groupName)
+                // GitHub Pages sirve text/html correctamente (Supabase Edge Runtime fuerza text/plain)
+                val httpsLink = "https://TU_USUARIO.github.io/divvyup-invite/" +
+                    "?token=$token" +
+                    "&group=$encodedName"
+
+                // Copiar al portapapeles por si acaso
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Enlace DivvyUp", httpsLink))
+                Toast.makeText(this@MainActivity, "Enlace copiado al portapapeles", Toast.LENGTH_SHORT).show()
+
+                val groupLabel = if (groupName.isNotBlank()) "\"$groupName\"" else "mi grupo"
+                val shareText = "¡Te invito a unirte a $groupLabel en DivvyUp! 💸\n\n$httpsLink"
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                startActivity(Intent.createChooser(shareIntent, "Compartir invitación a DivvyUp"))
+            } catch (e: Exception) {
+                println("DEBUG MainActivity: Error al generar enlace de invitacion: ${e.message}")
             }
         }
     }

@@ -19,11 +19,36 @@ class SpendService(
     private val participantRepository: ParticipantRepository
 ) {
 
+    private companion object {
+        const val SETTLEMENT_NOTE_PREFIX = "__settlement_id:"
+    }
+
     suspend fun getSpends(groupId: Long): List<Spend> =
         spendRepository.getByGroup(groupId)
 
     suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         spendRepository.getSharesBySpend(spendId)
+
+    /**
+     * Devuelve un mapa spendId → impacto neto para el participante dado.
+     *
+     * Impacto neto = (importe total si es pagador) - (share que le corresponde)
+     *   · Valor positivo (+): pagó por otros → le deben
+     *   · Valor negativo (-): debe su parte a quien pagó
+     *
+     * Si el participante no tiene share en un gasto, su impacto es 0 a menos que sea el pagador.
+     */
+    suspend fun getPersonalImpactByGroup(groupId: Long, participantId: Long): Map<Long, Double> {
+        val spends = spendRepository.getByGroup(groupId)
+        val myShares = spendRepository.getSharesByParticipant(participantId)
+            .associateBy { it.spendId }          // spendId → SpendShare
+
+        return spends.associate { spend ->
+            val myShare = myShares[spend.id]?.amount ?: 0.0
+            val paid = if (spend.payerId == participantId) spend.amount else 0.0
+            spend.id to roundToTwoDecimals(paid - myShare)
+        }
+    }
 
     /**
      * Crea un gasto con reparto EQUAL entre los participantes seleccionados.
@@ -128,7 +153,10 @@ class SpendService(
     }
 
     suspend fun updateSpend(spend: Spend, shares: List<SpendShare>): Spend =
-        spendRepository.update(spend, shares)
+        spendRepository.update(
+            spend.copy(notes = preserveSettlementLinkOnUpdate(existingNotes = spend.notes, newNotes = spend.notes)),
+            shares
+        )
 
     suspend fun updateEqualSpend(
         existing: Spend,
@@ -137,7 +165,7 @@ class SpendService(
         payerId: Long,
         participantIds: List<Long>,
         categoryId: Long? = null,
-        notes: String = "",
+        notes: String = existing.notes,
         date: Instant = existing.date
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
@@ -147,7 +175,7 @@ class SpendService(
         val updated = existing.copy(
             concept = concept.trim(), amount = amount, payerId = payerId,
             categoryId = categoryId, splitType = SplitType.EQUAL,
-            notes = notes.trim(), date = date
+            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes), date = date
         )
         return spendRepository.update(updated, shares)
     }
@@ -159,7 +187,7 @@ class SpendService(
         payerId: Long,
         percentages: Map<Long, Double>,
         categoryId: Long? = null,
-        notes: String = "",
+        notes: String = existing.notes,
         date: Instant = existing.date
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
@@ -174,7 +202,7 @@ class SpendService(
         val updated = existing.copy(
             concept = concept.trim(), amount = amount, payerId = payerId,
             categoryId = categoryId, splitType = SplitType.PERCENTAGE,
-            notes = notes.trim(), date = date
+            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes), date = date
         )
         return spendRepository.update(updated, shares)
     }
@@ -186,7 +214,7 @@ class SpendService(
         payerId: Long,
         customAmounts: Map<Long, Double>,
         categoryId: Long? = null,
-        notes: String = "",
+        notes: String = existing.notes,
         date: Instant = existing.date
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
@@ -202,7 +230,7 @@ class SpendService(
         val updated = existing.copy(
             concept = concept.trim(), amount = amount, payerId = payerId,
             categoryId = categoryId, splitType = SplitType.CUSTOM,
-            notes = notes.trim(), date = date
+            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes), date = date
         )
         return spendRepository.update(updated, shares)
     }
@@ -256,5 +284,18 @@ class SpendService(
 
     private fun roundToTwoDecimals(value: Double): Double =
         (value * 100).roundToLong() / 100.0
+
+    private fun preserveSettlementLinkOnUpdate(existingNotes: String, newNotes: String): String {
+        val normalizedNew = newNotes.trim()
+        if (!existingNotes.startsWith(SETTLEMENT_NOTE_PREFIX)) {
+            return if (normalizedNew.isNotEmpty()) normalizedNew else existingNotes
+        }
+
+        val settlementToken = existingNotes.substringBefore("|")
+        if (normalizedNew.isEmpty()) return existingNotes
+        if (normalizedNew.startsWith(SETTLEMENT_NOTE_PREFIX)) return normalizedNew
+
+        return "$settlementToken|$normalizedNew"
+    }
 }
 

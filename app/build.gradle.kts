@@ -82,11 +82,19 @@ kotlin {
                 implementation(libs.androidx.lifecycle.runtime.ktx)
                 implementation(libs.androidx.activity.compose)
 
+                // Custom Tabs — para el flujo OAuth fallback (Google, etc.)
+                implementation(libs.androidx.browser)
+
                 // Ktor engine para Android (requerido por Supabase)
                 implementation(libs.ktor.client.android)
 
                 // Coroutines Android dispatcher
                 implementation(libs.kotlinx.coroutines.android)
+
+                // Google Sign-In nativo con Credential Manager
+                implementation(libs.androidx.credentials)
+                implementation(libs.androidx.credentials.play.services.auth)
+                implementation(libs.googleid)
             }
         }
 
@@ -126,8 +134,19 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps["SUPABASE_URL"] ?: ""}\"")
+        val supabaseUrl = localProps["SUPABASE_URL"]?.toString() ?: ""
+        // Extraer host del Supabase URL (ej: "xxxx.supabase.co") para el intent-filter HTTPS
+        val supabaseHost = supabaseUrl
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .trimEnd('/')
+            .ifEmpty { "placeholder.supabase.co" }
+
+        manifestPlaceholders["supabaseHost"] = supabaseHost
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProps["SUPABASE_ANON_KEY"] ?: ""}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProps["GOOGLE_WEB_CLIENT_ID"] ?: ""}\"")
     }
 
     buildTypes {

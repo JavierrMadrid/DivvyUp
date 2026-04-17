@@ -14,13 +14,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.DebtTransfer
@@ -56,6 +57,10 @@ internal fun BalanceTab(
         return
     }
 
+    val transfersByDebtor by remember(transfers) {
+        derivedStateOf { transfers.groupBy { it.fromParticipantId } }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 120.dp),
@@ -65,7 +70,11 @@ internal fun BalanceTab(
             Text("Balances individuales", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         items(balances, key = { it.participantId }) { balance ->
-            BalanceCard(balance, currency)
+            BalanceCard(
+                balance = balance,
+                currency = currency,
+                debtSubtitle = transfersByDebtor[balance.participantId].toDebtSubtitle(balance)
+            )
         }
         if (transfers.isNotEmpty()) {
             item {
@@ -90,12 +99,29 @@ internal fun BalanceTab(
     }
 }
 
+private fun List<DebtTransfer>?.toDebtSubtitle(balance: ParticipantBalance): String {
+    if (this.isNullOrEmpty()) {
+        return if (balance.netBalance < 0) {
+            "Debe: ${(-balance.netBalance).fmt2()}"
+        } else {
+            "Sin deuda pendiente"
+        }
+    }
+    val totalDebt = this.sumOf { it.amount }
+    return if (this.size == 1) {
+        "Debe: ${totalDebt.fmt2()} a ${this.first().toName}"
+    } else {
+        "Debe: ${totalDebt.fmt2()} a ${this.first().toName} y ${this.size - 1} más"
+    }
+}
+
 // --- BalanceCard -------------------------------------------------------------
 
 @Composable
 internal fun BalanceCard(
     balance: ParticipantBalance,
     currency: String,
+    debtSubtitle: String,
     modifier: Modifier = Modifier
 ) {
     val isPositive = balance.netBalance >= 0
@@ -120,8 +146,7 @@ internal fun BalanceCard(
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(balance.participantName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                val effectiveDebt = if (balance.netBalance < 0) -balance.netBalance else 0.0
-                Text("Pagó: ${balance.totalPaid.fmt2()} · Debe: ${effectiveDebt.fmt2()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(debtSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(text = "${if (isPositive) "+" else ""}${balance.netBalance.fmt2()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = amountColor)
@@ -143,6 +168,13 @@ internal fun TransferCard(
     modifier: Modifier = Modifier
 ) {
     val borderColor by animateColorAsState(if (isSelected) JungleGreen else Color.Transparent, label = "transferBorder")
+    val isDark = isSystemInDarkTheme()
+    val debtorChipContainer = if (isDark) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f) else MaterialTheme.colorScheme.errorContainer
+    val debtorChipText = if (isDark) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onErrorContainer
+    val creditorChipContainer = if (isDark) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f) else JungleGreen100
+    val creditorChipText = if (isDark) MaterialTheme.colorScheme.onSurface else JungleGreenDark
+    val amountColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+
     Card(
         onClick = { if (isSelectable) onToggle() },
         modifier = modifier.fillMaxWidth()
@@ -152,7 +184,135 @@ internal fun TransferCard(
         colors = CardDefaults.cardColors(containerColor = if (isSelected) JungleGreen.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (!isSelectable) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(JungleGreen100),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Payments,
+                                contentDescription = null,
+                                tint = JungleGreenDark,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            "Pago sugerido",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                        color = JungleGreen100
+                    ) {
+                        Text(
+                            text = "${transfer.amount.fmt2()} $currency",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = JungleGreenDark
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                        color = debtorChipContainer,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                "Debe",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = debtorChipText.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                transfer.fromName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = debtorChipText,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                        color = creditorChipContainer,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                "A",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = creditorChipText.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                transfer.toName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = creditorChipText,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+            return@Card
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             if (isSelectable) {
                 Box(
                     modifier = Modifier.size(28.dp).clip(CircleShape).background(if (isSelected) JungleGreen else MaterialTheme.colorScheme.surfaceVariant),
@@ -162,93 +322,118 @@ internal fun TransferCard(
                 }
                 Spacer(Modifier.width(12.dp))
             }
-            Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.errorContainer) {
-                Text(transfer.fromName, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val isCompactWidth = maxWidth < 360.dp
+                    val maxNameLines = if (isCompactWidth) 2 else 1
+
+                    if (isCompactWidth) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                color = debtorChipContainer,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    transfer.fromName,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = debtorChipText,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = maxNameLines,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .align(Alignment.CenterHorizontally)
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                color = creditorChipContainer,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    transfer.toName,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = creditorChipText,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = maxNameLines,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                color = debtorChipContainer,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    transfer.fromName,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = debtorChipText,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = maxNameLines,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                color = creditorChipContainer,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    transfer.toName,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = creditorChipText,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = maxNameLines,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+                Text(
+                    "${transfer.amount.fmt2()} $currency",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = amountColor,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-            Spacer(Modifier.width(10.dp))
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = JungleGreen100) {
-                Text(transfer.toName, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = JungleGreenDark)
-            }
-            Spacer(Modifier.weight(1f))
-            Text("${transfer.amount.fmt2()} $currency", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = if (isSelected) JungleGreenDark else MaterialTheme.colorScheme.onSurface)
         }
     }
 }
-
-// --- Dialog: Liquidar --------------------------------------------------------
-
-@Composable
-fun SettleUpDialog(
-    transfers: List<DebtTransfer>,
-    currency: String,
-    onConfirm: (selected: List<DebtTransfer>) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var selectedKeys by rememberSaveable {
-        mutableStateOf(transfers.map { "${it.fromParticipantId}-${it.toParticipantId}" }.toSet())
-    }
-    val selectedTransfers = transfers.filter { "${it.fromParticipantId}-${it.toParticipantId}" in selectedKeys }
-    val totalSelected = selectedTransfers.sumOf { it.amount }
-    val allSelected = selectedKeys.size == transfers.size
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.Payments, contentDescription = null, tint = JungleGreen, modifier = Modifier.size(22.dp))
-                Text("Liquidar cuentas", fontWeight = FontWeight.Bold)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("${selectedKeys.size} de ${transfers.size} seleccionado${if (selectedKeys.size != 1) "s" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = {
-                        selectedKeys = if (allSelected) emptySet()
-                        else transfers.map { "${it.fromParticipantId}-${it.toParticipantId}" }.toSet()
-                    }) {
-                        Text(if (allSelected) "Deseleccionar todos" else "Seleccionar todos", style = MaterialTheme.typography.labelMedium, color = JungleGreen, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-                HorizontalDivider()
-                if (transfers.isEmpty()) {
-                    Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusControl), color = JungleGreen100, modifier = Modifier.fillMaxWidth()) {
-                        Text("✅ ¡Las cuentas están saldadas!", modifier = Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = JungleGreenDark)
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        transfers.forEach { transfer ->
-                            val key = "${transfer.fromParticipantId}-${transfer.toParticipantId}"
-                            val isSelected = key in selectedKeys
-                            TransferCard(transfer = transfer, currency = currency, isSelectable = true, isSelected = isSelected, onToggle = {
-                                selectedKeys = if (isSelected) selectedKeys - key else selectedKeys + key
-                            })
-                        }
-                    }
-                }
-                if (selectedKeys.isNotEmpty()) {
-                    HorizontalDivider()
-                    Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusControl), color = JungleGreen100, modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("Total a liquidar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = JungleGreenDark)
-                            Text("${totalSelected.fmt2()} $currency", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold, color = JungleGreenDark)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(selectedTransfers) },
-                enabled = selectedKeys.isNotEmpty() && transfers.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
-            ) { Text("Confirmar liquidación", fontWeight = FontWeight.SemiBold) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
-    )
-}
-
-

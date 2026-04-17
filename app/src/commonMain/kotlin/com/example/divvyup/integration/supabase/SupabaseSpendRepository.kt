@@ -34,6 +34,15 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
         throw Exception("Error al obtener el reparto del gasto: ${e.message}", e)
     }
 
+    override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> = try {
+        postgrest.from("spend_shares")
+            .select { filter { eq("participant_id", participantId) } }
+            .decodeList<SpendShareDto>()
+            .map { it.toDomain() }
+    } catch (e: Exception) {
+        throw Exception("Error al obtener las participaciones del usuario: ${e.message}", e)
+    }
+
     override suspend fun create(spend: Spend, shares: List<SpendShare>): Spend = try {
         // 1. Insertar el gasto y obtener el id generado
         val createdSpend = postgrest.from("spends")

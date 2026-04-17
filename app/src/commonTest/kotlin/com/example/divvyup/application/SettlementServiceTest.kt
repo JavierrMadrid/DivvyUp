@@ -123,6 +123,54 @@ class SettlementServiceTest {
         assertEquals(0.0, balances[0].netBalance)
         assertEquals(0.0, balances[1].netBalance)
     }
+
+    @Test
+    fun deleteSettlement_elimina_tambien_el_gasto_espejo() = runTest {
+        val participants = listOf(
+            Participant(id = 1, groupId = 10, name = "Ana"),
+            Participant(id = 2, groupId = 10, name = "Luis")
+        )
+        val spends = mutableListOf(
+            Spend(
+                id = 100,
+                groupId = 10,
+                concept = "Liquidación",
+                amount = 10.0,
+                payerId = 2,
+                splitType = SplitType.CUSTOM,
+                notes = "__settlement_id:500",
+                date = Instant.parse("2026-04-01T12:00:00Z")
+            )
+        )
+        val sharesBySpend = mutableMapOf(
+            100L to listOf(
+                SpendShare(spendId = 100, participantId = 1, amount = 10.0)
+            )
+        )
+        val settlements = mutableListOf(
+            Settlement(
+                id = 500,
+                groupId = 10,
+                fromParticipantId = 2,
+                toParticipantId = 1,
+                amount = 10.0,
+                date = Instant.parse("2026-04-01T12:00:00Z")
+            )
+        )
+
+        val service = SettlementService(
+            settlementRepository = FakeSettlementRepository(settlements),
+            spendRepository = FakeSpendRepository(spends, sharesBySpend),
+            participantRepository = FakeParticipantRepository(participants),
+            categoryRepository = FakeCategoryRepository()
+        )
+
+        service.deleteSettlement(groupId = 10, id = 500)
+
+        assertEquals(0, settlements.size)
+        assertEquals(0, spends.size)
+        assertEquals(0, sharesBySpend.size)
+    }
 }
 
 private class FakeSettlementRepository(
@@ -158,6 +206,9 @@ private class FakeSpendRepository(
     override suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         sharesBySpend[spendId].orEmpty()
 
+    override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> =
+        sharesBySpend.values.flatten().filter { it.participantId == participantId }
+
     override suspend fun create(spend: Spend, shares: List<SpendShare>): Spend {
         val created = spend.copy(id = nextId++)
         spends += created
@@ -166,8 +217,17 @@ private class FakeSpendRepository(
     }
 
     override suspend fun update(spend: Spend, shares: List<SpendShare>): Spend = error("No usado")
-    override suspend fun delete(id: Long) = error("No usado")
-    override suspend fun deleteAll(ids: List<Long>) = error("No usado")
+
+    override suspend fun delete(id: Long) {
+        spends.removeAll { it.id == id }
+        sharesBySpend.remove(id)
+    }
+
+    override suspend fun deleteAll(ids: List<Long>) {
+        val idSet = ids.toSet()
+        spends.removeAll { it.id in idSet }
+        idSet.forEach { sharesBySpend.remove(it) }
+    }
 }
 
 private class FakeParticipantRepository(

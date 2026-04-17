@@ -12,7 +12,20 @@
           "package_name": "com.example.divvyup"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "949604625366-0mc52ncaqbu4n6hek7tcru8usapr8jul.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.divvyup",
+            "certificate_hash": "18031483234e0f9601a19b3ea7c51504d7d5686d"
+          }
+        },
+        {
+          "client_id": "949604625366-hga67rp85jg8bl27jctk8isva6f22lcr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBmoviPaY3qmxMn9BDB2qFMD0_nQ3CIIGk"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "949604625366-hga67rp85jg8bl27jctk8isva6f22lcr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

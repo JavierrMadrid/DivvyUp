@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.repository.ParticipantRepository
+import com.example.divvyup.domain.repository.ParticipantUserLinkRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,12 +24,16 @@ data class AddParticipantsUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
-    val navigateToDetail: Boolean = false
+    val navigateToDetail: Boolean = false,
+    /** ID del participante que el usuario ha marcado como "Soy yo". Null si ninguno. */
+    val selfParticipantId: Long? = null
 )
 
 class AddParticipantsViewModel(
     private val groupId: Long,
-    private val participantRepository: ParticipantRepository
+    private val participantRepository: ParticipantRepository,
+    private val participantUserLinkRepository: ParticipantUserLinkRepository? = null,
+    private val currentUserIdProvider: (suspend () -> String?)? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddParticipantsUiState(groupId = groupId))
@@ -76,15 +81,45 @@ class AddParticipantsViewModel(
                 if (participant.id != 0L) {
                     participantRepository.delete(participant.id)
                 }
-                _uiState.update { it.copy(participants = it.participants - participant) }
+                _uiState.update {
+                    it.copy(
+                        participants = it.participants - participant,
+                        // Si se elimina el participante marcado como "Soy yo", deseleccionar
+                        selfParticipantId = if (it.selfParticipantId == participant.id) null else it.selfParticipantId
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message) }
             }
         }
     }
 
+    /** Alterna la selección de "Soy yo" para el participante dado (solo uno a la vez). */
+    fun toggleSelfParticipant(participantId: Long) {
+        _uiState.update {
+            it.copy(selfParticipantId = if (it.selfParticipantId == participantId) null else participantId)
+        }
+    }
+
     fun finishAndNavigate() {
-        _uiState.update { it.copy(navigateToDetail = true) }
+        viewModelScope.launch {
+            val selfId = _uiState.value.selfParticipantId
+            val linkRepo = participantUserLinkRepository
+            val userIdProvider = currentUserIdProvider
+            if (selfId != null && linkRepo != null && userIdProvider != null) {
+                try {
+                    val userId = userIdProvider()
+                    if (userId != null) {
+                        linkRepo.assignUserToParticipant(groupId, selfId, userId)
+                        println("DEBUG AddParticipantsViewModel: vínculo creado userId=$userId participantId=$selfId")
+                    }
+                } catch (e: Exception) {
+                    println("DEBUG AddParticipantsViewModel: error al crear vínculo: ${e.message}")
+                    // No bloqueamos la navegación si el vínculo falla — el usuario puede vincularse más tarde
+                }
+            }
+            _uiState.update { it.copy(navigateToDetail = true) }
+        }
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }

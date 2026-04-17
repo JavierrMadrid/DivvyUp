@@ -24,15 +24,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.Settlement
 import com.example.divvyup.domain.model.Spend
+import com.example.divvyup.domain.model.SplitType
+import com.example.divvyup.integration.ui.components.AppFilterChip
+import com.example.divvyup.integration.ui.components.AppSearchField
+import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
 import com.example.divvyup.integration.ui.theme.*
 import com.example.divvyup.integration.ui.viewmodel.AnalyticsPeriod
 import kotlinx.datetime.LocalDate
@@ -64,6 +66,7 @@ internal fun AnalyticsTab(
     onClearFilters: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val chipPalette = rememberAppFilterChipPalette(selectedColor = JungleGreen)
     val categoryMap by remember(categories) { derivedStateOf { categories.associateBy { it.id } } }
     val participantMap by remember(participants) { derivedStateOf { participants.associateBy { it.id } } }
     val effectiveSelectedCategories by remember(selectedCategories, categoryMap) {
@@ -106,6 +109,11 @@ internal fun AnalyticsTab(
     }
 
     val totalFiltered by remember(filtered) { derivedStateOf { filtered.sumOf { it.amount } } }
+
+    // Gastos no equitativos en la selección actual → las cifras "por pagador" no reflejan deuda real
+    val nonEqualSpendCount by remember(filtered) {
+        derivedStateOf { filtered.count { it.splitType != SplitType.EQUAL } }
+    }
 
     val byCategory by remember(filtered, categoryMap) {
         derivedStateOf {
@@ -154,30 +162,21 @@ internal fun AnalyticsTab(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
+                AppSearchField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Busqueda por concepto...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    trailingIcon = {
-                        if (searchQuery.isNotBlank()) {
-                            IconButton(onClick = { onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Close, contentDescription = "Borrar", modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f).height(44.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    colors = appOutlinedTextFieldColors()
+                    placeholder = "Buscar concepto",
+                    onClear = { onSearchQueryChange("") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = DivvyUpTokens.ControlHeight)
                 )
                 IconButton(
                     onClick = onClearFilters,
                     enabled = hasActiveFilters,
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(DivvyUpTokens.ControlHeight)
+                        .clip(RoundedCornerShape(DivvyUpTokens.RadiusControl))
                         .background(
                             if (hasActiveFilters) MaterialTheme.colorScheme.errorContainer
                             else MaterialTheme.colorScheme.surfaceVariant
@@ -206,12 +205,15 @@ internal fun AnalyticsTab(
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(categories, key = { it.id }) { cat ->
                         val isSelected = cat.id in selectedCategories
-                        Surface(onClick = { onCategoryToggle(cat.id) }, shape = RoundedCornerShape(50.dp), color = if (isSelected) JungleGreen else MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.height(36.dp)) {
-                            Row(modifier = Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(cat.icon, fontSize = 14.sp)
-                                Text(cat.name, style = MaterialTheme.typography.labelMedium, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
-                            }
-                        }
+                        AppFilterChip(
+                            label = "${cat.icon} ${cat.name}",
+                            selected = isSelected,
+                            selectedColor = chipPalette.selectedColor,
+                            unselectedColor = chipPalette.unselectedColor,
+                            unselectedTextColor = chipPalette.unselectedTextColor,
+                            height = DivvyUpTokens.ChipHeight,
+                            onClick = { onCategoryToggle(cat.id) }
+                        )
                     }
                 }
             }
@@ -227,12 +229,17 @@ internal fun AnalyticsTab(
                     items(participants, key = { it.id }) { participant ->
                         val isSelected = participant.id in selectedParticipants
                         val avatarColor = participantAvatarPalette[participant.name.length % participantAvatarPalette.size]
-                        Surface(onClick = { onParticipantToggle(participant.id) }, shape = RoundedCornerShape(50.dp), color = if (isSelected) avatarColor else MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.height(36.dp)) {
+                        Surface(
+                            onClick = { onParticipantToggle(participant.id) },
+                            shape = RoundedCornerShape(50.dp),
+                            color = if (isSelected) avatarColor else chipPalette.unselectedColor,
+                            modifier = Modifier.height(36.dp)
+                        ) {
                             Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(if (isSelected) Color.White.copy(alpha = 0.3f) else avatarColor), contentAlignment = Alignment.Center) {
                                     Text(participant.name.first().uppercaseChar().toString(), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                                 }
-                                Text(participant.name, style = MaterialTheme.typography.labelMedium, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+                                Text(participant.name, style = MaterialTheme.typography.labelMedium, color = if (isSelected) Color.White else chipPalette.unselectedTextColor, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
                             }
                         }
                     }
@@ -246,6 +253,7 @@ internal fun AnalyticsTab(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
             Spacer(Modifier.height(8.dp))
         }
+
 
         // ── Resumen total ─────────────────────────────────────────────────
         item {
@@ -276,7 +284,62 @@ internal fun AnalyticsTab(
         if (byPayer.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(4.dp))
-                Text("Por pagador", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        "Por pagador",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Icono de advertencia cuando hay gastos con reparto no equitativo
+                    if (nonEqualSpendCount > 0) {
+                        var showWarningPopup by remember { mutableStateOf(false) }
+                        IconButton(
+                            onClick = { showWarningPopup = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text("⚠️", fontSize = 18.sp)
+                        }
+                        if (showWarningPopup) {
+                            androidx.compose.ui.window.Popup(
+                                onDismissRequest = { showWarningPopup = false }
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                                    color = Color(0xFFFFF3CD),
+                                    shadowElevation = 8.dp,
+                                    modifier = Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .widthIn(max = 320.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            "$nonEqualSpendCount gasto${if (nonEqualSpendCount > 1) "s" else ""} con reparto personalizado",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF7C5200)
+                                        )
+                                        Text(
+                                            "Las cifras de «Por pagador» muestran lo abonado, no la deuda real de cada persona. Consulta la pestaña Balances para ver los saldos exactos.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF7C5200)
+                                        )
+                                        TextButton(
+                                            onClick = { showWarningPopup = false },
+                                            modifier = Modifier.align(Alignment.End)
+                                        ) {
+                                            Text("Entendido", color = Color(0xFF7C5200), fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
                 HorizontalBarChartCard(entries = byPayer.map { (name, total) -> BarEntry(label = name, value = total.toFloat()) }, currency = currency, total = totalFiltered)
             }
@@ -383,6 +446,7 @@ private fun AnalyticsSpendList(
             val cat = spend.categoryId?.let { categoryMap[it] }
             val payerName = participantMap[spend.payerId]?.name ?: "Desconocido"
             val dateFormatted = formatLocalDate(spend.date.toLocalDate())
+            val isNonEqual = spend.splitType != SplitType.EQUAL
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -394,7 +458,29 @@ private fun AnalyticsSpendList(
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(spend.concept, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(spend.concept, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            if (isNonEqual) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Color(0xFFFFF3CD)
+                                ) {
+                                    Text(
+                                        text = when (spend.splitType) {
+                                            SplitType.PERCENTAGE -> "%"
+                                            SplitType.CUSTOM     -> "✎"
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF7C5200),
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text("$payerName · $dateFormatted", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Text("${spend.amount.fmt2()} $currency", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -429,6 +515,7 @@ internal fun PeriodFilterSelector(
     onPeriodChange: (AnalyticsPeriod) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val chipPalette = rememberAppFilterChipPalette(selectedColor = JungleGreen)
     val availableYears = (currentYear - 2..currentYear).toList().reversed()
     val periodControlBorderColor = if (isSystemInDarkTheme()) DarkTextBeige200 else MaterialTheme.colorScheme.outline
     var showDatePickerDesde by remember { mutableStateOf(false) }
@@ -440,12 +527,12 @@ internal fun PeriodFilterSelector(
         Text("Período", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { val s = period is AnalyticsPeriod.Todo;   PeriodChip("Todo", s) { onPeriodChange(AnalyticsPeriod.Todo) } }
-            item { val s = period is AnalyticsPeriod.PorMes; PeriodChip("Por mes", s) { if (!s) onPeriodChange(AnalyticsPeriod.PorMes(currentMonth, currentYear)) } }
-            item { val s = period is AnalyticsPeriod.PorAnyo; PeriodChip("Por año", s) { if (!s) onPeriodChange(AnalyticsPeriod.PorAnyo(currentYear)) } }
+            item { val s = period is AnalyticsPeriod.Todo;   PeriodChip("Todo", s, chipPalette.selectedColor, chipPalette.unselectedColor, chipPalette.unselectedTextColor) { onPeriodChange(AnalyticsPeriod.Todo) } }
+            item { val s = period is AnalyticsPeriod.PorMes; PeriodChip("Por mes", s, chipPalette.selectedColor, chipPalette.unselectedColor, chipPalette.unselectedTextColor) { if (!s) onPeriodChange(AnalyticsPeriod.PorMes(currentMonth, currentYear)) } }
+            item { val s = period is AnalyticsPeriod.PorAnyo; PeriodChip("Por año", s, chipPalette.selectedColor, chipPalette.unselectedColor, chipPalette.unselectedTextColor) { if (!s) onPeriodChange(AnalyticsPeriod.PorAnyo(currentYear)) } }
             item {
                 val s = period is AnalyticsPeriod.PorRango
-                PeriodChip("Rango", s) {
+                PeriodChip("Rango", s, chipPalette.selectedColor, chipPalette.unselectedColor, chipPalette.unselectedTextColor) {
                     if (!s) {
                         val today = System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                         onPeriodChange(AnalyticsPeriod.PorRango(desde = today, hasta = today))
@@ -527,12 +614,23 @@ internal fun PeriodFilterSelector(
 // --- Chip de período ---------------------------------------------------------
 
 @Composable
-internal fun PeriodChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(50.dp), color = if (isSelected) JungleGreen else MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.height(36.dp)) {
-        Box(modifier = Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
-        }
-    }
+internal fun PeriodChip(
+    label: String,
+    isSelected: Boolean,
+    selectedColor: Color,
+    unselectedColor: Color,
+    unselectedTextColor: Color,
+    onClick: () -> Unit
+) {
+    AppFilterChip(
+        label = label,
+        selected = isSelected,
+        selectedColor = selectedColor,
+        unselectedColor = unselectedColor,
+        unselectedTextColor = unselectedTextColor,
+        height = DivvyUpTokens.ChipHeight,
+        onClick = onClick
+    )
 }
 
 // --- Dropdown de período -----------------------------------------------------
@@ -653,4 +751,3 @@ internal fun HorizontalBarChartCard(entries: List<BarEntry>, currency: String, t
         }
     }
 }
-

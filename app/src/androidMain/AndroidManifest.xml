@@ -16,10 +16,35 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.DivvyUp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Deep link para el callback de OAuth (Google, etc.) -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="divvyup" android:host="auth-callback" />
+            </intent-filter>
+            <!-- Deep link para unirse a grupos compartidos (scheme custom) -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="divvyup" android:host="join" />
+            </intent-filter>
+            <!-- Deep link HTTPS via GitHub Pages (enlace cliqueable en WhatsApp/Telegram/SMS) -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="TU_USUARIO.github.io"
+                    android:pathPrefix="/divvyup-invite" />
             </intent-filter>
         </activity>
     </application>

@@ -5,23 +5,59 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,11 +71,13 @@ import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Group
 import com.example.divvyup.domain.model.Participant
-import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
-import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.components.AppFilterChip
+import com.example.divvyup.integration.ui.components.AppSearchField
+import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
 import com.example.divvyup.integration.ui.theme.Amber
 import com.example.divvyup.integration.ui.theme.BarkBrown
 import com.example.divvyup.integration.ui.theme.BarkBrownDark
+import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
 import com.example.divvyup.integration.ui.theme.JungleGreenMid
@@ -60,9 +98,12 @@ private val avatarPalette = listOf(
 @Composable
 fun GroupListScreen(
     viewModel: GroupListViewModel,
+    isAuthenticated: Boolean,
     onGroupClick: (Long) -> Unit,
     onGroupCreated: (Long) -> Unit,
     onCreateGroup: () -> Unit,
+    onLogout: () -> Unit,
+    onOpenUserSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -84,6 +125,11 @@ fun GroupListScreen(
     // Estado del dialog de confirmar borrado de seleccionados
     var showDeleteSelectedConfirm by rememberSaveable { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        // El ViewModel es compartido en navegación; al volver, refrescamos para reflejar cambios recientes.
+        if (uiState.groups.isNotEmpty()) viewModel.loadGroups()
+    }
+
     LaunchedEffect(uiState.createdGroupId) {
         uiState.createdGroupId?.let { groupId ->
             viewModel.consumeNavigation()
@@ -101,19 +147,47 @@ fun GroupListScreen(
                     .statusBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-                Text(
-                    if (isSelectionMode) "${selectedGroupIds.size} seleccionados"
-                    else "DivvyUp",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    if (isSelectionMode) "Mantén pulsado para seleccionar más"
-                    else "Tus grupos de gastos",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            if (isSelectionMode) "${selectedGroupIds.size} seleccionados"
+                            else "DivvyUp",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            if (isSelectionMode) "Mantén pulsado para seleccionar más"
+                            else "Tus grupos de gastos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    // Iconos de usuario y cerrar sesión agrupados sin separación
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onOpenUserSettings) {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = "Ajustes de usuario",
+                                tint = if (isAuthenticated) MaterialTheme.colorScheme.primary
+                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (isAuthenticated) {
+                            IconButton(onClick = onLogout) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ExitToApp,
+                                    contentDescription = "Cerrar sesión",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         floatingActionButton = {
@@ -187,9 +261,12 @@ fun GroupListScreen(
             }
 
 
-            // Snackbar de error
+            // Snackbar de error — se auto-descarta después de 6 segundos
             uiState.error?.let { errorMsg ->
-                LaunchedEffect(errorMsg) { viewModel.clearError() }
+                LaunchedEffect(errorMsg) {
+                    kotlinx.coroutines.delay(6_000)
+                    viewModel.clearError()
+                }
                 Snackbar(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(20.dp),
                     containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -304,17 +381,13 @@ private fun GroupList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            OutlinedTextField(
+            AppSearchField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                placeholder = { Text("Buscar grupo") },
-                shape = RoundedCornerShape(DivvyUpTokens.RadiusRow),
-                colors = appOutlinedTextFieldColors()
+                placeholder = "Buscar grupo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = DivvyUpTokens.ControlHeight)
             )
             Spacer(Modifier.height(4.dp))
         }
@@ -495,6 +568,11 @@ private fun AdvancedDeleteDialog(
     onConfirm: (categoryId: Long?, payerId: Long?, beforeInstant: Instant?) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val chipPalette = rememberAppFilterChipPalette(selectedColor = JungleGreen)
+    val chipSelectedColor = chipPalette.selectedColor
+    val chipUnselectedColor = chipPalette.unselectedColor
+    val chipUnselectedTextColor = chipPalette.unselectedTextColor
+
     var selectedCategory    by rememberSaveable { mutableStateOf<Long?>(null) }
     var selectedParticipant by rememberSaveable { mutableStateOf<Long?>(null) }
     var selectedTime        by rememberSaveable { mutableStateOf(DeleteTimeOption.TODO) }
@@ -532,19 +610,14 @@ private fun AdvancedDeleteDialog(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(DeleteTimeOption.entries.toList()) { opt ->
                         val isSel = selectedTime == opt
-                        Surface(
-                            onClick = { selectedTime = opt },
-                            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                            color = if (isSel) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.height(DivvyUpTokens.ChipSmallHeight)
-                        ) {
-                            Box(Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                                Text(opt.label, style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
-                            }
-                        }
+                        AppFilterChip(
+                            label = opt.label,
+                            selected = isSel,
+                            selectedColor = MaterialTheme.colorScheme.error,
+                            unselectedColor = chipUnselectedColor,
+                            unselectedTextColor = chipUnselectedTextColor,
+                            onClick = { selectedTime = opt }
+                        )
                     }
                 }
 
@@ -557,35 +630,25 @@ private fun AdvancedDeleteDialog(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         item {
                             val isSel = selectedCategory == null
-                            Surface(onClick = { selectedCategory = null },
-                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                                color = if (isSel) JungleGreen else MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.height(DivvyUpTokens.ChipSmallHeight)
-                            ) {
-                                Box(Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                                    Text("Todas", style = MaterialTheme.typography.labelSmall,
-                                        color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
-                                }
-                            }
+                            AppFilterChip(
+                                label = "Todas",
+                                selected = isSel,
+                                selectedColor = chipSelectedColor,
+                                unselectedColor = chipUnselectedColor,
+                                unselectedTextColor = chipUnselectedTextColor,
+                                onClick = { selectedCategory = null }
+                            )
                         }
                         items(categories) { cat ->
                             val isSel = selectedCategory == cat.id
-                            Surface(onClick = { selectedCategory = if (isSel) null else cat.id },
-                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                                color = if (isSel) JungleGreen else MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.height(DivvyUpTokens.ChipSmallHeight)
-                            ) {
-                                Row(Modifier.padding(horizontal = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(cat.icon, fontSize = 13.sp)
-                                    Text(cat.name, style = MaterialTheme.typography.labelSmall,
-                                        color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
-                                }
-                            }
+                            AppFilterChip(
+                                label = "${cat.icon} ${cat.name}",
+                                selected = isSel,
+                                selectedColor = chipSelectedColor,
+                                unselectedColor = chipUnselectedColor,
+                                unselectedTextColor = chipUnselectedTextColor,
+                                onClick = { selectedCategory = if (isSel) null else cat.id }
+                            )
                         }
                     }
                 }
@@ -597,31 +660,25 @@ private fun AdvancedDeleteDialog(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         item {
                             val isSel = selectedParticipant == null
-                            Surface(onClick = { selectedParticipant = null },
-                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                                color = if (isSel) JungleGreen else MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.height(DivvyUpTokens.ChipSmallHeight)
-                            ) {
-                                Box(Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                                    Text("Todos", style = MaterialTheme.typography.labelSmall,
-                                        color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
-                                }
-                            }
+                            AppFilterChip(
+                                label = "Todos",
+                                selected = isSel,
+                                selectedColor = chipSelectedColor,
+                                unselectedColor = chipUnselectedColor,
+                                unselectedTextColor = chipUnselectedTextColor,
+                                onClick = { selectedParticipant = null }
+                            )
                         }
                         items(participants) { p ->
                             val isSel = selectedParticipant == p.id
-                            Surface(onClick = { selectedParticipant = if (isSel) null else p.id },
-                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                                color = if (isSel) JungleGreen else MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.height(DivvyUpTokens.ChipSmallHeight)
-                            ) {
-                                Box(Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
-                                    Text(p.name, style = MaterialTheme.typography.labelSmall,
-                                        color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
-                                }
-                            }
+                            AppFilterChip(
+                                label = p.name,
+                                selected = isSel,
+                                selectedColor = chipSelectedColor,
+                                unselectedColor = chipUnselectedColor,
+                                unselectedTextColor = chipUnselectedTextColor,
+                                onClick = { selectedParticipant = if (isSel) null else p.id }
+                            )
                         }
                     }
                 }
@@ -658,6 +715,7 @@ private fun AdvancedDeleteDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }
+
 
 @Composable
 private fun EmptyGroupsPlaceholder(modifier: Modifier = Modifier) {

@@ -16,10 +16,20 @@ class GroupService(private val groupRepository: GroupRepository) {
     suspend fun getGroup(id: Long): Group =
         groupRepository.getById(id)
 
-    suspend fun createGroup(name: String, description: String = "", currency: String = "EUR"): Group {
+    suspend fun createGroup(
+        name: String,
+        description: String = "",
+        currency: String = "EUR",
+        ownerUserId: String? = null
+    ): Group {
         require(name.isNotBlank()) { "El nombre del grupo no puede estar vacío" }
         return groupRepository.create(
-            Group(name = name.trim(), description = description.trim(), currency = currency)
+            Group(
+                name = name.trim(),
+                description = description.trim(),
+                currency = currency,
+                ownerUserId = ownerUserId
+            )
         )
     }
 

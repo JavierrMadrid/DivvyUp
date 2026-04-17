@@ -31,7 +31,10 @@ class GroupListViewModel(
     private val groupService: GroupService,
     private val spendService: SpendService,
     private val participantRepository: ParticipantRepository,
-    private val categoryService: CategoryService
+    private val categoryService: CategoryService,
+    private val currentUserIdProvider: (suspend () -> String?) = { null },
+    /** Opcional: invalida la caché subyacente antes de recargar (útil tras cambio de sesión). */
+    private val cacheInvalidator: (() -> Unit)? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroupListUiState())
@@ -46,16 +49,28 @@ class GroupListViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val groups = groupService.getAllGroups()
+                val groupLastActivity = mutableMapOf<Long, Instant>()
                 // Precarga participantes y categorías para el dialog de borrado avanzado
                 val participantsMap = mutableMapOf<Long, List<Participant>>()
                 val categoriesMap   = mutableMapOf<Long, List<Category>>()
                 groups.forEach { group ->
                     participantsMap[group.id] = participantRepository.getByGroup(group.id)
                     categoriesMap[group.id]   = categoryService.getCategories(group.id)
+                    // "Modificar grupo" = última fecha de gasto o fecha de creación del grupo.
+                    val lastSpendInstant = spendService.getSpends(group.id).maxOfOrNull { it.date }
+                    groupLastActivity[group.id] = if (lastSpendInstant != null && lastSpendInstant > group.createdAt) {
+                        lastSpendInstant
+                    } else {
+                        group.createdAt
+                    }
                 }
+                val sortedGroups = groups
+                    .sortedWith(compareByDescending<Group> { groupLastActivity[it.id] ?: it.createdAt }
+                        .thenByDescending { it.createdAt }
+                        .thenByDescending { it.id })
                 _uiState.update {
                     it.copy(
-                        groups = groups,
+                        groups = sortedGroups,
                         participantsByGroup = participantsMap,
                         categoriesByGroup = categoriesMap,
                         isLoading = false
@@ -80,7 +95,12 @@ class GroupListViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val newGroup = groupService.createGroup(name, description, currency)
+                val userId = currentUserIdProvider()
+                if (userId == null) {
+                    _uiState.update { it.copy(isLoading = false, error = "Sin conexión a internet. Conéctate para crear grupos.") }
+                    return@launch
+                }
+                val newGroup = groupService.createGroup(name, description, currency, ownerUserId = userId)
                 _uiState.update {
                     it.copy(isLoading = false, showCreateDialog = false, createdGroupId = newGroup.id)
                 }
@@ -92,6 +112,16 @@ class GroupListViewModel(
     }
 
     fun consumeNavigation() = _uiState.update { it.copy(createdGroupId = null) }
+
+    /**
+     * Invalida la caché de grupos (si existe) y recarga desde Supabase.
+     * Llamar tras un cambio de autenticación (login/logout) para que el nuevo
+     * usuario vea sus grupos en lugar de los de la sesión anterior.
+     */
+    fun reloadAfterAuthChange() {
+        cacheInvalidator?.invoke()
+        loadGroups()
+    }
 
     fun deleteGroup(id: Long) {
         viewModelScope.launch {

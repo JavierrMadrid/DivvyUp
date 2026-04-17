@@ -13,9 +13,11 @@ import com.example.divvyup.domain.model.Group
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.ParticipantBalance
 import com.example.divvyup.domain.model.Settlement
+import com.example.divvyup.domain.repository.ParticipantUserLinkRepository
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.repository.ParticipantRepository
+import com.example.divvyup.integration.ui.resolveDefaultSplitPercentages
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,19 +50,24 @@ data class GroupDetailUiState(
     // Dialogs
     val showAddSpendDialog: Boolean = false,
     val showAddParticipantDialog: Boolean = false,
-    val showSettleUpDialog: Boolean = false,
     val spendToEdit: Spend? = null,
     val sharesForEditedSpend: List<SpendShare> = emptyList(),
     // Señales de navegación
-    val navigateToSpendScreen: Boolean = false,   // true → navegar a AddSpendScreen
-    val spendSaved: Boolean = false,               // true → volver desde AddSpendScreen
+    val navigateToSpendScreen: Boolean = false,
+    val spendSaved: Boolean = false,
     // Analíticas — filtros
     val analyticsSearchQuery: String = "",
     val analyticsSelectedCategories: Set<Long> = emptySet(),
     val analyticsSelectedParticipants: Set<Long> = emptySet(),
     val analyticsPeriod: AnalyticsPeriod = AnalyticsPeriod.Todo,
     // Ajustes del grupo
-    val defaultSplitPercentages: Map<Long, Double> = emptyMap()  // participantId → %
+    val defaultSplitPercentages: Map<Long, Double> = emptyMap(),
+    val settingsSavedMessage: String? = null,
+    // Impacto personal por gasto — participante vinculado al usuario actual
+    /** ID del participante vinculado al usuario que tiene la sesión abierta. Null si no está vinculado. */
+    val myParticipantId: Long? = null,
+    /** spendId → impacto neto (positivo = le deben, negativo = debe). Vacío si no hay participante vinculado. */
+    val spendPersonalImpact: Map<Long, Double> = emptyMap()
 )
 
 enum class GroupDetailTab { GASTOS, BALANCES, ANALITICAS }
@@ -71,7 +78,12 @@ class GroupDetailViewModel(
     private val spendService: SpendService,
     private val settlementService: SettlementService,
     private val categoryService: CategoryService,
-    private val participantRepository: ParticipantRepository
+    private val participantRepository: ParticipantRepository,
+    /** Proveedor del ID de participante vinculado al usuario actual (puede ser null). */
+    private val myParticipantIdProvider: (suspend () -> Long?) = { null },
+    /** Proveedor del ID de usuario actual para permitir cambiar el participante vinculado. */
+    private val currentUserIdProvider: (suspend () -> String?) = { null },
+    private val participantUserLinkRepository: ParticipantUserLinkRepository? = null
 ) : ViewModel() {
 
     private companion object {
@@ -97,6 +109,14 @@ class GroupDetailViewModel(
                 val settlements  = settlementService.getSettlements(groupId)
                 val transfers    = settlementService.simplifyDebts(balances)
 
+                // Impacto personal: si hay participante vinculado, cargamos las shares
+                val myParticipantId = myParticipantIdProvider()
+                val personalImpact = if (myParticipantId != null) {
+                    spendService.getPersonalImpactByGroup(groupId, myParticipantId)
+                } else {
+                    emptyMap()
+                }
+
                 _uiState.update {
                     it.copy(
                         group = group,
@@ -106,6 +126,12 @@ class GroupDetailViewModel(
                         balances = balances,
                         debtTransfers = transfers,
                         settlements = settlements,
+                        defaultSplitPercentages = resolveDefaultSplitPercentages(
+                            participantIds = participants.map { participant -> participant.id },
+                            savedPercentages = it.defaultSplitPercentages
+                        ),
+                        myParticipantId = myParticipantId,
+                        spendPersonalImpact = personalImpact,
                         isLoading = false
                     )
                 }
@@ -147,6 +173,39 @@ class GroupDetailViewModel(
         }
     }
 
+    /** Cambia el participante vinculado al usuario actual en este grupo. */
+    fun selectMyParticipant(participantId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val userId = currentUserIdProvider()
+                    ?: throw Exception("No hay sesión activa")
+                val linkRepo = participantUserLinkRepository
+                    ?: throw Exception("Repositorio de vínculos no disponible")
+
+                // Primero eliminar el vínculo actual del usuario en este grupo (si existe)
+                try { linkRepo.removeUserLink(groupId, userId) } catch (_: Exception) {}
+
+                // Crear el nuevo vínculo
+                linkRepo.assignUserToParticipant(groupId, participantId, userId)
+
+                // Recalcular impacto personal con el nuevo participante
+                val personalImpact = spendService.getPersonalImpactByGroup(groupId, participantId)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        myParticipantId = participantId,
+                        spendPersonalImpact = personalImpact,
+                        settingsSavedMessage = "Participante actualizado"
+                    )
+                }
+            } catch (e: Exception) {
+                println("DEBUG GroupDetailViewModel: selectMyParticipant error — ${e.message}")
+                _uiState.update { it.copy(isLoading = false, error = "No se pudo cambiar el participante: ${e.message}") }
+            }
+        }
+    }
+
     // --- Gastos ---
     /** Prepara estado para crear un gasto nuevo y señala navegación a AddSpendScreen. */
     fun prepareNewSpend() = _uiState.update {
@@ -160,6 +219,10 @@ class GroupDetailViewModel(
 
     /** Carga las shares del gasto y señala navegación a AddSpendScreen cuando estén listas. */
     fun prepareEditSpend(spend: Spend) {
+        if (spend.notes.startsWith(SETTLEMENT_NOTE_PREFIX)) {
+            _uiState.update { it.copy(error = "Las liquidaciones espejo no se pueden editar. Puedes borrarlas desde la lista.") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, spendSaved = false) }
             try {
@@ -362,9 +425,6 @@ class GroupDetailViewModel(
     }
 
     // --- Liquidaciones ---
-    fun showSettleUpDialog() = _uiState.update { it.copy(showSettleUpDialog = true) }
-    fun hideSettleUpDialog() = _uiState.update { it.copy(showSettleUpDialog = false) }
-
     fun createSettlement(fromId: Long, toId: Long, amount: Double, notes: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -376,7 +436,7 @@ class GroupDetailViewModel(
                     amount = amount,
                     notes = notes
                 )
-                _uiState.update { it.copy(showSettleUpDialog = false, isLoading = false) }
+                _uiState.update { it.copy(isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -397,7 +457,7 @@ class GroupDetailViewModel(
                         amount            = t.amount
                     )
                 }
-                _uiState.update { it.copy(showSettleUpDialog = false, isLoading = false) }
+                _uiState.update { it.copy(isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -438,6 +498,7 @@ class GroupDetailViewModel(
     }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
+    fun consumeSettingsSavedMessage() = _uiState.update { it.copy(settingsSavedMessage = null) }
 
     // --- Ajustes del grupo ---
     fun updateGroup(name: String, description: String, currency: String) {
@@ -453,6 +514,42 @@ class GroupDetailViewModel(
                     )
                 )
                 _uiState.update { it.copy(group = updated, isLoading = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun saveGroupSettings(
+        name: String,
+        description: String,
+        currency: String,
+        defaultSplitPercentages: Map<Long, Double>
+    ) {
+        val current = _uiState.value.group ?: return
+        val participantIds = _uiState.value.participants.map { it.id }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, settingsSavedMessage = null) }
+            try {
+                val updated = groupService.updateGroup(
+                    current.copy(
+                        name = name.trim(),
+                        description = description.trim(),
+                        currency = currency.trim()
+                    )
+                )
+                _uiState.update {
+                    it.copy(
+                        group = updated,
+                        defaultSplitPercentages = resolveDefaultSplitPercentages(
+                            participantIds = participantIds,
+                            savedPercentages = defaultSplitPercentages
+                        ),
+                        isLoading = false,
+                        settingsSavedMessage = "Cambios guardados correctamente"
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
@@ -483,7 +580,15 @@ class GroupDetailViewModel(
     }
 
     fun setDefaultSplitPercentages(percentages: Map<Long, Double>) {
-        _uiState.update { it.copy(defaultSplitPercentages = percentages) }
+        val participantIds = _uiState.value.participants.map { it.id }
+        _uiState.update {
+            it.copy(
+                defaultSplitPercentages = resolveDefaultSplitPercentages(
+                    participantIds = participantIds,
+                    savedPercentages = percentages
+                )
+            )
+        }
     }
 
     fun deleteSpendsFiltered(
@@ -540,7 +645,7 @@ class GroupDetailViewModel(
             .mapNotNull { extractSettlementIdFromNotes(it.notes) }
             .toSet()
 
-        settlementIds.forEach { settlementService.deleteSettlement(it) }
+        settlementIds.forEach { settlementService.deleteSettlement(groupId = groupId, id = it) }
     }
 
     private fun extractSettlementIdFromNotes(notes: String): Long? {

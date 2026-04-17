@@ -14,6 +14,7 @@ data class GroupDto(
     val name: String,
     val description: String = "",
     val currency: String = "EUR",
+    @SerialName("owner_user_id") val ownerUserId: String? = null,
     @SerialName("created_at") val createdAt: String = ""
 )
 
@@ -22,6 +23,7 @@ fun GroupDto.toDomain() = Group(
     name = name,
     description = description,
     currency = currency,
+    ownerUserId = ownerUserId,
     createdAt = if (createdAt.isNotEmpty()) Instant.parse(createdAt)
                 else Instant.fromEpochMilliseconds(0)
 )
@@ -30,7 +32,8 @@ fun Group.toDto() = GroupDto(
     id = id,
     name = name,
     description = description,
-    currency = currency
+    currency = currency,
+    ownerUserId = ownerUserId
 )
 
 /** DTO para UPDATE: excluye `id` y `created_at` para evitar el error
@@ -47,4 +50,3 @@ fun Group.toUpdateDto() = GroupUpdateDto(
     description = description,
     currency = currency
 )
-

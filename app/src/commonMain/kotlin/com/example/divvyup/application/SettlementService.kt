@@ -136,6 +136,19 @@ class SettlementService(
     suspend fun deleteSettlement(id: Long) =
         settlementRepository.delete(id)
 
+    suspend fun deleteSettlement(groupId: Long, id: Long) {
+        val mirroredSpendIds = spendRepository.getByGroup(groupId)
+            .asSequence()
+            .filter { extractMirroredSettlementId(it.notes) == id }
+            .map { it.id }
+            .toList()
+
+        if (mirroredSpendIds.isNotEmpty()) {
+            spendRepository.deleteAll(mirroredSpendIds)
+        }
+        settlementRepository.delete(id)
+    }
+
     /**
      * Algoritmo greedy de minimización de transferencias.
      * Dado una lista de balances netos, calcula el conjunto mínimo de

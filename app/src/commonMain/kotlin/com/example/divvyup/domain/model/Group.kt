@@ -8,6 +8,7 @@ data class Group(
     val name: String,
     val description: String = "",
     val currency: String = "EUR",
+    val ownerUserId: String? = null,
     val createdAt: Instant = Instant.fromEpochMilliseconds(0)
 )
 

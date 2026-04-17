@@ -43,5 +43,10 @@ class CachedGroupRepository(
         listCache.invalidate("all")
         singleCache.invalidate(id)
     }
+
+    /** Descarta la caché de lista para forzar una nueva consulta a Supabase. */
+    fun invalidateListCache() {
+        listCache.invalidate("all")
+    }
 }
 

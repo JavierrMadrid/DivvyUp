@@ -41,7 +41,7 @@ internal val MES_NOMBRES = listOf(
     "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
 )
 
-internal const val SETTLEMENT_CATEGORY_NAME = "LiquidaciÛn"
+internal const val SETTLEMENT_CATEGORY_NAME = "Liquidaci√≥n"
 internal const val SETTLEMENT_SPEND_NOTE_PREFIX = "__settlement_id:"
 
 internal fun Instant.toLocal() = toLocalDateTime(TimeZone.currentSystemDefault())
@@ -117,6 +117,7 @@ fun GroupDetailScreen(
     onBack: () -> Unit,
     onAddSpend: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSettleUp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -167,14 +168,14 @@ fun GroupDetailScreen(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = uiState.group?.name ?: "Cargando..¶",
+                            text = uiState.group?.name ?: "Cargando...",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         uiState.group?.let { group ->
                             Text(
-                                text = "${uiState.participants.size} participantes ∑ ${group.currency}",
+                                text = "${uiState.participants.size} participantes - ${group.currency}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.White.copy(alpha = 0.7f)
                             )
@@ -213,7 +214,7 @@ fun GroupDetailScreen(
                                     text = when (tab) {
                                         GroupDetailTab.GASTOS     -> "Gastos"
                                         GroupDetailTab.BALANCES   -> "Balances"
-                                        GroupDetailTab.ANALITICAS -> "AnalÌticas"
+                                        GroupDetailTab.ANALITICAS -> "Anal√≠ticas"
                                     },
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     fontSize = 14.sp
@@ -253,6 +254,7 @@ fun GroupDetailScreen(
                             participants = uiState.participants,
                             categories = uiState.categories,
                             currency = uiState.group?.currency ?: "EUR",
+                            spendPersonalImpact = uiState.spendPersonalImpact,
                             onEditSpend = viewModel::prepareEditSpend,
                             onDeleteSpendsByIds = viewModel::deleteSpendsByIds,
                             onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered
@@ -262,7 +264,7 @@ fun GroupDetailScreen(
                             balances = uiState.balances,
                             transfers = uiState.debtTransfers,
                             currency = uiState.group?.currency ?: "EUR",
-                            onLiquidar = viewModel::showSettleUpDialog
+                            onLiquidar = onOpenSettleUp
                         )
                     GroupDetailTab.ANALITICAS ->
                         AnalyticsTab(
@@ -298,20 +300,9 @@ fun GroupDetailScreen(
         }
     }
 
-    // Solo SettleUp mantiene dialog (no afecta navegaciÛn principal)
-    if (uiState.showSettleUpDialog) {
-        SettleUpDialog(
-            transfers = uiState.debtTransfers,
-            currency = uiState.group?.currency ?: "EUR",
-            onConfirm = { selected ->
-                viewModel.createSettlementsForTransfers(selected)
-            },
-            onDismiss = viewModel::hideSettleUpDialog
-        )
-    }
 }
 
-// -- Modelos de datos para gr·ficas (compartidos por AnalyticsTabScreen) -------
+// -- Modelos de datos para gr√°ficas (compartidos por AnalyticsTabScreen) -------
 internal data class DonutEntry(val label: String, val icon: String, val value: Float)
 internal data class BarEntry(val label: String, val value: Float)
 

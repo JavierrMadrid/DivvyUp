@@ -170,6 +170,23 @@ The SQL source of truth lives in `docs/sql/V001__initial_schema.sql`, `docs/sql/
 - **Group detail composition**: `GroupDetailScreen` switches tabs via `GroupDetailTab` and delegates content to `SpendTabScreen`, `BalanceTabScreen`, and `AnalyticsTabScreen`.
 - **Material 3**: Access colors via `MaterialTheme.colorScheme`, support dynamic color on Android 12+.
 
+### Centralized UI Style — Rules (enforce always)
+
+All screens **must** follow the centralized style. Never hardcode raw color values or sizes; always use design tokens and theme color roles:
+
+| Element | Rule |
+|---|---|
+| **Colors** | Always use `MaterialTheme.colorScheme.*` roles. Direct token constants (`JungleGreen`, `JungleGreenDark`, etc.) are only allowed for the primary CTA fill (`containerColor = JungleGreen, contentColor = Color.White`) and avatar backgrounds. Never use `.copy(alpha = …)` on brand colors as Surface backgrounds — it breaks contrast in dark mode. |
+| **Card / Surface** | Use `Card` with `CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)` + `CardDefaults.cardElevation(defaultElevation = 2.dp)` + `.shadow(4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard), …)`. **Never use bare `Surface` without elevation for content cards** — they blend into the background. |
+| **Button shapes** | Primary CTA: `RoundedCornerShape(DivvyUpTokens.RadiusPill)` + `height = DivvyUpTokens.PrimaryButtonHeight`. Secondary/cancel inline buttons: `RoundedCornerShape(DivvyUpTokens.RadiusPill)` + `height = DivvyUpTokens.ControlHeight`. Never mix `RadiusControl` for CTA buttons. |
+| **Button colors** | Primary fill: `containerColor = JungleGreen, contentColor = Color.White`. Secondary tonal: `containerColor = primaryContainer, contentColor = onPrimaryContainer`. Destructive outlined: `border = 1.5.dp error.copy(0.7f), contentColor = error`. Neutral outlined: `border = outline, contentColor = onSurface`. |
+| **Section headers inside cards** | `style = labelLarge, fontWeight = SemiBold, color = primary` (green). Never `onSurfaceVariant` for section labels — too low contrast against card background. |
+| **Icon sizes** | Use `DivvyUpTokens.IconSm` (18 dp) / `IconMd` (20 dp) / `IconLg` (24 dp). Never hardcode icon dp values inline. |
+| **Spacing** | Use `DivvyUpTokens.GapSm/GapMd/GapLg` for `Arrangement.spacedBy(…)` between items. Screen horizontal padding: `DivvyUpTokens.ScreenPaddingHLg` (20 dp). |
+| **Info/guest banners** | Use `tertiaryContainer / onTertiaryContainer` — guaranteed contrast in both themes. Never `JungleGreen.copy(alpha = 0.15f)` as a background. |
+| **Avatar circles** | Icon avatars (no photo): `primaryContainer` background + `onPrimaryContainer` tint. Photo/initial avatars: `JungleGreen` background + `Color.White` text. Always add `.shadow(…, CircleShape)`. |
+| **Dividers inside cards** | `HorizontalDivider(color = outlineVariant.copy(alpha = 0.5f))` — never full-opacity dividers. |
+
 ## Build & Run
 
 ```powershell
@@ -210,6 +227,11 @@ The SQL source of truth lives in `docs/sql/V001__initial_schema.sql`, `docs/sql/
 - ❌ Missing indexes on FK columns — always create them
 - ❌ `timestamp` without timezone — always use `timestamptz`
 - ❌ Platform-specific libraries in `commonMain` — use `kotlinx.*` alternatives
+- ❌ Raw `Surface` without elevation for content cards — use `Card` with `cardElevation` + `.shadow()`
+- ❌ `JungleGreen.copy(alpha = …)` as a Surface/Card background — breaks dark-mode contrast; use `tertiaryContainer` or `primaryContainer`
+- ❌ Hardcoded dp values for icons, heights, radii or spacing — always use `DivvyUpTokens.*`
+- ❌ `onSurfaceVariant` color for section header labels inside cards — use `primary` (green) for visibility
+- ❌ `RadiusControl` shape for primary CTA buttons — use `RadiusPill`
 
 ## Adding a New Feature Checklist
 

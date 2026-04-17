@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +18,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.integration.ui.theme.JungleGreen
@@ -184,6 +187,10 @@ fun CreateGroupScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Next
+                    ),
                     colors = appOutlinedTextFieldColors()
                 )
             }
@@ -203,6 +210,10 @@ fun CreateGroupScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                     modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
                     colors = appOutlinedTextFieldColors()
                 )
             }
@@ -223,7 +234,10 @@ fun CreateGroupScreen(
 
             // Error snackbar
             uiState.error?.let { msg ->
-                LaunchedEffect(msg) { viewModel.clearError() }
+                LaunchedEffect(msg) {
+                    kotlinx.coroutines.delay(8_000)
+                    viewModel.clearError()
+                }
                 Snackbar(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,

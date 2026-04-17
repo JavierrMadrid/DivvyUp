@@ -14,6 +14,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AddParticipantsViewModel
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
@@ -125,6 +128,8 @@ fun AddParticipantsScreen(
                     items(uiState.participants, key = { it.id.toString() + it.name }) { participant ->
                         ParticipantChipRow(
                             participant = participant,
+                            isSelf = uiState.selfParticipantId == participant.id,
+                            onToggleSelf = { viewModel.toggleSelfParticipant(participant.id) },
                             onRemove = { viewModel.removeParticipant(participant) }
                         )
                     }
@@ -133,7 +138,10 @@ fun AddParticipantsScreen(
 
             // Error Snackbar
             uiState.error?.let { msg ->
-                LaunchedEffect(msg) { viewModel.clearError() }
+                LaunchedEffect(msg) {
+                    kotlinx.coroutines.delay(8_000)
+                    viewModel.clearError()
+                }
                 Snackbar(
                     modifier = Modifier.padding(bottom = 8.dp),
                     action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
@@ -251,6 +259,8 @@ private fun AddParticipantForm(
 @Composable
 private fun ParticipantChipRow(
     participant: Participant,
+    isSelf: Boolean,
+    onToggleSelf: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -300,6 +310,40 @@ private fun ParticipantChipRow(
                         )
                     }
                 }
+
+                // Toggle "Soy yo"
+                Surface(
+                    onClick = onToggleSelf,
+                    shape = RoundedCornerShape(50),
+                    color = if (isSelf) JungleGreen else MaterialTheme.colorScheme.surface,
+                    border = if (isSelf) null else androidx.compose.foundation.BorderStroke(
+                        1.dp, MaterialTheme.colorScheme.outline
+                    ),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isSelf) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = "Soy yo",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isSelf) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelf) androidx.compose.ui.graphics.Color.White
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
