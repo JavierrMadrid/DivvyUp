@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "android-clean-architecture": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "908c1ce8aff32a560bc3b2315c9124cc530683deac578877de69a91febbdf36a"
+    },
+    "android-jetpack-compose": {
+      "source": "thebushidocollective/han",
+      "sourceType": "github",
+      "computedHash": "11ab9a1ee4ebfb46cea085b9183539a2a9e5b7d5a897bea544297d42ee1b6fc5"
+    },
+    "android-kotlin": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "b53ef0b13679d6f9f4873b607732e85990cc7cb4cf3109af15c5b83ce00ae0d9"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "computedHash": "645b891da1edbae76ab79c7b088d4e73397464f8396edaf773c0e01971ce75d6"
+    },
+    "kotlin-multiplatform": {
+      "source": "vitorpamplona/amethyst",
+      "sourceType": "github",
+      "computedHash": "f2b0179044180581b6425c6a5aed7e3c731fffc631e783f50acba24696befb66"
+    },
+    "mobile-android-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "f664cf000475eb1fb2e61dfdbdfd311cca595154ddc63e76ac6444a07b86346a"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "7e1a5a1e76805889b83b4c20bc4b9e25de70eff71b7c5b9c4789f98a77ef81ab"
+    }
+  }
+}

@@ -4,13 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.divvyup.integration.ui.auth.CredentialUnavailableException
 import com.example.divvyup.integration.ui.auth.GoogleSignInHandler
+import com.example.divvyup.domain.model.UserProfile
+import com.example.divvyup.domain.repository.UserProfileRepository
+import com.example.divvyup.integration.supabase.SupabaseStorageService
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -21,38 +26,37 @@ const val OAUTH_REDIRECT_URL = "divvyup://auth-callback"
 
 data class AuthUiState(
     val isLoading: Boolean = false,
-    /** true = usuario con cuenta registrada (email/Google). */
     val isAuthenticated: Boolean = false,
-    /** true = sesión anónima activa (modo invitado, sin cuenta). */
     val isAnonymous: Boolean = false,
     val error: String? = null,
     val registrationPendingConfirmation: Boolean = false,
-    /** Nombre para mostrar del usuario (user_metadata.display_name). */
     val displayName: String = "",
-    /** Email del usuario autenticado. */
     val userEmail: String = "",
-    /** true mientras se guarda el perfil. */
     val isSavingProfile: Boolean = false,
-    /** Mensaje de éxito tras guardar perfil/contraseña. */
-    val profileSavedMessage: String? = null
+    val profileSavedMessage: String? = null,
+    /** URL del avatar del usuario (de user_profiles). */
+    val avatarUrl: String? = null
 )
 
 class AuthViewModel(
     private val auth: Auth,
     private val googleSignInHandler: GoogleSignInHandler? = null,
-    /**
-     * Callback para migrar los vínculos participant_user_links de un usuario anónimo
-     * al usuario registrado tras un login exitoso.
-     * Se invoca con (anonymousUserId, registeredUserId).
-     */
-    private val onAnonymousMigration: (suspend (String, String) -> Unit)? = null
+    private val onAnonymousMigration: (suspend (String, String) -> Unit)? = null,
+    private val userProfileRepository: UserProfileRepository? = null,
+    private val storageService: SupabaseStorageService? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     init {
-        checkSession()
+        // Esperar a que el gestor de sesión termine de cargar desde almacenamiento antes de
+        // evaluar el estado — evita la race condition que creaba una sesión anónima encima
+        // de una sesión real ya almacenada.
+        viewModelScope.launch {
+            auth.sessionStatus.first { it !is SessionStatus.Initializing }
+            checkSession()
+        }
     }
 
     fun checkSession() {
@@ -85,6 +89,8 @@ class AuthViewModel(
                         userEmail = email
                     )
                 }
+                // Cargar avatar desde user_profiles si hay sesión real
+                if (!isAnon) loadAvatarUrl(session.user?.id)
                 println("DEBUG AuthViewModel: sesión existente uid=${session.user?.id} isAnon=$isAnon")
             }
         }
@@ -151,38 +157,40 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val isCurrentlyAnonymous = auth.currentSessionOrNull()?.user?.isAnonymous == true
+                // Guardar el UID anónimo ANTES del registro para poder migrar sus vínculos
+                val anonymousUserId = auth.currentSessionOrNull()
+                    ?.takeIf { it.user?.isAnonymous == true }
+                    ?.user?.id
 
-                if (isCurrentlyAnonymous) {
-                    // ── Upgrade de sesión anónima: preserva el mismo UID ──────────────────
-                    // auth.updateUser convierte la sesión anónima en cuenta registrada
-                    // manteniendo el mismo user_id → los participant_user_links siguen válidos.
-                    auth.updateUser {
-                        this.email = email.trim()
-                        this.password = password
+                // Siempre usar signUpWith — updateUser sobre sesión anónima activa el flujo
+                // de "cambio de contraseña" en Supabase y genera el error
+                // "New password should be different from the old password".
+                auth.signUpWith(Email) {
+                    this.email = email.trim()
+                    this.password = password
+                }
+
+                // Si había sesión anónima, migrar vínculos al nuevo usuario registrado
+                val newUserId = auth.currentSessionOrNull()?.user?.id
+                if (anonymousUserId != null && newUserId != null && anonymousUserId != newUserId) {
+                    try {
+                        onAnonymousMigration?.invoke(anonymousUserId, newUserId)
+                        println("DEBUG AuthViewModel: vínculos anónimos migrados en registro $anonymousUserId → $newUserId")
+                    } catch (e: Exception) {
+                        println("DEBUG AuthViewModel: migración anónima en registro falló (no crítico) — ${e.message}")
                     }
-                    val session = auth.currentSessionOrNull()
-                    if (session != null) {
-                        _uiState.update { it.copy(isLoading = false, isAuthenticated = true, isAnonymous = false) }
-                    } else {
-                        // Supabase requiere confirmación de correo → señal para navegar a Login
-                        _uiState.update {
-                            it.copy(isLoading = false, registrationPendingConfirmation = true)
-                        }
-                    }
+                }
+
+                val session = auth.currentSessionOrNull()
+                val emailConfirmedAt = session?.user?.emailConfirmedAt
+                if (session != null && emailConfirmedAt != null) {
+                    // Email ya confirmado (poco habitual en prod, posible en dev sin confirmación)
+                    _uiState.update { it.copy(isLoading = false, isAuthenticated = true, isAnonymous = false) }
                 } else {
-                    // ── Registro normal (usuario sin sesión o sesión real) ─────────────────
-                    auth.signUpWith(Email) {
-                        this.email = email.trim()
-                        this.password = password
-                    }
-                    val session = auth.currentSessionOrNull()
-                    if (session != null) {
-                        _uiState.update { it.copy(isLoading = false, isAuthenticated = true, isAnonymous = false) }
-                    } else {
-                        _uiState.update {
-                            it.copy(isLoading = false, registrationPendingConfirmation = true)
-                        }
+                    // Supabase requiere confirmación de correo → cerrar sesión temporal y señalizar
+                    try { auth.signOut() } catch (_: Exception) {}
+                    _uiState.update {
+                        it.copy(isLoading = false, registrationPendingConfirmation = true)
                     }
                 }
             } catch (e: Exception) {
@@ -388,9 +396,63 @@ class AuthViewModel(
 
     fun consumeProfileSavedMessage() = _uiState.update { it.copy(profileSavedMessage = null) }
 
+    fun updateAvatarUrl(url: String) {
+        val userId = _uiState.value.userEmail.ifBlank { null } // usamos userId via auth
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingProfile = true, error = null) }
+            try {
+                val authUserId = auth.currentSessionOrNull()?.user?.id ?: return@launch
+                val profile = UserProfile(
+                    userId = authUserId,
+                    displayName = _uiState.value.displayName,
+                    avatarUrl = url.trim().ifBlank { null }
+                )
+                userProfileRepository?.upsertProfile(profile)
+                _uiState.update {
+                    it.copy(isSavingProfile = false, avatarUrl = url.trim().ifBlank { null }, profileSavedMessage = "Avatar actualizado")
+                }
+            } catch (e: Exception) {
+                println("DEBUG AuthViewModel: updateAvatarUrl error — ${e.message}")
+                _uiState.update { it.copy(isSavingProfile = false, error = "No se pudo actualizar el avatar: ${e.message}") }
+            }
+        }
+    }
+
+    private fun loadAvatarUrl(userId: String?) {
+        if (userId == null) return
+        viewModelScope.launch {
+            try {
+                val profile = userProfileRepository?.getProfile(userId)
+                if (profile != null) {
+                    _uiState.update { it.copy(avatarUrl = profile.avatarUrl, displayName = profile.displayName.ifBlank { it.displayName }) }
+                }
+            } catch (e: Exception) {
+                println("DEBUG AuthViewModel: loadAvatarUrl error — ${e.message}")
+            }
+        }
+    }
+
     fun clearError() = _uiState.update { it.copy(error = null) }
 
     fun clearRegistrationPending() = _uiState.update { it.copy(registrationPendingConfirmation = false) }
+
+    /** Sube los bytes como avatar del usuario y actualiza el perfil con la URL resultante. */
+    fun uploadAvatarAndSave(imageBytes: ByteArray) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingProfile = true, error = null) }
+            try {
+                val userId = auth.currentSessionOrNull()?.user?.id
+                    ?: throw Exception("No hay sesión activa")
+                val storage = storageService
+                    ?: throw Exception("Servicio de almacenamiento no disponible")
+                val url = storage.uploadAvatarImage(userId, imageBytes)
+                updateAvatarUrl(url)
+            } catch (e: Exception) {
+                println("DEBUG AuthViewModel: uploadAvatarAndSave error — ${e.message}")
+                _uiState.update { it.copy(isSavingProfile = false, error = "No se pudo subir la imagen: ${e.message}") }
+            }
+        }
+    }
 
     private fun traducirErrorAuth(message: String?): String {
         if (message == null) return "Error desconocido"
@@ -403,6 +465,9 @@ class AuthViewModel(
                 (message.contains("invalid", ignoreCase = true) && message.contains("email", ignoreCase = true)) ->
                 "El correo electrónico no es válido"
             message.contains("rate limit", ignoreCase = true) -> "Demasiados intentos. Espera unos segundos."
+            message.contains("New password should be different", ignoreCase = true) ||
+                message.contains("same as the old password", ignoreCase = true) ||
+                message.contains("password is the same", ignoreCase = true) -> "Elige una contraseña diferente a la anterior"
             else -> message
         }
     }

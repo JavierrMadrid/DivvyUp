@@ -126,12 +126,12 @@ internal fun SettleUpScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total a liquidar", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Total a liquidar", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             "${totalSelected.fmt2()} ${uiState.group?.currency ?: "EUR"}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = JungleGreenDark
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Button(
@@ -186,11 +186,13 @@ internal fun SettleUpScreen(
                     TextButton(
                         onClick = {
                             selectedKeys = if (allSelected) emptySet() else transferKeys.toSet()
-                        }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
                     ) {
                         Text(
                             if (allSelected) "Deseleccionar todos" else "Seleccionar todos",
-                            color = JungleGreen,
                             fontWeight = FontWeight.SemiBold
                         )
                     }

@@ -1,11 +1,10 @@
 ﻿@file:OptIn(kotlin.time.ExperimentalTime::class)
 package com.example.divvyup.application
 
-import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.domain.model.Recurrence
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
-import com.example.divvyup.domain.repository.ParticipantRepository
 import com.example.divvyup.domain.repository.SpendRepository
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -15,13 +14,8 @@ import kotlin.math.roundToLong
  * Orquesta la lógica de creación/edición de gastos y cálculo de repartos.
  */
 class SpendService(
-    private val spendRepository: SpendRepository,
-    private val participantRepository: ParticipantRepository
+    private val spendRepository: SpendRepository
 ) {
-
-    private companion object {
-        const val SETTLEMENT_NOTE_PREFIX = "__settlement_id:"
-    }
 
     suspend fun getSpends(groupId: Long): List<Spend> =
         spendRepository.getByGroup(groupId)
@@ -62,7 +56,9 @@ class SpendService(
         participantIds: List<Long>,
         categoryId: Long? = null,
         notes: String = "",
-        date: Instant = Clock.System.now()
+        date: Instant = Clock.System.now(),
+        recurrence: Recurrence = Recurrence.NONE,
+        receiptUrl: String? = null
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
         require(amount > 0) { "El importe debe ser mayor que cero" }
@@ -77,7 +73,9 @@ class SpendService(
             payerId = payerId,
             categoryId = categoryId,
             splitType = SplitType.EQUAL,
-            notes = notes.trim()
+            notes = notes.trim(),
+            recurrence = recurrence,
+            receiptUrl = receiptUrl
         )
         return spendRepository.create(spend, shares)
     }
@@ -94,7 +92,9 @@ class SpendService(
         percentages: Map<Long, Double>,
         categoryId: Long? = null,
         notes: String = "",
-        date: Instant = Clock.System.now()
+        date: Instant = Clock.System.now(),
+        recurrence: Recurrence = Recurrence.NONE,
+        receiptUrl: String? = null
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
         require(amount > 0) { "El importe debe ser mayor que cero" }
@@ -113,7 +113,8 @@ class SpendService(
         val spend = Spend(
             groupId = groupId, concept = concept.trim(), amount = amount,
             date = date, payerId = payerId, categoryId = categoryId,
-            splitType = SplitType.PERCENTAGE, notes = notes.trim()
+            splitType = SplitType.PERCENTAGE, notes = notes.trim(),
+            recurrence = recurrence, receiptUrl = receiptUrl
         )
         return spendRepository.create(spend, shares)
     }
@@ -131,7 +132,9 @@ class SpendService(
         customAmounts: Map<Long, Double>,
         categoryId: Long? = null,
         notes: String = "",
-        date: Instant = Clock.System.now()
+        date: Instant = Clock.System.now(),
+        recurrence: Recurrence = Recurrence.NONE,
+        receiptUrl: String? = null
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
         require(amount > 0) { "El importe debe ser mayor que cero" }
@@ -147,16 +150,11 @@ class SpendService(
         val spend = Spend(
             groupId = groupId, concept = concept.trim(), amount = amount,
             date = date, payerId = payerId, categoryId = categoryId,
-            splitType = SplitType.CUSTOM, notes = notes.trim()
+            splitType = SplitType.CUSTOM, notes = notes.trim(),
+            recurrence = recurrence, receiptUrl = receiptUrl
         )
         return spendRepository.create(spend, shares)
     }
-
-    suspend fun updateSpend(spend: Spend, shares: List<SpendShare>): Spend =
-        spendRepository.update(
-            spend.copy(notes = preserveSettlementLinkOnUpdate(existingNotes = spend.notes, newNotes = spend.notes)),
-            shares
-        )
 
     suspend fun updateEqualSpend(
         existing: Spend,
@@ -166,7 +164,9 @@ class SpendService(
         participantIds: List<Long>,
         categoryId: Long? = null,
         notes: String = existing.notes,
-        date: Instant = existing.date
+        date: Instant = existing.date,
+        recurrence: Recurrence = existing.recurrence,
+        receiptUrl: String? = existing.receiptUrl
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
         require(amount > 0) { "El importe debe ser mayor que cero" }
@@ -175,7 +175,8 @@ class SpendService(
         val updated = existing.copy(
             concept = concept.trim(), amount = amount, payerId = payerId,
             categoryId = categoryId, splitType = SplitType.EQUAL,
-            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes), date = date
+            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes),
+            date = date, recurrence = recurrence, receiptUrl = receiptUrl
         )
         return spendRepository.update(updated, shares)
     }
@@ -188,7 +189,9 @@ class SpendService(
         percentages: Map<Long, Double>,
         categoryId: Long? = null,
         notes: String = existing.notes,
-        date: Instant = existing.date
+        date: Instant = existing.date,
+        recurrence: Recurrence = existing.recurrence,
+        receiptUrl: String? = existing.receiptUrl
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
         require(amount > 0) { "El importe debe ser mayor que cero" }
@@ -202,7 +205,8 @@ class SpendService(
         val updated = existing.copy(
             concept = concept.trim(), amount = amount, payerId = payerId,
             categoryId = categoryId, splitType = SplitType.PERCENTAGE,
-            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes), date = date
+            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes),
+            date = date, recurrence = recurrence, receiptUrl = receiptUrl
         )
         return spendRepository.update(updated, shares)
     }
@@ -215,7 +219,9 @@ class SpendService(
         customAmounts: Map<Long, Double>,
         categoryId: Long? = null,
         notes: String = existing.notes,
-        date: Instant = existing.date
+        date: Instant = existing.date,
+        recurrence: Recurrence = existing.recurrence,
+        receiptUrl: String? = existing.receiptUrl
     ): Spend {
         require(concept.isNotBlank()) { "El concepto no puede estar vacío" }
         require(amount > 0) { "El importe debe ser mayor que cero" }
@@ -230,7 +236,8 @@ class SpendService(
         val updated = existing.copy(
             concept = concept.trim(), amount = amount, payerId = payerId,
             categoryId = categoryId, splitType = SplitType.CUSTOM,
-            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes), date = date
+            notes = preserveSettlementLinkOnUpdate(existingNotes = existing.notes, newNotes = notes),
+            date = date, recurrence = recurrence, receiptUrl = receiptUrl
         )
         return spendRepository.update(updated, shares)
     }
@@ -298,4 +305,3 @@ class SpendService(
         return "$settlementToken|$normalizedNew"
     }
 }
-

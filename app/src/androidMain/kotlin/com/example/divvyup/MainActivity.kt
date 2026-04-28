@@ -12,17 +12,23 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
+import com.example.divvyup.application.ActivityLogService
+import com.example.divvyup.application.AnalyticsExportData
+import com.example.divvyup.integration.export.ExportShareHelper
 import com.example.divvyup.application.CategoryService
 import com.example.divvyup.application.GroupService
 import com.example.divvyup.application.InvitationService
 import com.example.divvyup.application.SettlementService
 import com.example.divvyup.application.SpendService
+import com.example.divvyup.integration.cache.CachedActivityLogRepository
 import com.example.divvyup.integration.cache.CachedCategoryRepository
 import com.example.divvyup.integration.cache.CachedGroupRepository
 import com.example.divvyup.integration.cache.CachedParticipantRepository
 import com.example.divvyup.integration.cache.CachedSettlementRepository
 import com.example.divvyup.integration.cache.CachedSpendRepository
+import com.example.divvyup.integration.supabase.SupabaseActivityLogRepository
 import com.example.divvyup.integration.supabase.SupabaseCategoryRepository
 import com.example.divvyup.integration.supabase.SupabaseGroupRepository
 import com.example.divvyup.integration.supabase.SupabaseInviteTokenRepository
@@ -30,6 +36,8 @@ import com.example.divvyup.integration.supabase.SupabaseParticipantRepository
 import com.example.divvyup.integration.supabase.SupabaseParticipantUserLinkRepository
 import com.example.divvyup.integration.supabase.SupabaseSettlementRepository
 import com.example.divvyup.integration.supabase.SupabaseSpendRepository
+import com.example.divvyup.integration.supabase.SupabaseStorageService
+import com.example.divvyup.integration.supabase.SupabaseUserProfileRepository
 import com.example.divvyup.integration.ui.auth.AndroidGoogleSignInHandler
 import com.example.divvyup.integration.ui.auth.AndroidSessionManager
 import com.example.divvyup.integration.ui.navigation.AppNavigation
@@ -44,11 +52,11 @@ import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import androidx.core.net.toUri
 
 class MainActivity : ComponentActivity() {
 
@@ -69,21 +77,22 @@ class MainActivity : ComponentActivity() {
             install(Auth) {
                 sessionManager = AndroidSessionManager(this@MainActivity)
             }
+            install(Storage)
         }
 
         val postgrest = supabaseClient.postgrest
         val auth = supabaseClient.auth
 
-        val groupRepository          = CachedGroupRepository(SupabaseGroupRepository(postgrest))
-        val participantRepository    = CachedParticipantRepository(SupabaseParticipantRepository(postgrest))
-        val categoryRepository       = CachedCategoryRepository(SupabaseCategoryRepository(postgrest))
-        val spendRepository          = CachedSpendRepository(SupabaseSpendRepository(postgrest))
-        val settlementRepository     = CachedSettlementRepository(SupabaseSettlementRepository(postgrest))
+        val groupRepository = CachedGroupRepository(SupabaseGroupRepository(postgrest))
+        val participantRepository = CachedParticipantRepository(SupabaseParticipantRepository(postgrest))
+        val categoryRepository = CachedCategoryRepository(SupabaseCategoryRepository(postgrest))
+        val spendRepository = CachedSpendRepository(SupabaseSpendRepository(postgrest))
+        val settlementRepository = CachedSettlementRepository(SupabaseSettlementRepository(postgrest))
         val participantUserLinkRepo  = SupabaseParticipantUserLinkRepository(postgrest)
         val inviteTokenRepository    = SupabaseInviteTokenRepository(postgrest)
 
         val groupService      = GroupService(groupRepository)
-        val spendService      = SpendService(spendRepository, participantRepository)
+        val spendService      = SpendService(spendRepository)
         val settlementService = SettlementService(
             settlementRepository  = settlementRepository,
             spendRepository       = spendRepository,
@@ -91,6 +100,11 @@ class MainActivity : ComponentActivity() {
             categoryRepository    = categoryRepository
         )
         val categoryService = CategoryService(categoryRepository)
+        val userProfileRepository = SupabaseUserProfileRepository(postgrest)
+        val storageService = SupabaseStorageService(supabaseClient)
+        val activityLogService = ActivityLogService(
+            CachedActivityLogRepository(SupabaseActivityLogRepository(postgrest))
+        )
         invitationService   = InvitationService(
             groupRepository               = groupRepository,
             participantRepository         = participantRepository,
@@ -110,7 +124,9 @@ class MainActivity : ComponentActivity() {
                         ),
                         onAnonymousMigration = { oldUserId, newUserId ->
                             participantUserLinkRepo.migrateAnonymousLinks(oldUserId, newUserId)
-                        }
+                        },
+                        userProfileRepository = userProfileRepository,
+                        storageService = storageService
                     )
                 }
                 authViewModel = vm
@@ -125,7 +141,11 @@ class MainActivity : ComponentActivity() {
                         currentUserIdProvider = {
                             supabaseClient.auth.currentSessionOrNull()?.user?.id
                         },
-                        cacheInvalidator      = { groupRepository.invalidateListCache() }
+                        cacheInvalidator      = {
+                            groupRepository.clearAll()
+                            participantRepository.clearAll()
+                            spendRepository.clearAll()
+                        }
                     )
                 }
 
@@ -152,7 +172,10 @@ class MainActivity : ComponentActivity() {
                             currentUserIdProvider = {
                                 supabaseClient.auth.currentSessionOrNull()?.user?.id
                             },
-                            participantUserLinkRepository = participantUserLinkRepo
+                            participantUserLinkRepository = participantUserLinkRepo,
+                            activityLogService = activityLogService,
+                            userProfileRepository = userProfileRepository,
+                            storageService = storageService
                         )
                     },
                     currentUserIdProvider = {
@@ -160,7 +183,10 @@ class MainActivity : ComponentActivity() {
                     },
                     pendingInviteToken       = pendingToken,
                     consumePendingInviteToken = { pendingInviteToken.value = null },
-                    onShareGroupInvite       = { groupId, groupName -> startShareInvite(groupId, groupName) }
+                    onShareGroupInvite       = { groupId, groupName -> startShareInvite(groupId, groupName) },
+                    onShareText              = { text -> startShareText(text) },
+                    onSharePdf               = { data -> startSharePdf(data) },
+                    onShareExcel             = { data -> startShareExcel(data) }
                 )
             }
         }
@@ -214,6 +240,38 @@ class MainActivity : ComponentActivity() {
         }
         pendingInviteToken.value = token ?: return
         println("DEBUG MainActivity: Invitacion recibida token=$token")
+    }
+
+    // ── Compartir texto exportado ─────────────────────────────────────────
+
+    private fun startShareText(text: String) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Compartir resumen de DivvyUp"))
+    }
+
+    private fun startSharePdf(data: AnalyticsExportData) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                ExportShareHelper.sharePdf(this@MainActivity, data)
+            } catch (e: Exception) {
+                println("DEBUG MainActivity: Error exportando PDF: ${e.message}")
+                Toast.makeText(this@MainActivity, "Error al generar el PDF", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun startShareExcel(data: AnalyticsExportData) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                ExportShareHelper.shareExcel(this@MainActivity, data)
+            } catch (e: Exception) {
+                println("DEBUG MainActivity: Error exportando Excel: ${e.message}")
+                Toast.makeText(this@MainActivity, "Error al generar el Excel", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     // ── Compartir enlace ──────────────────────────────────────────────────

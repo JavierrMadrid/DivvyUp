@@ -20,6 +20,7 @@ sealed interface Screen {
         val inviteToken: String?,
         val groupId: Long = 0
     ) : Screen
+    @Serializable data class SpendDetail(val groupId: Long, val spendId: Long) : Screen
     @Serializable data object UserSettings : Screen
     @Serializable data object ChangePassword : Screen
 }

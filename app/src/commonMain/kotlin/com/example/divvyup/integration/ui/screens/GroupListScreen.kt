@@ -25,7 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -102,7 +102,6 @@ fun GroupListScreen(
     onGroupClick: (Long) -> Unit,
     onGroupCreated: (Long) -> Unit,
     onCreateGroup: () -> Unit,
-    onLogout: () -> Unit,
     onOpenUserSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -167,7 +166,7 @@ fun GroupListScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Iconos de usuario y cerrar sesión agrupados sin separación
+                    // Icono de usuario
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onOpenUserSettings) {
                             Icon(
@@ -176,15 +175,6 @@ fun GroupListScreen(
                                 tint = if (isAuthenticated) MaterialTheme.colorScheme.primary
                                        else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-                        if (isAuthenticated) {
-                            IconButton(onClick = onLogout) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ExitToApp,
-                                    contentDescription = "Cerrar sesión",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                     }
                 }

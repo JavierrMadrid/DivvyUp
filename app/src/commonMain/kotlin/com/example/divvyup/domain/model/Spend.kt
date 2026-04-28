@@ -12,6 +12,8 @@ data class Spend(
     val categoryId: Long? = null,
     val splitType: SplitType = SplitType.EQUAL,
     val notes: String = "",
-    val createdAt: Instant = Instant.fromEpochMilliseconds(0)
+    val createdAt: Instant = Instant.fromEpochMilliseconds(0),
+    val recurrence: Recurrence = Recurrence.NONE,
+    val receiptUrl: String? = null
 )
 

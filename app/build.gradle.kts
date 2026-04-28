@@ -68,6 +68,7 @@ kotlin {
                 implementation(libs.supabase.postgrest)
                 implementation(libs.supabase.auth)
                 implementation(libs.supabase.realtime)
+                implementation(libs.supabase.storage)
             }
         }
         val commonTest by getting {

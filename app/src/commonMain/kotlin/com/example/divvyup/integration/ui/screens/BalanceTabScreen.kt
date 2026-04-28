@@ -85,10 +85,18 @@ internal fun BalanceTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Liquidaciones sugeridas", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = onLiquidar) {
-                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Button(
+                        onClick = onLiquidar,
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = JungleGreen,
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconSm))
                         Spacer(Modifier.width(4.dp))
-                        Text("Liquidar", fontWeight = FontWeight.SemiBold, color = JungleGreen)
+                        Text("Liquidar", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -223,14 +231,14 @@ internal fun TransferCard(
                     }
                     Surface(
                         shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                        color = JungleGreen100
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
                             text = "${transfer.amount.fmt2()} $currency",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            color = JungleGreenDark
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }

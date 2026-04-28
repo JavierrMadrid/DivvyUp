@@ -9,6 +9,7 @@ data class Group(
     val description: String = "",
     val currency: String = "EUR",
     val ownerUserId: String? = null,
-    val createdAt: Instant = Instant.fromEpochMilliseconds(0)
+    val createdAt: Instant = Instant.fromEpochMilliseconds(0),
+    val defaultCategoryId: Long? = null,
+    val photoUrl: String? = null
 )
-

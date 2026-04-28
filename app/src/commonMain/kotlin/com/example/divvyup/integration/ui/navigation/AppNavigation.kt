@@ -22,11 +22,12 @@ import com.example.divvyup.integration.ui.screens.AddSpendScreen
 import com.example.divvyup.integration.ui.screens.CreateGroupScreen
 import com.example.divvyup.integration.ui.screens.GroupDetailScreen
 import com.example.divvyup.integration.ui.screens.GroupListScreen
-import com.example.divvyup.integration.ui.screens.GroupSettingsScreen
+import com.example.divvyup.integration.ui.screens.groupsettings.GroupSettingsScreen
 import com.example.divvyup.integration.ui.screens.JoinGroupParticipantScreen
 import com.example.divvyup.integration.ui.screens.LoginScreen
 import com.example.divvyup.integration.ui.screens.RegisterScreen
 import com.example.divvyup.integration.ui.screens.SettleUpScreen
+import com.example.divvyup.integration.ui.screens.SpendDetailScreen
 import com.example.divvyup.integration.ui.screens.UserSettingsScreen
 import com.example.divvyup.integration.ui.viewmodel.AddParticipantsViewModel
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
@@ -47,6 +48,9 @@ fun AppNavigation(
     pendingInviteToken: String?,
     consumePendingInviteToken: () -> Unit,
     onShareGroupInvite: (groupId: Long, groupName: String) -> Unit,
+    onShareText: (text: String) -> Unit = {},
+    onSharePdf: (com.example.divvyup.application.AnalyticsExportData) -> Unit = {},
+    onShareExcel: (com.example.divvyup.application.AnalyticsExportData) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val authState by authViewModel.uiState.collectAsState()
@@ -68,8 +72,12 @@ fun AppNavigation(
         }
     }
 
-    // Cuando cambia el estado de autenticación, invalidar caché y recargar grupos
+    // Cuando cambia el estado de autenticación, invalidar caché de ViewModels y recargar grupos.
+    // Es imprescindible limpiar detailViewModels para que el próximo usuario obtenga un ViewModel
+    // fresco con su propio isOwner/myParticipantId, evitando que se reutilice el del usuario anterior.
     LaunchedEffect(authState.isAuthenticated, authState.isAnonymous) {
+        detailViewModels.clear()
+        joinViewModels.clear()
         groupListViewModel.reloadAfterAuthChange()
     }
 
@@ -80,18 +88,28 @@ fun AppNavigation(
             navController.navigate(
                 Screen.Login(confirmationMessage = "Te hemos enviado un correo de confirmación. Revisa tu bandeja de entrada para activar tu cuenta.")
             ) {
-                popUpTo(Screen.UserSettings) { inclusive = true }
+                popUpTo(Screen.Register) { inclusive = true }
             }
         }
     }
 
-    // Cuando llega una invitación por deep link y el usuario está autenticado, navegar
-    LaunchedEffect(authState.isAuthenticated, pendingInviteToken) {
+    // Cuando llega una invitación por deep link:
+    //  - Si autenticado → navegar directo a JoinGroupParticipant
+    //  - Si no autenticado → redirigir a Login para que se autentique primero;
+    //    cuando vuelva autenticado el efecto se disparará de nuevo y navegará al join screen
+    LaunchedEffect(authState.isAuthenticated, authState.isAnonymous, pendingInviteToken) {
         val token = pendingInviteToken ?: return@LaunchedEffect
-        if (!authState.isAuthenticated) return@LaunchedEffect
-
-        consumePendingInviteToken()
-        navController.navigate(Screen.JoinGroupParticipant(inviteToken = token, groupId = 0))
+        if (authState.isAuthenticated) {
+            consumePendingInviteToken()
+            navController.navigate(Screen.JoinGroupParticipant(inviteToken = token, groupId = 0))
+        } else {
+            // Redirigir a Login con mensaje explicativo; el token se mantiene en pendingInviteToken
+            navController.navigate(
+                Screen.Login(confirmationMessage = "Inicia sesión o regístrate para unirte al grupo al que te han invitado.")
+            ) {
+                launchSingleTop = true
+            }
+        }
     }
 
     NavHost(
@@ -108,7 +126,8 @@ fun AppNavigation(
                 onNavigateToRegister = { navController.navigate(Screen.Register) },
                 onLoginSuccess = {
                     navController.navigate(Screen.GroupList) {
-                        popUpTo(Screen.Login()) { inclusive = true }
+                        popUpTo<Screen.GroupList> { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -121,22 +140,36 @@ fun AppNavigation(
                 onNavigateToLogin = { navController.popBackStack() },
                 onRegisterSuccess = {
                     navController.navigate(Screen.GroupList) {
-                        popUpTo(Screen.Login()) { inclusive = true }
+                        popUpTo<Screen.GroupList> { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )
         }
 
         // ── Lista de grupos ────────────────────────────────────────────────
-        composable<Screen.GroupList> {
+        composable<Screen.GroupList> { backStackEntry ->
             GroupListScreen(
                 viewModel = groupListViewModel,
                 isAuthenticated = authState.isAuthenticated,
-                onGroupClick = { groupId -> navController.navigate(Screen.GroupDetail(groupId)) },
+                onGroupClick = { groupId ->
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.GroupDetail(groupId))
+                    }
+                },
                 onGroupCreated = { groupId -> navController.navigate(Screen.AddParticipants(groupId)) },
-                onCreateGroup = { navController.navigate(Screen.CreateGroup) },
-                onLogout = { authViewModel.logout() },
-                onOpenUserSettings = { navController.navigate(Screen.UserSettings) }
+                onCreateGroup = {
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.CreateGroup)
+                    }
+                },
+                onOpenUserSettings = {
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.UserSettings) {
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
         }
 
@@ -214,8 +247,28 @@ fun AppNavigation(
                 viewModel = detailViewModel,
                 onBack = { navController.popBackStack() },
                 onAddSpend = { detailViewModel.prepareNewSpend() },
-                onOpenSettings = { navController.navigate(Screen.GroupSettings(groupId)) },
-                onOpenSettleUp = { navController.navigate(Screen.SettleUp(groupId)) }
+                onOpenSpend = { spendId ->
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.SpendDetail(groupId, spendId))
+                    }
+                },
+                onOpenSettings = {
+                    // Evitar doble disparo durante la animación de salida del composable:
+                    // solo navegamos si este back stack entry sigue siendo el destino activo.
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.GroupSettings(groupId)) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
+                onOpenSettleUp = {
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.SettleUp(groupId))
+                    }
+                },
+                onShareText  = onShareText,
+                onSharePdf   = onSharePdf,
+                onShareExcel = onShareExcel
             )
         }
 
@@ -241,7 +294,7 @@ fun AppNavigation(
                 onNavigateToAddParticipant = {
                     navController.navigate(Screen.AddParticipantInGroup(groupId))
                 },
-                { onShareGroupInvite(groupId, detailViewModel.uiState.value.group?.name ?: "") }
+                onShareInvite = { onShareGroupInvite(groupId, detailViewModel.uiState.value.group?.name ?: "") }
             )
         }
 
@@ -279,7 +332,8 @@ fun AppNavigation(
 
             LaunchedEffect(uiState.spendSaved) {
                 if (uiState.spendSaved) {
-                    navController.popBackStack()
+                    // Volver hasta GroupDetail (saltando SpendDetail si venimos de ahí)
+                    navController.popBackStack(Screen.GroupDetail(groupId), inclusive = false)
                     detailViewModel.consumeSpendSaved()
                 }
             }
@@ -298,6 +352,22 @@ fun AppNavigation(
             AddParticipantInGroupScreen(
                 viewModel = detailViewModel,
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Detalle de gasto ───────────────────────────────────────────────
+        composable<Screen.SpendDetail> { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.SpendDetail>()
+            val groupId = route.groupId
+            val spendId = route.spendId
+            val detailViewModel = remember(groupId) { getOrCreateDetailVM(groupId) }
+
+
+            SpendDetailScreen(
+                spendId = spendId,
+                viewModel = detailViewModel,
+                onBack = { navController.popBackStack() },
+                onEdit = { navController.navigate(Screen.AddSpend(groupId)) }
             )
         }
     }

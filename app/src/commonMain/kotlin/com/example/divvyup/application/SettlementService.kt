@@ -30,11 +30,10 @@ class SettlementService(
 ) {
 
     private companion object {
-        const val SETTLEMENT_CATEGORY_NAME = "Liquidación"
-        const val SETTLEMENT_CATEGORY_ICON = "💸"
+        const val SETTLEMENT_CATEGORY_NAME  = "Liquidación"
+        const val SETTLEMENT_CATEGORY_ICON  = "💸"
         const val SETTLEMENT_CATEGORY_COLOR = "#14B8A6"
-        const val SETTLEMENT_SPEND_CONCEPT = "Liquidación"
-        const val SETTLEMENT_NOTE_PREFIX = "__settlement_id:"
+        const val SETTLEMENT_SPEND_CONCEPT  = "Liquidación"
     }
 
     suspend fun getSettlements(groupId: Long): List<Settlement> =

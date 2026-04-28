@@ -59,5 +59,12 @@ class CachedSpendRepository(
         participantSharesCache.clear()
         delegate.deleteAll(ids)
     }
+
+    /** Limpia toda la caché (útil al cambiar de sesión). */
+    fun clearAll() {
+        spendCache.clear()
+        sharesCache.clear()
+        participantSharesCache.clear()
+    }
 }
 

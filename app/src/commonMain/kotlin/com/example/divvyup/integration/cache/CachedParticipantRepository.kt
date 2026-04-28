@@ -36,5 +36,8 @@ class CachedParticipantRepository(
         cache.clear()
         delegate.delete(id)
     }
+
+    /** Limpia toda la caché (útil al cambiar de sesión). */
+    fun clearAll() = cache.clear()
 }
 

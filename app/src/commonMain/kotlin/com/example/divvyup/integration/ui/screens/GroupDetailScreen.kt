@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.divvyup.application.AnalyticsExportData
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.integration.ui.theme.*
@@ -118,9 +119,30 @@ fun GroupDetailScreen(
     onAddSpend: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSettleUp: () -> Unit,
+    onOpenSpend: (spendId: Long) -> Unit = {},
+    onShareText: (String) -> Unit = {},
+    onSharePdf: (AnalyticsExportData) -> Unit = {},
+    onShareExcel: (AnalyticsExportData) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Consumir texto de exportación pendiente → disparar share del sistema
+    LaunchedEffect(uiState.pendingExportText) {
+        val text = uiState.pendingExportText ?: return@LaunchedEffect
+        viewModel.consumeExportText()
+        onShareText(text)
+    }
+    LaunchedEffect(uiState.pendingExportPdf) {
+        val data = uiState.pendingExportPdf ?: return@LaunchedEffect
+        viewModel.consumeExportPdf()
+        onSharePdf(data)
+    }
+    LaunchedEffect(uiState.pendingExportExcel) {
+        val data = uiState.pendingExportExcel ?: return@LaunchedEffect
+        viewModel.consumeExportExcel()
+        onShareExcel(data)
+    }
     val settlementCategoryIds by remember(uiState.categories) {
         derivedStateOf {
             uiState.categories
@@ -215,6 +237,7 @@ fun GroupDetailScreen(
                                         GroupDetailTab.GASTOS     -> "Gastos"
                                         GroupDetailTab.BALANCES   -> "Balances"
                                         GroupDetailTab.ANALITICAS -> "Analíticas"
+                                        GroupDetailTab.ACTIVIDAD  -> "Actividad"
                                     },
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     fontSize = 14.sp
@@ -232,8 +255,9 @@ fun GroupDetailScreen(
                     icon = Icons.Default.Add,
                     label = "Nuevo gasto"
                 )
-                GroupDetailTab.BALANCES -> {}
-                GroupDetailTab.ANALITICAS -> {} // sin FAB
+                GroupDetailTab.BALANCES   -> {}
+                GroupDetailTab.ANALITICAS -> {}
+                GroupDetailTab.ACTIVIDAD  -> {}
             }
         }
     ) { padding ->
@@ -255,7 +279,7 @@ fun GroupDetailScreen(
                             categories = uiState.categories,
                             currency = uiState.group?.currency ?: "EUR",
                             spendPersonalImpact = uiState.spendPersonalImpact,
-                            onEditSpend = viewModel::prepareEditSpend,
+                            onEditSpend = { spend -> onOpenSpend(spend.id) },
                             onDeleteSpendsByIds = viewModel::deleteSpendsByIds,
                             onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered
                         )
@@ -281,7 +305,16 @@ fun GroupDetailScreen(
                             onCategoryToggle = viewModel::toggleAnalyticsCategory,
                             onParticipantToggle = viewModel::toggleAnalyticsParticipant,
                             onPeriodChange = viewModel::setAnalyticsPeriod,
-                            onClearFilters = viewModel::clearAnalyticsFilters
+                            onClearFilters = viewModel::clearAnalyticsFilters,
+                            onExportText  = { filteredSpends -> viewModel.exportGroupText(filteredSpends) },
+                            onExportCsv   = { filteredSpends -> viewModel.exportGroupCsv(filteredSpends) },
+                            onExportPdf   = { filteredSpends, periodLabel -> viewModel.exportGroupPdf(filteredSpends, periodLabel) },
+                            onExportExcel = { filteredSpends, periodLabel -> viewModel.exportGroupExcel(filteredSpends, periodLabel) }
+                        )
+                    GroupDetailTab.ACTIVIDAD ->
+                        ActivityTab(
+                            activityLog = uiState.activityLog,
+                            onRefresh = viewModel::loadAll
                         )
                 }
             }
@@ -301,9 +334,3 @@ fun GroupDetailScreen(
     }
 
 }
-
-// -- Modelos de datos para gráficas (compartidos por AnalyticsTabScreen) -------
-internal data class DonutEntry(val label: String, val icon: String, val value: Float)
-internal data class BarEntry(val label: String, val value: Float)
-
-

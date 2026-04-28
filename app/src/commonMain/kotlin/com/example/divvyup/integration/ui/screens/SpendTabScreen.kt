@@ -103,6 +103,15 @@ internal fun SpendTab(
     onEditSpend: (Spend) -> Unit,
     onDeleteSpendsByIds: (Set<Long>) -> Unit,
     onDeleteSpendsFiltered: (categoryId: Long?, payerId: Long?, beforeInstant: Instant?) -> Unit,
+    // Comentarios
+    commentsForSpend: List<com.example.divvyup.domain.model.SpendComment> = emptyList(),
+    commentSpendId: Long? = null,
+    isSendingComment: Boolean = false,
+    myParticipantId: Long? = null,
+    onOpenComments: (Long) -> Unit = {},
+    onCloseComments: () -> Unit = {},
+    onSendComment: (String) -> Unit = {},
+    onDeleteComment: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAdvancedDeleteDialog by rememberSaveable { mutableStateOf(false) }
@@ -221,29 +230,32 @@ internal fun SpendTab(
 
             items(filteredSpends, key = { it.id }) { spend ->
                 val isSettlementMirroredSpend = spend.isSettlementSpend(settlementCategoryIds)
-                SpendCard(
-                    spend = spend,
-                    payerName = participantMap[spend.payerId]?.name ?: "Desconocido",
-                    categoryIcon = spend.categoryId?.let { categoryMap[it]?.icon } ?: DEFAULT_UNCATEGORIZED_ICON,
-                    categoryName = spend.categoryId?.let { categoryMap[it]?.name },
-                    currency = currency,
-                    personalImpact = spendPersonalImpact[spend.id],
-                    isSelectionMode = isSelectionMode,
-                    isSelected = spend.id in selectedSpendIds,
-                    onClick = {
-                        if (isSelectionMode) {
+                    SpendCard(
+                        spend = spend,
+                        payerName = participantMap[spend.payerId]?.name ?: "Desconocido",
+                        categoryIcon = spend.categoryId?.let { categoryMap[it]?.icon } ?: DEFAULT_UNCATEGORIZED_ICON,
+                        categoryName = spend.categoryId?.let { categoryMap[it]?.name },
+                        currency = currency,
+                        personalImpact = spendPersonalImpact[spend.id],
+                        isSelectionMode = isSelectionMode,
+                        isSelected = spend.id in selectedSpendIds,
+                        onClick = {
+                            if (isSelectionMode) {
+                                selectedSpendIds = if (spend.id in selectedSpendIds)
+                                    selectedSpendIds - spend.id else selectedSpendIds + spend.id
+                            } else if (!isSettlementMirroredSpend) {
+                                onEditSpend(spend)
+                            }
+                        },
+                        onLongClick = {
+                            if (!isSelectionMode) isSelectionMode = true
                             selectedSpendIds = if (spend.id in selectedSpendIds)
                                 selectedSpendIds - spend.id else selectedSpendIds + spend.id
-                        } else if (!isSettlementMirroredSpend) {
-                            onEditSpend(spend)
-                        }
-                    },
-                    onLongClick = {
-                        if (!isSelectionMode) isSelectionMode = true
-                        selectedSpendIds = if (spend.id in selectedSpendIds)
-                            selectedSpendIds - spend.id else selectedSpendIds + spend.id
-                    }
-                )
+                        },
+                        onOpenComments = if (!isSettlementMirroredSpend) {
+                            { onOpenComments(spend.id) }
+                        } else null
+                    )
             }
         }
 
@@ -285,9 +297,9 @@ internal fun SpendTab(
         }
     }
 
+
     if (showFiltersDialog) {
-        SpendListFiltersDialog(
-            participants = participants,
+        SpendListFiltersDialog(            participants = participants,
             categories = categories,
             selectedCategoryIds = selectedCategoryIds,
             selectedParticipantIds = selectedParticipantIds,
@@ -378,8 +390,8 @@ internal fun SpendCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    /** Impacto neto del usuario en este gasto. null = no vinculado; 0.0 = no participa. */
     personalImpact: Double? = null,
+    onOpenComments: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val dateFormatted = remember(spend.date) { formatLocalDate(spend.date.toLocalDate()) }
@@ -442,14 +454,14 @@ internal fun SpendCard(
                 )
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = JungleGreen100) {
+                    Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.primaryContainer) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(11.dp), tint = JungleGreenDark)
-                            Text(payerName, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = JungleGreenDark)
+                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(payerName, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     }
                     categoryName?.let { catName ->
