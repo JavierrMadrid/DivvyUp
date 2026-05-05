@@ -42,6 +42,8 @@ import com.example.divvyup.integration.ui.auth.AndroidGoogleSignInHandler
 import com.example.divvyup.integration.ui.auth.AndroidSessionManager
 import com.example.divvyup.integration.ui.navigation.AppNavigation
 import com.example.divvyup.integration.ui.theme.DivvyUpTheme
+import com.example.divvyup.integration.ui.theme.ThemeMode
+import com.example.divvyup.integration.ui.theme.ThemePreferenceHolder
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
@@ -56,6 +58,8 @@ import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -68,6 +72,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // ── Restaurar preferencia de tema persistida ───────────────────────
+        val prefs = getSharedPreferences("divvyup_prefs", MODE_PRIVATE)
+        val savedTheme = prefs.getString("theme_mode", ThemeMode.SYSTEM.name)
+        ThemePreferenceHolder.setThemeMode(
+            runCatching { ThemeMode.valueOf(savedTheme ?: "") }.getOrDefault(ThemeMode.SYSTEM)
+        )
+        // Persistir cambios futuros en SharedPreferences
+        ThemePreferenceHolder.themeMode
+            .onEach { mode -> prefs.edit().putString("theme_mode", mode.name).apply() }
+            .launchIn(CoroutineScope(Dispatchers.Main))
 
         supabaseClient = createSupabaseClient(
             supabaseUrl = BuildConfig.SUPABASE_URL,

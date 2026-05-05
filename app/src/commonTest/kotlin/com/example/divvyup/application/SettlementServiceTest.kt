@@ -255,6 +255,7 @@ private class FakeCategoryRepository(
         return created
     }
 
+    override suspend fun update(category: Category): Category = error("No usado")
     override suspend fun delete(id: Long) = error("No usado")
 }
 

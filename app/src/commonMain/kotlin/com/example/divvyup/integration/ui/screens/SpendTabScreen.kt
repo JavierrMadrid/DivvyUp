@@ -37,6 +37,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -112,6 +113,8 @@ internal fun SpendTab(
     onCloseComments: () -> Unit = {},
     onSendComment: (String) -> Unit = {},
     onDeleteComment: (Long) -> Unit = {},
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAdvancedDeleteDialog by rememberSaveable { mutableStateOf(false) }
@@ -164,7 +167,13 @@ internal fun SpendTab(
     val hasActiveFilters = selectedCategoryIds.isNotEmpty() || selectedParticipantIds.isNotEmpty() ||
         selectedFromDate != null || selectedToDate != null
 
-    Box(modifier = modifier.fillMaxSize()) {
+    @OptIn(ExperimentalMaterial3Api::class)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
+    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 140.dp),
@@ -353,6 +362,7 @@ internal fun SpendTab(
             },
             onDismiss = { showAdvancedDeleteDialog = false }
         )
+    }
     }
 }
 

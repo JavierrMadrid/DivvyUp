@@ -115,6 +115,16 @@ internal fun AnalyticsTab(
         derivedStateOf { filtered.count { it.splitType != SplitType.EQUAL } }
     }
 
+    // Gastos reales (sin liquidaciones) para gráficos de pagador
+    val filteredNoSettlements by remember(filtered) {
+        derivedStateOf {
+            filtered.filterNot { it.notes.startsWith("__settlement_id:") }
+        }
+    }
+    val totalNoSettlements by remember(filteredNoSettlements) {
+        derivedStateOf { filteredNoSettlements.sumOf { it.amount } }
+    }
+
     val byCategory by remember(filtered, categoryMap) {
         derivedStateOf {
             filtered
@@ -143,7 +153,7 @@ internal fun AnalyticsTab(
         }
     }
 
-    val monthlyEntries by remember(periodFiltered) {
+    val monthlyBreakdown by remember(periodFiltered) {
         derivedStateOf {
             periodFiltered
                 .groupBy { spend ->
@@ -154,23 +164,48 @@ internal fun AnalyticsTab(
                 .map { (key, monthlySpends) ->
                     val monthNumber = key % 100
                     val year = key / 100
-                    BarEntry(
+                    AnalyticsBreakdownEntry(
                         label = "${MES_CORTO[monthNumber]}/${year.toString().takeLast(2)}",
-                        value = monthlySpends.sumOf { it.amount }.toFloat()
+                        icon = "📅",
+                        total = monthlySpends.sumOf { it.amount },
+                        spendCount = monthlySpends.size
                     )
                 }
         }
     }
 
-    val byPayer by remember(filtered, participantMap) {
+    val monthlyEntries by remember(monthlyBreakdown) {
         derivedStateOf {
-            filtered
+            monthlyBreakdown.map { BarEntry(label = it.label, value = it.total.toFloat()) }
+        }
+    }
+
+    val categoryBreakdown by remember(byCategory) {
+        derivedStateOf {
+            byCategory.map { bucket ->
+                AnalyticsBreakdownEntry(
+                    label = bucket.name,
+                    icon = bucket.icon,
+                    total = bucket.total,
+                    spendCount = bucket.count
+                )
+            }
+        }
+    }
+
+    val payerBreakdown by remember(filteredNoSettlements, participantMap) {
+        derivedStateOf {
+            filteredNoSettlements
                 .groupBy { it.payerId }
                 .map { (payerId, payerSpends) ->
-                    participantMap[payerId]?.name.orEmpty().ifBlank { "Desconocido" } to
-                            payerSpends.sumOf { it.amount }
+                    AnalyticsBreakdownEntry(
+                        label = participantMap[payerId]?.name.orEmpty().ifBlank { "Desconocido" },
+                        icon = "👤",
+                        total = payerSpends.sumOf { it.amount },
+                        spendCount = payerSpends.size
+                    )
                 }
-                .sortedByDescending { it.second }
+                .sortedByDescending { it.total }
         }
     }
 
@@ -193,7 +228,7 @@ internal fun AnalyticsTab(
         }
     }
 
-    var showCategoryFullscreen by remember { mutableStateOf(false) }
+    var expandedCard by remember { mutableStateOf<AnalyticsCardType?>(null) }
     var exportExpanded by remember { mutableStateOf(false) }
 
     val periodLabel by remember(period) {
@@ -207,12 +242,38 @@ internal fun AnalyticsTab(
         }
     }
 
-    if (showCategoryFullscreen && byCategory.isNotEmpty()) {
-        DonutChartFullscreenDialog(
-            entries = byCategory.map { DonutEntry(it.name, it.icon, it.total.toFloat(), it.count) },
+    when (expandedCard) {
+        AnalyticsCardType.MENSUAL -> AnalyticsCardFullscreenDialog(
+            cardTitle = "Evolución mensual",
+            tablePrimaryHeader = "Mes",
+            breakdownEntries = monthlyBreakdown,
             currency = currency,
-            onDismiss = { showCategoryFullscreen = false }
+            initialTab = AnalyticsExpandedTab.BARRAS,
+            horizontalBars = false,
+            onDismiss = { expandedCard = null }
         )
+
+        AnalyticsCardType.CATEGORIA -> AnalyticsCardFullscreenDialog(
+            cardTitle = "Por categoría",
+            tablePrimaryHeader = "Categoría",
+            breakdownEntries = categoryBreakdown,
+            currency = currency,
+            initialTab = AnalyticsExpandedTab.ROSQUILLA,
+            horizontalBars = true,
+            onDismiss = { expandedCard = null }
+        )
+
+        AnalyticsCardType.PAGADOR -> AnalyticsCardFullscreenDialog(
+            cardTitle = "Por pagador",
+            tablePrimaryHeader = "Pagador",
+            breakdownEntries = payerBreakdown,
+            currency = currency,
+            initialTab = AnalyticsExpandedTab.BARRAS,
+            horizontalBars = true,
+            onDismiss = { expandedCard = null }
+        )
+
+        null -> Unit
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -378,7 +439,14 @@ internal fun AnalyticsTab(
 
             // ── Gráfico mensual ───────────────────────────────────────────────────
             if (monthlyEntries.size >= 2) {
-                item { MonthlyBarChartCard(entries = monthlyEntries, currency = currency, title = "Evolución mensual") }
+                item {
+                    MonthlyBarChartCard(
+                        entries = monthlyEntries,
+                        currency = currency,
+                        title = "Evolución mensual",
+                        onFullscreen = { expandedCard = AnalyticsCardType.MENSUAL }
+                    )
+                }
             }
 
             // ── Gráfico por categoría ─────────────────────────────────────────────
@@ -388,7 +456,7 @@ internal fun AnalyticsTab(
                         entries = byCategory.map { DonutEntry(it.name, it.icon, it.total.toFloat(), it.count) },
                         currency = currency,
                         title = "Por categoría",
-                        onFullscreen = { showCategoryFullscreen = true }
+                        onFullscreen = { expandedCard = AnalyticsCardType.CATEGORIA }
                     )
                 }
             }
@@ -399,16 +467,17 @@ internal fun AnalyticsTab(
             }
 
             // ── Gráfico por pagador ───────────────────────────────────────────────
-            if (byPayer.isNotEmpty()) {
+            if (payerBreakdown.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(4.dp))
                     if (nonEqualSpendCount > 0) NonEqualWarningRow(nonEqualSpendCount = nonEqualSpendCount)
                     Spacer(Modifier.height(6.dp))
                     HorizontalBarChartCard(
-                        entries = byPayer.map { (name, total) -> BarEntry(label = name, value = total.toFloat()) },
+                        entries = payerBreakdown.map { BarEntry(label = it.label, value = it.total.toFloat()) },
                         currency = currency,
-                        total = totalFiltered,
-                        title = "Por pagador"
+                        total = totalNoSettlements,
+                        title = "Por pagador",
+                        onFullscreen = { expandedCard = AnalyticsCardType.PAGADOR }
                     )
                 }
             }

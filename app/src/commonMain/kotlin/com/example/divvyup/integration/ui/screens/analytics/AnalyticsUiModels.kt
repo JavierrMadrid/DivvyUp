@@ -20,3 +20,29 @@ internal data class CategoryBucket(
     val count: Int
 )
 
+internal enum class AnalyticsCardType {
+    MENSUAL,
+    CATEGORIA,
+    PAGADOR
+}
+
+internal enum class AnalyticsExpandedTab(val title: String) {
+    ROSQUILLA("Rosquilla"),
+    BARRAS("Barras"),
+    RANKING("Ranking")
+}
+
+internal data class AnalyticsBreakdownEntry(
+    val label: String,
+    val icon: String,
+    val total: Double,
+    val spendCount: Int
+)
+
+internal data class AnalyticsRankingEntry(
+    val id: Long,
+    val concept: String,
+    val subtitle: String,
+    val amount: Double
+)
+

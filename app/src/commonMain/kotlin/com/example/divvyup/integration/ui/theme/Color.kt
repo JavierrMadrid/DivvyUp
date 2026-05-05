@@ -70,19 +70,27 @@ internal val LightColors = lightColorScheme(
     errorContainer         = AppRedContainer,
     onErrorContainer       = Color(0xFF5C0A00),
 
-    background             = SandBeige,
+    // Fondo general más saturado para que las cards resalten
+    background             = Color(0xFFDFEBE1),
     onBackground           = ForestDark,
 
-    surface                = ParchmentWhite,
+    // Cards y superficies: blanco nítido sobre fondo verde medio
+    surface                = Color(0xFFF7FAF7),
     onSurface              = ForestDark,
-    surfaceVariant         = Color(0xFFEAF0EB),
-    onSurfaceVariant       = MossGrey,
-    surfaceContainerHigh   = Color(0xFFE0EBE2),
-    surfaceContainerLow    = SandBeige,
-    surfaceContainerHighest= Color(0xFFD6E6D8),
 
-    outline                = Color(0xFFB0C4B3),
-    outlineVariant         = Color(0xFFCCDDCE),
+    // surfaceVariant: fondo distinguible del background (chips, inputs, etc.)
+    surfaceVariant         = Color(0xFFCCDFCE),
+    onSurfaceVariant       = Color(0xFF3D5440),
+
+    // TopBars y contenedores destacados
+    surfaceContainerHigh   = Color(0xFFCDD9CF),
+    surfaceContainerLow    = Color(0xFFE8F0E9),
+    surfaceContainerHighest= Color(0xFFBDCFC0),
+
+    // Bordes más visibles para chips y campos
+    outline                = Color(0xFF7A9E80),
+    outlineVariant         = Color(0xFFA8C4AB),
+
     inverseSurface         = JungleGreenDark,
     inverseOnSurface       = JungleGreen50,
     inversePrimary         = JungleGreenLight,

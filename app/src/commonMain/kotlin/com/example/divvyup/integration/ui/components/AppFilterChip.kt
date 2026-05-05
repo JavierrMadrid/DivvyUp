@@ -1,5 +1,6 @@
 package com.example.divvyup.integration.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,11 +32,22 @@ fun AppFilterChip(
     height: Dp = DivvyUpTokens.ChipSmallHeight,
     onClick: () -> Unit
 ) {
+    val chipShape = RoundedCornerShape(DivvyUpTokens.RadiusPill)
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+        shape = chipShape,
         color = if (selected) selectedColor else unselectedColor,
-        modifier = modifier.height(height)
+        border = if (!selected) {
+            BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.outline)
+        } else {
+            null
+        },
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        modifier = modifier
+            .height(height)
+            .clip(chipShape)
     ) {
         Box(
             modifier = Modifier
@@ -53,4 +66,3 @@ fun AppFilterChip(
         }
     }
 }
-

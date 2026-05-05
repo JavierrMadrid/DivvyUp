@@ -1,10 +1,8 @@
 package com.example.divvyup.application
 
-import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
-import com.example.divvyup.domain.repository.ParticipantRepository
 import com.example.divvyup.domain.repository.SpendRepository
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
@@ -26,10 +24,7 @@ class SpendServiceTest {
             date = Instant.parse("2026-04-01T12:00:00Z")
         )
         val repo = RecordingSpendRepository(existing)
-        val service = SpendService(
-            spendRepository = repo,
-            participantRepository = EmptyParticipantRepository()
-        )
+        val service = SpendService(spendRepository = repo)
 
         service.updateEqualSpend(
             existing = existing,
@@ -55,10 +50,7 @@ class SpendServiceTest {
             date = Instant.parse("2026-04-01T10:00:00Z")
         )
         val repo = RecordingSpendRepository(existing)
-        val service = SpendService(
-            spendRepository = repo,
-            participantRepository = EmptyParticipantRepository()
-        )
+        val service = SpendService(spendRepository = repo)
 
         service.updateEqualSpend(
             existing = existing,
@@ -96,15 +88,6 @@ private class RecordingSpendRepository(initialSpend: Spend) : SpendRepository {
     override suspend fun deleteAll(ids: List<Long>) = error("No usado")
 }
 
-private class EmptyParticipantRepository : ParticipantRepository {
-    override suspend fun getByGroup(groupId: Long): List<Participant> = emptyList()
-
-    override suspend fun create(participant: Participant): Participant = error("No usado")
-
-    override suspend fun update(participant: Participant): Participant = error("No usado")
-
-    override suspend fun delete(id: Long) = error("No usado")
-}
 
 private fun runTest(block: suspend () -> Unit) {
     runBlocking { block() }

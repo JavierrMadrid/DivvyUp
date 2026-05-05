@@ -36,10 +36,11 @@ internal val participantAvatarPalette = listOf(
     BarkBrownDark, Amber
 )
 
-internal val MES_CORTO = listOf("", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+internal val MES_CORTO =
+    listOf("", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 internal val MES_NOMBRES = listOf(
-    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 )
 
 internal const val SETTLEMENT_CATEGORY_NAME = "Liquidación"
@@ -53,7 +54,7 @@ internal fun Category.isSettlementCategory(): Boolean =
 
 internal fun Spend.isSettlementSpend(settlementCategoryIds: Set<Long>): Boolean =
     (categoryId != null && categoryId in settlementCategoryIds) ||
-        notes.startsWith(SETTLEMENT_SPEND_NOTE_PREFIX)
+            notes.startsWith(SETTLEMENT_SPEND_NOTE_PREFIX)
 
 /** Formatea un Double con 2 decimales sin usar String.format (KMP-compatible). */
 internal fun Double.fmt2(): String {
@@ -234,10 +235,10 @@ fun GroupDetailScreen(
                             ) {
                                 Text(
                                     text = when (tab) {
-                                        GroupDetailTab.GASTOS     -> "Gastos"
-                                        GroupDetailTab.BALANCES   -> "Balances"
+                                        GroupDetailTab.GASTOS -> "Gastos"
+                                        GroupDetailTab.BALANCES -> "Balances"
                                         GroupDetailTab.ANALITICAS -> "Analíticas"
-                                        GroupDetailTab.ACTIVIDAD  -> "Actividad"
+                                        GroupDetailTab.ACTIVIDAD -> "Actividad"
                                     },
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     fontSize = 14.sp
@@ -255,9 +256,10 @@ fun GroupDetailScreen(
                     icon = Icons.Default.Add,
                     label = "Nuevo gasto"
                 )
-                GroupDetailTab.BALANCES   -> {}
+
+                GroupDetailTab.BALANCES -> {}
                 GroupDetailTab.ANALITICAS -> {}
-                GroupDetailTab.ACTIVIDAD  -> {}
+                GroupDetailTab.ACTIVIDAD -> {}
             }
         }
     ) { padding ->
@@ -281,8 +283,11 @@ fun GroupDetailScreen(
                             spendPersonalImpact = uiState.spendPersonalImpact,
                             onEditSpend = { spend -> onOpenSpend(spend.id) },
                             onDeleteSpendsByIds = viewModel::deleteSpendsByIds,
-                            onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered
+                            onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered,
+                            isRefreshing = uiState.isLoading,
+                            onRefresh = viewModel::loadAll
                         )
+
                     GroupDetailTab.BALANCES ->
                         BalanceTab(
                             balances = uiState.balances,
@@ -290,6 +295,7 @@ fun GroupDetailScreen(
                             currency = uiState.group?.currency ?: "EUR",
                             onLiquidar = onOpenSettleUp
                         )
+
                     GroupDetailTab.ANALITICAS ->
                         AnalyticsTab(
                             spends = analyticsSpends,
@@ -306,11 +312,30 @@ fun GroupDetailScreen(
                             onParticipantToggle = viewModel::toggleAnalyticsParticipant,
                             onPeriodChange = viewModel::setAnalyticsPeriod,
                             onClearFilters = viewModel::clearAnalyticsFilters,
-                            onExportText  = { filteredSpends -> viewModel.exportGroupText(filteredSpends) },
-                            onExportCsv   = { filteredSpends -> viewModel.exportGroupCsv(filteredSpends) },
-                            onExportPdf   = { filteredSpends, periodLabel -> viewModel.exportGroupPdf(filteredSpends, periodLabel) },
-                            onExportExcel = { filteredSpends, periodLabel -> viewModel.exportGroupExcel(filteredSpends, periodLabel) }
+                            onExportText = { filteredSpends ->
+                                viewModel.exportGroupText(
+                                    filteredSpends
+                                )
+                            },
+                            onExportCsv = { filteredSpends ->
+                                viewModel.exportGroupCsv(
+                                    filteredSpends
+                                )
+                            },
+                            onExportPdf = { filteredSpends, periodLabel ->
+                                viewModel.exportGroupPdf(
+                                    filteredSpends,
+                                    periodLabel
+                                )
+                            },
+                            onExportExcel = { filteredSpends, periodLabel ->
+                                viewModel.exportGroupExcel(
+                                    filteredSpends,
+                                    periodLabel
+                                )
+                            }
                         )
+
                     GroupDetailTab.ACTIVIDAD ->
                         ActivityTab(
                             activityLog = uiState.activityLog,

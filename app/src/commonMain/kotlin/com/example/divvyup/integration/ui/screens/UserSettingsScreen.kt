@@ -28,6 +28,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.filled.Brightness6
+import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,6 +69,8 @@ import com.example.divvyup.integration.ui.rememberImagePickerLauncher
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
+import com.example.divvyup.integration.ui.theme.ThemeMode
+import com.example.divvyup.integration.ui.theme.ThemePreferenceHolder
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
 
@@ -375,6 +380,9 @@ private fun AuthenticatedContent(
             }
         }
 
+        // ── Sección: Apariencia ───────────────────────────────────────────
+        ThemeSection()
+
         Spacer(Modifier.height(8.dp))
         } // fin Column scrollable
 
@@ -585,6 +593,9 @@ private fun UnauthenticatedContent(
                     BenefitItem("🔒", "Mantener tus datos seguros")
                 }
             }
+
+            // ── Sección: Apariencia ───────────────────────────────────────
+            ThemeSection()
         }
 
         // ── Botones fijos en la parte inferior ────────────────────────────
@@ -654,3 +665,89 @@ private fun BenefitItem(emoji: String, text: String) {
         )
     }
 }
+
+// ---------------------------------------------------------------------------
+// ThemeSection — selector de tema (sistema / claro / oscuro)
+// ---------------------------------------------------------------------------
+
+@Composable
+internal fun ThemeSection(modifier: Modifier = Modifier) {
+    val currentMode by ThemePreferenceHolder.themeMode.collectAsState()
+
+    ProfileSectionCard(title = "Apariencia", modifier = modifier) {
+        Text(
+            text = "Tema de la aplicación",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(DivvyUpTokens.GapSm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapSm)
+        ) {
+            ThemeModeChip(
+                label = "Sistema",
+                icon = Icons.Default.Brightness6,
+                selected = currentMode == ThemeMode.SYSTEM,
+                onClick = { ThemePreferenceHolder.setThemeMode(ThemeMode.SYSTEM) },
+                modifier = Modifier.weight(1f)
+            )
+            ThemeModeChip(
+                label = "Claro",
+                icon = Icons.Default.Brightness7,
+                selected = currentMode == ThemeMode.LIGHT,
+                onClick = { ThemePreferenceHolder.setThemeMode(ThemeMode.LIGHT) },
+                modifier = Modifier.weight(1f)
+            )
+            ThemeModeChip(
+                label = "Oscuro",
+                icon = Icons.Default.Brightness4,
+                selected = currentMode == ThemeMode.DARK,
+                onClick = { ThemePreferenceHolder.setThemeMode(ThemeMode.DARK) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (selected) JungleGreen else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor   = if (selected) Color.White  else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+        color = containerColor,
+        modifier = modifier.height(DivvyUpTokens.ControlHeight)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(DivvyUpTokens.IconSm)
+            )
+            Spacer(Modifier.size(4.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
+            )
+        }
+    }
+}
+

@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,6 +32,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -143,6 +144,11 @@ fun GroupListScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(JungleGreen, JungleGreenDark)
+                        )
+                    )
                     .statusBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
@@ -157,13 +163,13 @@ fun GroupListScreen(
                             else "DivvyUp",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Color.White
                         )
                         Text(
                             if (isSelectionMode) "Mantén pulsado para seleccionar más"
                             else "Tus grupos de gastos",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color.White.copy(alpha = 0.8f)
                         )
                     }
                     // Icono de usuario
@@ -172,8 +178,8 @@ fun GroupListScreen(
                             Icon(
                                 Icons.Default.AccountCircle,
                                 contentDescription = "Ajustes de usuario",
-                                tint = if (isAuthenticated) MaterialTheme.colorScheme.primary
-                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (isAuthenticated) Color.White
+                                       else Color.White.copy(alpha = 0.6f)
                             )
                         }
                     }
@@ -227,26 +233,33 @@ fun GroupListScreen(
                     EmptyGroupsPlaceholder(modifier = Modifier.align(Alignment.Center))
                 }
                 else -> {
-                    GroupList(
-                        groups = filteredGroups,
-                        searchQuery = groupSearchQuery,
-                        onSearchQueryChange = { groupSearchQuery = it },
-                        selectedGroupIds = selectedGroupIds,
-                        onGroupClick = { id ->
-                            if (isSelectionMode) {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    PullToRefreshBox(
+                        isRefreshing = uiState.isLoading,
+                        onRefresh = viewModel::loadGroups,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        GroupList(
+                            groups = filteredGroups,
+                            searchQuery = groupSearchQuery,
+                            onSearchQueryChange = { groupSearchQuery = it },
+                            selectedGroupIds = selectedGroupIds,
+                            onGroupClick = { id ->
+                                if (isSelectionMode) {
+                                    selectedGroupIds = if (id in selectedGroupIds)
+                                        selectedGroupIds - id else selectedGroupIds + id
+                                } else onGroupClick(id)
+                            },
+                            onGroupLongClick = { id ->
                                 selectedGroupIds = if (id in selectedGroupIds)
                                     selectedGroupIds - id else selectedGroupIds + id
-                            } else onGroupClick(id)
-                        },
-                        onGroupLongClick = { id ->
-                            selectedGroupIds = if (id in selectedGroupIds)
-                                selectedGroupIds - id else selectedGroupIds + id
-                        },
-                        onDeleteGroup = viewModel::deleteGroup,
-                        onOpenAdvancedDelete = { showAdvancedDeleteForGroup = it },
-                        getParticipants = { viewModel.getParticipantsForGroup(it) },
-                        getCategories = { viewModel.getCategoriesForGroup(it) }
-                    )
+                            },
+                            onDeleteGroup = viewModel::deleteGroup,
+                            onOpenAdvancedDelete = { showAdvancedDeleteForGroup = it },
+                            getParticipants = { viewModel.getParticipantsForGroup(it) },
+                            getCategories = { viewModel.getCategoriesForGroup(it) }
+                        )
+                    }
                 }
             }
 
@@ -429,11 +442,6 @@ private fun GroupCard(
         if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
         label = "borderColor"
     )
-    val bgColor by animateColorAsState(
-        if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
-        label = "bgColor"
-    )
-
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -450,8 +458,8 @@ private fun GroupCard(
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
-            else MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.surfaceContainerHighest
+            else MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -506,9 +514,12 @@ private fun GroupCard(
                     )
                 }
                 Spacer(Modifier.height(6.dp))
-                Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.primaryContainer) {
+                Surface(
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
                     Text(group.currency, style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
                 }
             }
