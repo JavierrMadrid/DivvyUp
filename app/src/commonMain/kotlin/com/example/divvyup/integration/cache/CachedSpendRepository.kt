@@ -20,6 +20,7 @@ class CachedSpendRepository(
 
     private val spendCache = InMemoryCache<Long, List<Spend>>(ttlMillis)
     private val sharesCache = InMemoryCache<Long, List<SpendShare>>(ttlMillis)
+    private val groupSharesCache = InMemoryCache<Long, List<SpendShare>>(ttlMillis)
     private val participantSharesCache = InMemoryCache<Long, List<SpendShare>>(ttlMillis)
 
     override suspend fun getByGroup(groupId: Long): List<Spend> =
@@ -28,12 +29,16 @@ class CachedSpendRepository(
     override suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         sharesCache.getOrLoad(spendId) { delegate.getSharesBySpend(spendId) }
 
+    override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> =
+        groupSharesCache.getOrLoad(groupId) { delegate.getSharesByGroup(groupId) }
+
     override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> =
         participantSharesCache.getOrLoad(participantId) { delegate.getSharesByParticipant(participantId) }
 
     override suspend fun create(spend: Spend, shares: List<SpendShare>): Spend {
         val result = delegate.create(spend, shares)
         spendCache.invalidate(spend.groupId)
+        groupSharesCache.invalidate(spend.groupId)
         participantSharesCache.clear()
         return result
     }
@@ -42,6 +47,7 @@ class CachedSpendRepository(
         val result = delegate.update(spend, shares)
         spendCache.invalidate(spend.groupId)
         sharesCache.invalidate(spend.id)
+        groupSharesCache.invalidate(spend.groupId)
         participantSharesCache.clear()
         return result
     }
@@ -49,6 +55,7 @@ class CachedSpendRepository(
     override suspend fun delete(id: Long) {
         spendCache.clear()
         sharesCache.invalidate(id)
+        groupSharesCache.clear()
         participantSharesCache.clear()
         delegate.delete(id)
     }
@@ -56,6 +63,7 @@ class CachedSpendRepository(
     override suspend fun deleteAll(ids: List<Long>) {
         spendCache.clear()
         ids.forEach { sharesCache.invalidate(it) }
+        groupSharesCache.clear()
         participantSharesCache.clear()
         delegate.deleteAll(ids)
     }
@@ -64,6 +72,7 @@ class CachedSpendRepository(
     fun clearAll() {
         spendCache.clear()
         sharesCache.clear()
+        groupSharesCache.clear()
         participantSharesCache.clear()
     }
 }

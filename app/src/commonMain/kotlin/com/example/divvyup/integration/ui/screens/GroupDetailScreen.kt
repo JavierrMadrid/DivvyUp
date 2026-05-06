@@ -302,6 +302,7 @@ fun GroupDetailScreen(
                             categories = analyticsCategories,
                             participants = uiState.participants,
                             settlements = uiState.settlements,
+                            spendSharesBySpend = uiState.spendSharesBySpend,
                             currency = uiState.group?.currency ?: "EUR",
                             searchQuery = uiState.analyticsSearchQuery,
                             selectedCategories = uiState.analyticsSelectedCategories,

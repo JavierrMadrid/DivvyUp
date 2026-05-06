@@ -13,7 +13,9 @@ class SupabaseGroupRepository(private val postgrest: Postgrest) : GroupRepositor
 
     override suspend fun getAll(): List<Group> = try {
         postgrest.from("groups")
-            .select()
+            .select {
+                order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+            }
             .decodeList<GroupDto>()
             .map { it.toDomain() }
     } catch (e: Exception) {

@@ -6,6 +6,8 @@ import com.example.divvyup.domain.model.SpendShare
 interface SpendRepository {
     suspend fun getByGroup(groupId: Long): List<Spend>
     suspend fun getSharesBySpend(spendId: Long): List<SpendShare>
+    /** Devuelve todas las shares de todos los gastos de un grupo. */
+    suspend fun getSharesByGroup(groupId: Long): List<SpendShare>
     /** Devuelve todas las shares en las que participa [participantId] (para calcular impacto personal). */
     suspend fun getSharesByParticipant(participantId: Long): List<SpendShare>
     /** Crea el gasto y sus shares en una sola operación */

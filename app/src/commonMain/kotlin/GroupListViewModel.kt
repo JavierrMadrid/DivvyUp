@@ -51,30 +51,14 @@ class GroupListViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                // FASE 1: Cargar y mostrar los grupos inmediatamente — O(1) petición
                 val groups = groupService.getAllGroups()
-                _uiState.update { it.copy(groups = groups, isLoading = false) }
+                if (groups.isEmpty()) {
+                    _uiState.update { it.copy(groups = emptyList(), isLoading = false) }
+                    return@launch
+                }
 
-                // FASE 2: En paralelo y en background — ordenar + precargar datos de detalle.
-                // No bloquea la UI; cuando termina actualiza silenciosamente el estado.
-                loadGroupDetailsInBackground(groups)
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
-            }
-        }
-    }
-
-    /**
-     * Carga en paralelo participantes, categorías y último gasto de cada grupo.
-     * Se ejecuta en background (no muestra spinner) para no bloquear la lista inicial.
-     * Actualiza el orden y la caché de participantes/categorías cuando termina.
-     */
-    private fun loadGroupDetailsInBackground(groups: List<Group>) {
-        if (groups.isEmpty()) return
-        viewModelScope.launch {
-            try {
+                // Cargar en paralelo participantes, categorías y último gasto de cada grupo
                 coroutineScope {
-                    // Un async por grupo — todas las peticiones vuelan en paralelo
                     val detailJobs = groups.map { group ->
                         async {
                             val participants = try { participantRepository.getByGroup(group.id) } catch (_: Exception) { emptyList() }
@@ -109,12 +93,13 @@ class GroupListViewModel(
                         it.copy(
                             groups = sortedGroups,
                             participantsByGroup = participantsMap,
-                            categoriesByGroup = categoriesMap
+                            categoriesByGroup = categoriesMap,
+                            isLoading = false
                         )
                     }
                 }
-            } catch (_: Exception) {
-                // Fallo no crítico: la lista ya está visible, solo no se reordena ni precarga
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
     }

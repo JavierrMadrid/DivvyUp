@@ -260,9 +260,9 @@ internal fun AnalyticsCardFullscreenDialog(
     cardTitle: String,
     tablePrimaryHeader: String,
     breakdownEntries: List<AnalyticsBreakdownEntry>,
+    barEntries: List<AnalyticsBreakdownEntry> = breakdownEntries,
     currency: String,
     initialTab: AnalyticsExpandedTab,
-    horizontalBars: Boolean,
     onDismiss: () -> Unit
 ) {
     var selectedTab by remember(initialTab) { mutableStateOf(initialTab) }
@@ -352,10 +352,9 @@ internal fun AnalyticsCardFullscreenDialog(
                     AnalyticsExpandedTab.BARRAS -> {
                         if (breakdownEntries.isNotEmpty()) {
                             AnalyticsBarsTabContent(
-                                breakdownEntries = breakdownEntries,
+                                breakdownEntries = barEntries,
                                 tablePrimaryHeader = tablePrimaryHeader,
-                                currency = currency,
-                                horizontalBars = horizontalBars
+                                currency = currency
                             )
                         } else {
                             EmptyFullscreenState("No hay datos para mostrar en este gráfico")
@@ -413,19 +412,14 @@ private fun AnalyticsDonutTabContent(
 private fun AnalyticsBarsTabContent(
     breakdownEntries: List<AnalyticsBreakdownEntry>,
     tablePrimaryHeader: String,
-    currency: String,
-    horizontalBars: Boolean
+    currency: String
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         item {
-            if (horizontalBars) {
-                AnalyticsHorizontalBarsPreview(entries = breakdownEntries, currency = currency)
-            } else {
-                AnalyticsVerticalBarsPreview(entries = breakdownEntries, currency = currency)
-            }
+            AnalyticsVerticalBarsPreview(entries = breakdownEntries, currency = currency)
         }
         item { Spacer(Modifier.height(20.dp)) }
         item {
@@ -447,7 +441,6 @@ private fun AnalyticsRankingTabContent(
     val sorted = remember(breakdownEntries) { breakdownEntries.sortedByDescending { it.total } }
     val maxTotal = sorted.firstOrNull()?.total?.coerceAtLeast(0.001) ?: 0.001
     val totalAll = sorted.sumOf { it.total }
-    val palette = rememberChartPalette()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -481,7 +474,19 @@ private fun AnalyticsRankingTabContent(
         itemsIndexed(sorted) { index, entry ->
             val fraction = (entry.total / maxTotal).toFloat().coerceIn(0f, 1f)
             val percentage = if (totalAll > 0.0) (entry.total / totalAll) * 100.0 else 0.0
-            val barColor = palette[index % palette.size]
+            val medalColor = when (index) {
+                0 -> Color(0xFFFFD700) // oro
+                1 -> Color(0xFFC0C0C0) // plata
+                2 -> Color(0xFFCD7F32) // bronce
+                else -> JungleGreen
+            }
+            val medalTextColor = when (index) {
+                0 -> Color(0xFF7A5700)
+                1 -> Color(0xFF4A4A4A)
+                2 -> Color(0xFF5C3210)
+                else -> Color.White
+            }
+            val barColor = medalColor
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -492,14 +497,14 @@ private fun AnalyticsRankingTabContent(
                         modifier = Modifier
                             .size(24.dp)
                             .clip(CircleShape)
-                            .background(if (index < 3) barColor else MaterialTheme.colorScheme.surfaceVariant),
+                            .background(medalColor),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "${index + 1}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (index < 3) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = medalTextColor
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
@@ -507,10 +512,7 @@ private fun AnalyticsRankingTabContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text(
-                                text = entry.icon,
-                                fontSize = 14.sp
-                            )
+                            Text(text = entry.icon, fontSize = 14.sp)
                             Text(
                                 text = entry.label,
                                 style = MaterialTheme.typography.bodySmall,
@@ -559,68 +561,101 @@ private fun AnalyticsBreakdownTable(
     currency: String
 ) {
     val total = entries.sumOf { it.total }
+    val palette = rememberChartPalette()
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Anchos fijos para columnas numéricas — alineación cuadriculada
+    val colGastos = 48.dp
+    val colCantidad = 72.dp
+    val colPct = 52.dp
+
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        // Cabecera
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.width(6.dp))
             Text(
                 text = primaryHeader,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1.5f)
-            )
-            Text(
-                text = "Nº gastos",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "Cantidad",
-                style = MaterialTheme.typography.labelMedium,
+                text = "Gastos",
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1.1f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(colGastos),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = "% total",
-                style = MaterialTheme.typography.labelMedium,
+                text = currency,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(0.9f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(colCantidad),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "%",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(colPct),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-        entries.forEach { entry ->
+        entries.forEachIndexed { index, entry ->
             val percentage = if (total > 0.0) (entry.total / total) * 100.0 else 0.0
+            val legendColor = palette[index % palette.size]
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(legendColor)
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
                     text = "${entry.icon} ${entry.label}",
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1.5f),
+                    modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = entry.spendCount.toString(),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.width(colGastos),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
                 )
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "${entry.total.fmt2()} $currency",
+                    text = entry.total.fmt2(),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1.1f)
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.width(colCantidad),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
                 )
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = "${percentage.fmt2()}%",
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(0.9f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(colPct),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
                 )
             }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
         }
     }
 }
@@ -699,69 +734,6 @@ private fun AnalyticsVerticalBarsPreview(entries: List<AnalyticsBreakdownEntry>,
     }
 }
 
-@Composable
-private fun AnalyticsHorizontalBarsPreview(entries: List<AnalyticsBreakdownEntry>, currency: String) {
-    val palette = rememberChartPalette()
-    val maxValue = entries.maxOfOrNull { it.total.toFloat() }?.coerceAtLeast(1f) ?: 1f
-    val total = entries.sumOf { it.total }
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        entries.take(12).forEachIndexed { index, entry ->
-            val fraction = (entry.total.toFloat() / maxValue).coerceIn(0f, 1f)
-            val percentage = if (total > 0.0) (entry.total / total) * 100.0 else 0.0
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${entry.icon} ${entry.label}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = "${entry.total.fmt2()} $currency",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "${percentage.fmt2()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(fraction)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(50.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        palette[index % palette.size],
-                                        palette[index % palette.size].copy(alpha = 0.7f)
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun EmptyFullscreenState(message: String) {

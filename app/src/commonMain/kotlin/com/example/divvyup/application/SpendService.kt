@@ -23,6 +23,9 @@ class SpendService(
     suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         spendRepository.getSharesBySpend(spendId)
 
+    suspend fun getSharesByGroup(groupId: Long): List<SpendShare> =
+        spendRepository.getSharesByGroup(groupId)
+
     /**
      * Devuelve un mapa spendId → impacto neto para el participante dado.
      *

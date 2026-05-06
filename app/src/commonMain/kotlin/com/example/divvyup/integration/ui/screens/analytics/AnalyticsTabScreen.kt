@@ -26,6 +26,7 @@ import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.Settlement
 import com.example.divvyup.domain.model.Spend
+import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppSearchField
@@ -51,6 +52,8 @@ internal fun AnalyticsTab(
     categories: List<Category>,
     participants: List<Participant>,
     settlements: List<Settlement>,
+    /** spendId → lista de shares para calcular el pago neto real por pagador. */
+    spendSharesBySpend: Map<Long, List<SpendShare>> = emptyMap(),
     currency: String,
     searchQuery: String,
     selectedCategories: Set<Long>,
@@ -116,13 +119,22 @@ internal fun AnalyticsTab(
     }
 
     // Gastos reales (sin liquidaciones) para gráficos de pagador
-    val filteredNoSettlements by remember(filtered) {
+    val settlementCategoryIds by remember(categories) {
         derivedStateOf {
-            filtered.filterNot { it.notes.startsWith("__settlement_id:") }
+            categories
+                .filter { it.name.equals(SETTLEMENT_CATEGORY_NAME, ignoreCase = true) }
+                .map { it.id }
+                .toSet()
         }
     }
-    val totalNoSettlements by remember(filteredNoSettlements) {
-        derivedStateOf { filteredNoSettlements.sumOf { it.amount } }
+
+    val filteredNoSettlements by remember(filtered, settlementCategoryIds) {
+        derivedStateOf {
+            filtered.filterNot { spend ->
+                spend.notes.trimStart().startsWith("__settlement_id:") ||
+                    (spend.categoryId != null && spend.categoryId in settlementCategoryIds)
+            }
+        }
     }
 
     val byCategory by remember(filtered, categoryMap) {
@@ -153,9 +165,9 @@ internal fun AnalyticsTab(
         }
     }
 
-    val monthlyBreakdown by remember(periodFiltered) {
+    val monthlyBreakdown by remember(filtered) {
         derivedStateOf {
-            periodFiltered
+            filtered
                 .groupBy { spend ->
                     val ldt = spend.date.toLocalDateTime(TimeZone.currentSystemDefault())
                     ldt.year * 100 + ldt.month.number
@@ -176,6 +188,7 @@ internal fun AnalyticsTab(
 
     val monthlyEntries by remember(monthlyBreakdown) {
         derivedStateOf {
+            // Mantener orden cronológico (mes ascendente) para barras mensuales.
             monthlyBreakdown.map { BarEntry(label = it.label, value = it.total.toFloat()) }
         }
     }
@@ -193,20 +206,45 @@ internal fun AnalyticsTab(
         }
     }
 
-    val payerBreakdown by remember(filteredNoSettlements, participantMap) {
+    val categoryBreakdownForBars by remember(categoryBreakdown) {
+        derivedStateOf {
+            categoryBreakdown.sortedBy { it.label.lowercase() }
+        }
+    }
+
+    val payerBreakdown by remember(filteredNoSettlements, participantMap, spendSharesBySpend) {
         derivedStateOf {
             filteredNoSettlements
                 .groupBy { it.payerId }
                 .map { (payerId, payerSpends) ->
+                    // Pago neto = lo que desembolsó cada uno - su propia parte del gasto
+                    // Así se refleja cuánto pagó realmente por los demás
+                    val netPaid = payerSpends.sumOf { spend ->
+                        val payerShare = spendSharesBySpend[spend.id]
+                            ?.firstOrNull { it.participantId == payerId }
+                            ?.amount ?: 0.0
+                        spend.amount - payerShare
+                    }
                     AnalyticsBreakdownEntry(
                         label = participantMap[payerId]?.name.orEmpty().ifBlank { "Desconocido" },
                         icon = "👤",
-                        total = payerSpends.sumOf { it.amount },
+                        total = netPaid.coerceAtLeast(0.0),
                         spendCount = payerSpends.size
                     )
                 }
                 .sortedByDescending { it.total }
         }
+    }
+
+    val payerBreakdownForBars by remember(payerBreakdown) {
+        derivedStateOf {
+            payerBreakdown.sortedBy { it.label.lowercase() }
+        }
+    }
+
+    // Total neto pagado por todos los pagadores (suma de pagos netos = base para porcentajes)
+    val totalNetPaid by remember(payerBreakdown) {
+        derivedStateOf { payerBreakdown.sumOf { it.total } }
     }
 
     val netSettlements by remember(settlements) {
@@ -247,9 +285,9 @@ internal fun AnalyticsTab(
             cardTitle = "Evolución mensual",
             tablePrimaryHeader = "Mes",
             breakdownEntries = monthlyBreakdown,
+            barEntries = monthlyBreakdown,
             currency = currency,
             initialTab = AnalyticsExpandedTab.BARRAS,
-            horizontalBars = false,
             onDismiss = { expandedCard = null }
         )
 
@@ -257,9 +295,9 @@ internal fun AnalyticsTab(
             cardTitle = "Por categoría",
             tablePrimaryHeader = "Categoría",
             breakdownEntries = categoryBreakdown,
+            barEntries = categoryBreakdownForBars,
             currency = currency,
             initialTab = AnalyticsExpandedTab.ROSQUILLA,
-            horizontalBars = true,
             onDismiss = { expandedCard = null }
         )
 
@@ -267,9 +305,9 @@ internal fun AnalyticsTab(
             cardTitle = "Por pagador",
             tablePrimaryHeader = "Pagador",
             breakdownEntries = payerBreakdown,
+            barEntries = payerBreakdownForBars,
             currency = currency,
             initialTab = AnalyticsExpandedTab.BARRAS,
-            horizontalBars = true,
             onDismiss = { expandedCard = null }
         )
 
@@ -473,9 +511,9 @@ internal fun AnalyticsTab(
                     if (nonEqualSpendCount > 0) NonEqualWarningRow(nonEqualSpendCount = nonEqualSpendCount)
                     Spacer(Modifier.height(6.dp))
                     HorizontalBarChartCard(
-                        entries = payerBreakdown.map { BarEntry(label = it.label, value = it.total.toFloat()) },
+                        entries = payerBreakdownForBars.map { BarEntry(label = it.label, value = it.total.toFloat()) },
                         currency = currency,
-                        total = totalNoSettlements,
+                        total = totalNetPaid,
                         title = "Por pagador",
                         onFullscreen = { expandedCard = AnalyticsCardType.PAGADOR }
                     )

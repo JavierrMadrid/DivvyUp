@@ -73,6 +73,8 @@ private class RecordingSpendRepository(initialSpend: Spend) : SpendRepository {
 
     override suspend fun getSharesBySpend(spendId: Long): List<SpendShare> = emptyList()
 
+    override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> = emptyList()
+
     override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> = emptyList()
 
     override suspend fun create(spend: Spend, shares: List<SpendShare>): Spend = error("No usado")

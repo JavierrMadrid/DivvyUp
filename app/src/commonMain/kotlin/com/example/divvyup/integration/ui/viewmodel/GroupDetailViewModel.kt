@@ -52,6 +52,8 @@ data class GroupDetailUiState(
     val participants: List<Participant> = emptyList(),
     val spends: List<Spend> = emptyList(),
     val categories: List<Category> = emptyList(),
+    /** spendId → lista de shares (para analíticas y edición). */
+    val spendSharesBySpend: Map<Long, List<SpendShare>> = emptyMap(),
     val balances: List<ParticipantBalance> = emptyList(),
     val debtTransfers: List<DebtTransfer> = emptyList(),
     val settlements: List<Settlement> = emptyList(),
@@ -131,6 +133,10 @@ class GroupDetailViewModel(
                     val categoriesD   = async { categoryService.getCategories(groupId) }
                     val balancesD     = async { settlementService.getBalances(groupId) }
                     val settlementsD  = async { settlementService.getSettlements(groupId) }
+                    val sharesD       = async {
+                        try { spendService.getSharesByGroup(groupId) }
+                        catch (_: Exception) { emptyList() }
+                    }
                     val myPartIdD     = async { myParticipantIdProvider() }
                     val currentUserD  = async { currentUserIdProvider() }
                     val avatarsD      = async {
@@ -148,6 +154,7 @@ class GroupDetailViewModel(
                     val categories    = categoriesD.await()
                     val balances      = balancesD.await()
                     val settlements   = settlementsD.await()
+                    val groupShares   = sharesD.await()
                     val myParticipantId = myPartIdD.await()
                     val currentUserId = currentUserD.await()
                     val avatarUrls    = avatarsD.await()
@@ -165,6 +172,7 @@ class GroupDetailViewModel(
                             group = group,
                             participants = participants,
                             spends = spends,
+                            spendSharesBySpend = groupShares.groupBy { s -> s.spendId },
                             categories = categories,
                             balances = balances,
                             debtTransfers = transfers,

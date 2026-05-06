@@ -34,6 +34,22 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
         throw Exception("Error al obtener el reparto del gasto: ${e.message}", e)
     }
 
+    override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> = try {
+        // Obtiene shares de todos los gastos del grupo en una sola query
+        // Filtrando por spends.group_id a través del FK spend_id
+        val spendIds = postgrest.from("spends")
+            .select { filter { eq("group_id", groupId) } }
+            .decodeList<SpendDto>()
+            .map { it.id }
+        if (spendIds.isEmpty()) return emptyList()
+        postgrest.from("spend_shares")
+            .select { filter { isIn("spend_id", spendIds) } }
+            .decodeList<SpendShareDto>()
+            .map { it.toDomain() }
+    } catch (e: Exception) {
+        throw Exception("Error al obtener los repartos del grupo: ${e.message}", e)
+    }
+
     override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> = try {
         postgrest.from("spend_shares")
             .select { filter { eq("participant_id", participantId) } }

@@ -206,6 +206,9 @@ private class FakeSpendRepository(
     override suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         sharesBySpend[spendId].orEmpty()
 
+    override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> =
+        spends.filter { it.groupId == groupId }.flatMap { sharesBySpend[it.id].orEmpty() }
+
     override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> =
         sharesBySpend.values.flatten().filter { it.participantId == participantId }
 
