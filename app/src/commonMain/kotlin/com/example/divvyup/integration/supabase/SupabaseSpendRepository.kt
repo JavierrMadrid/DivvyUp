@@ -9,6 +9,9 @@ import com.example.divvyup.integration.supabase.dto.toDomain
 import com.example.divvyup.integration.supabase.dto.toDto
 import com.example.divvyup.integration.supabase.dto.toUpdateDto
 import io.github.jan.supabase.postgrest.Postgrest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.time.Instant
 
 class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepository {
 
@@ -36,7 +39,6 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
 
     override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> = try {
         // Obtiene shares de todos los gastos del grupo en una sola query
-        // Filtrando por spends.group_id a través del FK spend_id
         val spendIds = postgrest.from("spends")
             .select { filter { eq("group_id", groupId) } }
             .decodeList<SpendDto>()
@@ -114,5 +116,32 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
             throw Exception("Error al eliminar los gastos: ${e.message}", e)
         }
     }
-}
 
+    override suspend fun getRecurringRootsDue(groupId: Long, dueBeforeOrAt: Instant): List<Spend> = try {
+        postgrest.from("spends")
+            .select {
+                filter {
+                    eq("group_id", groupId)
+                    neq("recurrence", "NONE")
+                    // Filtrar solo raíces (parent_id IS NULL) y vencidos (next_due <= dueBeforeOrAt)
+                    exact("recurrence_parent_id", null)
+                    lte("recurrence_next_due", dueBeforeOrAt.toString())
+                }
+            }
+            .decodeList<SpendDto>()
+            .map { it.toDomain() }
+    } catch (e: Exception) {
+        println("DEBUG SupabaseSpendRepository: getRecurringRootsDue error — ${e.message}")
+        emptyList()
+    }
+
+    override suspend fun updateNextDue(spendId: Long, nextDue: Instant) = try {
+        postgrest.from("spends")
+            .update(buildJsonObject { put("recurrence_next_due", nextDue.toString()) }) {
+                filter { eq("id", spendId) }
+            }
+        Unit
+    } catch (e: Exception) {
+        println("DEBUG SupabaseSpendRepository: updateNextDue error — ${e.message}")
+    }
+}

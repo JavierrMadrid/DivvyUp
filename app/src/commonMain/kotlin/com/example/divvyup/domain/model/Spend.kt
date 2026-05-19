@@ -14,6 +14,10 @@ data class Spend(
     val notes: String = "",
     val createdAt: Instant = Instant.fromEpochMilliseconds(0),
     val recurrence: Recurrence = Recurrence.NONE,
-    val receiptUrl: String? = null
+    val receiptUrl: String? = null,
+    /** ID del gasto raíz del que esta ocurrencia fue generada automáticamente. Null si es raíz o puntual. */
+    val recurrenceParentId: Long? = null,
+    /** Fecha de vencimiento de la próxima ocurrencia (solo se rellena en el gasto raíz). */
+    val recurrenceNextDue: Instant? = null
 )
 

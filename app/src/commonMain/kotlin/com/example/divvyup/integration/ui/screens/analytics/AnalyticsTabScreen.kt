@@ -118,6 +118,22 @@ internal fun AnalyticsTab(
         derivedStateOf { filtered.count { it.splitType != SplitType.EQUAL } }
     }
 
+    // A2 — Estadísticas ampliadas: mediana, máximo
+    val medianAmount by remember(filtered) {
+        derivedStateOf {
+            if (filtered.isEmpty()) 0.0
+            else {
+                val sorted = filtered.map { it.amount }.sorted()
+                val mid = sorted.size / 2
+                if (sorted.size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2.0
+                else sorted[mid]
+            }
+        }
+    }
+    val maxSpend by remember(filtered) {
+        derivedStateOf { filtered.maxByOrNull { it.amount } }
+    }
+
     // Gastos reales (sin liquidaciones) para gráficos de pagador
     val settlementCategoryIds by remember(categories) {
         derivedStateOf {
@@ -190,6 +206,17 @@ internal fun AnalyticsTab(
         derivedStateOf {
             // Mantener orden cronológico (mes ascendente) para barras mensuales.
             monthlyBreakdown.map { BarEntry(label = it.label, value = it.total.toFloat()) }
+        }
+    }
+
+    // A1 — Tendencia mes a mes: comparar último mes vs penúltimo
+    val monthTrend by remember(monthlyBreakdown) {
+        derivedStateOf {
+            if (monthlyBreakdown.size >= 2) {
+                val last = monthlyBreakdown.last().total
+                val prev = monthlyBreakdown[monthlyBreakdown.size - 2].total
+                if (prev > 0.0) ((last - prev) / prev) * 100.0 else null
+            } else null
         }
     }
 
@@ -442,37 +469,16 @@ internal fun AnalyticsTab(
                 Spacer(Modifier.height(8.dp))
             }
 
-            // ── Resumen total ─────────────────────────────────────────────────────
+            // ── Resumen total (A1 + A2) ───────────────────────────────────────────
             item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = JungleGreen),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text("Total gastado", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
-                            Text(
-                                text = "${totalFiltered.fmt2()} $currency",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("${filtered.size} gastos", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
-                            Text(
-                                text = "promedio ${if (filtered.isNotEmpty()) (totalFiltered / filtered.size).fmt2() else "0.00"}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.75f)
-                            )
-                        }
-                    }
-                }
+                AnalyticsSummaryCard(
+                    totalFiltered = totalFiltered,
+                    spendCount = filtered.size,
+                    currency = currency,
+                    medianAmount = medianAmount,
+                    maxSpend = maxSpend,
+                    monthTrend = monthTrend
+                )
             }
 
             // ── Gráfico mensual ───────────────────────────────────────────────────
@@ -629,6 +635,107 @@ internal fun AnalyticsTab(
 // ---------------------------------------------------------------------------
 // Componentes privados del orquestador
 // ---------------------------------------------------------------------------
+
+/**
+ * A1 + A2 — Card verde de resumen con: total, nº gastos, promedio,
+ * mediana, gasto máximo y tendencia vs. mes anterior.
+ */
+@Composable
+private fun AnalyticsSummaryCard(
+    totalFiltered: Double,
+    spendCount: Int,
+    currency: String,
+    medianAmount: Double,
+    maxSpend: Spend?,
+    monthTrend: Double?,
+    modifier: Modifier = Modifier
+) {
+    val avg = if (spendCount > 0) totalFiltered / spendCount else 0.0
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = JungleGreen),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Fila superior: total + tendencia
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Total gastado", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+                    Text(
+                        text = "${totalFiltered.fmt2()} $currency",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("$spendCount gastos", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+                    // A1 — Indicador de tendencia
+                    if (monthTrend != null) {
+                        val isUp = monthTrend >= 0
+                        val trendText = "${if (isUp) "▲" else "▼"} ${kotlin.math.abs(monthTrend).fmt2().dropLastWhile { it == '0' }.trimEnd('.')}% vs. mes ant."
+                        Surface(
+                            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                            color = if (isUp) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = trendText,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isUp) Color(0xFFFCA5A5) else Color(0xFF86EFAC)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // A2 — Fila de estadísticas: promedio · mediana · máximo
+            HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapMd)
+            ) {
+                StatMiniCard(label = "Promedio", value = "${avg.fmt2()} $currency", modifier = Modifier.weight(1f))
+                StatMiniCard(label = "Mediana", value = "${medianAmount.fmt2()} $currency", modifier = Modifier.weight(1f))
+                if (maxSpend != null) {
+                    StatMiniCard(
+                        label = "Mayor gasto",
+                        value = "${maxSpend.amount.fmt2()} $currency",
+                        subtitle = maxSpend.concept,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatMiniCard(
+    label: String,
+    value: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+        Text(value, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color.White)
+        if (subtitle != null) {
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.55f),
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+    }
+}
 
 @Composable
 private fun BudgetProgressCard(

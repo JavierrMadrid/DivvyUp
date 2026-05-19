@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +46,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,6 +71,7 @@ import com.example.divvyup.integration.ui.rememberImagePickerLauncher
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
+import com.example.divvyup.integration.ui.theme.NotificationPreferenceHolder
 import com.example.divvyup.integration.ui.theme.ThemeMode
 import com.example.divvyup.integration.ui.theme.ThemePreferenceHolder
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
@@ -382,6 +385,7 @@ private fun AuthenticatedContent(
 
         // ── Sección: Apariencia ───────────────────────────────────────────
         ThemeSection()
+        NotificationSection()
 
         Spacer(Modifier.height(8.dp))
         } // fin Column scrollable
@@ -596,6 +600,7 @@ private fun UnauthenticatedContent(
 
             // ── Sección: Apariencia ───────────────────────────────────────
             ThemeSection()
+            NotificationSection()
         }
 
         // ── Botones fijos en la parte inferior ────────────────────────────
@@ -646,6 +651,51 @@ private fun UnauthenticatedContent(
                     fontWeight = FontWeight.SemiBold
                 )
             }
+        }
+    }
+}
+
+@Composable
+internal fun NotificationSection(modifier: Modifier = Modifier) {
+    val enabled by NotificationPreferenceHolder.spendNotificationsEnabled.collectAsState()
+
+    ProfileSectionCard(title = "Notificaciones", modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapSm)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(DivvyUpTokens.IconSm)
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Avisos de gastos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Recibe avisos locales al añadir, editar o eliminar gastos.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = { NotificationPreferenceHolder.setSpendNotificationsEnabled(it) }
+            )
         }
     }
 }

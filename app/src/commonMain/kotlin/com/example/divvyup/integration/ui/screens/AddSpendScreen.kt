@@ -67,7 +67,7 @@ private fun getAvatarColor(seed: String): Color {
 private fun Double.fmt(): String {
     val rounded = kotlin.math.round(this * 100) / 100.0
     val intPart = rounded.toLong()
-    val decPart = abs((rounded - intPart) * 100).toLong()
+    val decPart = kotlin.math.round(abs(rounded - intPart) * 100).toLong()
     return "$intPart.${decPart.toString().padStart(2, '0')}"
 }
 

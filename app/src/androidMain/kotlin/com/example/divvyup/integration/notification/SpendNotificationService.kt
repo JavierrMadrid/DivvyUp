@@ -10,7 +10,7 @@ import androidx.core.app.NotificationManagerCompat
  * Servicio Android de notificaciones locales para acciones sobre gastos.
  * Se registra una vez en MainActivity y se pasa como lambda al ViewModel.
  *
- * Canal: "divvyup_spends" — prioridad DEFAULT (sin sonido intrusivo).
+ * Canal: "divvyup_spends" - prioridad DEFAULT (sin sonido intrusivo).
  */
 object SpendNotificationService {
 
@@ -20,10 +20,6 @@ object SpendNotificationService {
 
     private var notifId = 1000
 
-    /**
-     * Registra el canal de notificaciones (llamar una vez en onCreate).
-     * Requiere API 26+ (minSdk = 26 ✓).
-     */
     fun createChannel(context: Context) {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -38,24 +34,19 @@ object SpendNotificationService {
         manager.createNotificationChannel(channel)
     }
 
-    /**
-     * Devuelve un [SpendNotifier] listo para usar desde el ViewModel.
-     * El ViewModel llama a [SpendNotifier.notify] sin conocer detalles de Android.
-     */
     fun buildNotifier(context: Context): SpendNotifier = object : SpendNotifier {
         override fun notify(event: SpendNotificationEvent) {
             val (title, body) = when (event) {
                 is SpendNotificationEvent.Created ->
-                    "💸 Gasto añadido" to "«${event.concept}» · ${event.formattedAmount} ${event.currency}"
+                    "Gasto anadido" to "\u00ab${event.concept}\u00bb · ${event.formattedAmount} ${event.currency}"
                 is SpendNotificationEvent.Updated ->
-                    "✏️ Gasto editado" to "«${event.concept}» actualizado · ${event.formattedAmount} ${event.currency}"
+                    "Gasto editado" to "\u00ab${event.concept}\u00bb actualizado · ${event.formattedAmount} ${event.currency}"
                 is SpendNotificationEvent.Deleted ->
-                    "🗑️ Gasto eliminado" to "«${event.concept}» fue eliminado del grupo"
+                    "Gasto eliminado" to "\u00ab${event.concept}\u00bb fue eliminado del grupo"
                 is SpendNotificationEvent.BulkDeleted ->
-                    "🗑️ Gastos eliminados" to "${event.count} gastos eliminados del grupo"
+                    "Gastos eliminados" to "${event.count} gastos eliminados del grupo"
             }
 
-            // Verificar permiso en tiempo de ejecución (Android 13+)
             val nm = NotificationManagerCompat.from(context)
             if (!nm.areNotificationsEnabled()) return
 
@@ -75,17 +66,3 @@ object SpendNotificationService {
         }
     }
 }
-
-/** Sealed class de eventos de notificación — puro Kotlin, sin Android imports. */
-sealed class SpendNotificationEvent {
-    data class Created(val concept: String, val formattedAmount: String, val currency: String) : SpendNotificationEvent()
-    data class Updated(val concept: String, val formattedAmount: String, val currency: String) : SpendNotificationEvent()
-    data class Deleted(val concept: String) : SpendNotificationEvent()
-    data class BulkDeleted(val count: Int) : SpendNotificationEvent()
-}
-
-/** Interfaz sin dependencias Android — se puede inyectar en commonMain via constructor. */
-fun interface SpendNotifier {
-    fun notify(event: SpendNotificationEvent)
-}
-

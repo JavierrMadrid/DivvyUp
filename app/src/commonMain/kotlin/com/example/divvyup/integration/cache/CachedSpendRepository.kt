@@ -3,6 +3,7 @@ package com.example.divvyup.integration.cache
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.repository.SpendRepository
+import kotlin.time.Instant
 
 /**
  * Decorador de caché para SpendRepository.
@@ -66,6 +67,16 @@ class CachedSpendRepository(
         groupSharesCache.clear()
         participantSharesCache.clear()
         delegate.deleteAll(ids)
+    }
+
+    /** Los gastos recurrentes vencidos se consultan siempre al delegate (sin caché) para evitar
+     *  que un TTL de 1 min bloquee la materialización. */
+    override suspend fun getRecurringRootsDue(groupId: Long, dueBeforeOrAt: Instant): List<Spend> =
+        delegate.getRecurringRootsDue(groupId, dueBeforeOrAt)
+
+    override suspend fun updateNextDue(spendId: Long, nextDue: Instant) {
+        spendCache.clear()           // fuerza recarga para que el cambio se refleje
+        delegate.updateNextDue(spendId, nextDue)
     }
 
     /** Limpia toda la caché (útil al cambiar de sesión). */

@@ -42,6 +42,9 @@ object PdfGenerator {
         val state = PdfState(doc, data)
 
         state.drawHeaderPage()
+        state.drawCategoryDonutChart()
+        state.drawMonthlyBarChart()
+        state.drawPayerBarChart()
         state.drawCategorySection()
         state.drawPayerSection()
         state.drawBalancesSection()
@@ -195,6 +198,153 @@ object PdfGenerator {
                 x += width
             }
             y += 20f
+        }
+
+        fun drawCategoryDonutChart() {
+            if (visibleSpends.isEmpty()) return
+            val byCategory = visibleSpends.groupBy { it.categoryId }
+                .map { (catId, list) ->
+                    val name = catId?.let { catById[it] }?.name ?: "Sin categoría"
+                    name to list.sumOf { it.amount }
+                }.sortedByDescending { it.second }
+            if (byCategory.isEmpty()) return
+
+            sectionHeader("Distribución por categoría")
+            ensureSpace(200f)
+
+            val chartColors = intArrayOf(GREEN_MID, GREEN_DARK, Color.rgb(0xf5, 0x9e, 0x0b),
+                Color.rgb(0x6b, 0x21, 0xa8), Color.rgb(0x0e, 0x7a, 0x9e),
+                Color.rgb(0xdc, 0x26, 0x26), Color.rgb(0x16, 0xa3, 0x4a))
+            val total = byCategory.sumOf { it.second }.coerceAtLeast(0.001)
+
+            // Donut usando drawArc
+            val cx = MARGIN + 100f
+            val cy = y + 90f
+            val outerR = 75f
+            val innerR = 45f
+            val strokeW = outerR - innerR
+            val paintDonut = Paint().apply { isAntiAlias = true; style = Paint.Style.STROKE; strokeWidth = strokeW }
+
+            var startAngle = -90f
+            byCategory.forEachIndexed { i, (_, value) ->
+                val sweep = ((value / total) * 360f).toFloat()
+                paintDonut.color = chartColors[i % chartColors.size]
+                c.drawArc(
+                    android.graphics.RectF(cx - outerR + strokeW / 2, cy - outerR + strokeW / 2,
+                        cx + outerR - strokeW / 2, cy + outerR - strokeW / 2),
+                    startAngle, sweep - 1f, false, paintDonut
+                )
+                startAngle += sweep
+            }
+            // Etiqueta central
+            val pCenter = paint(8f, TEXT_DARK, bold = true)
+            val pCenterSmall = paint(7f, TEXT_MUTED)
+            drawText(byCategory.size.toString(), cx - pCenter.measureText(byCategory.size.toString()) / 2, cy + 4f, pCenter)
+            val catLabel = "categorías"
+            drawText(catLabel, cx - pCenterSmall.measureText(catLabel) / 2, cy + 14f, pCenterSmall)
+
+            // Leyenda a la derecha del donut
+            val legendX = MARGIN + 200f
+            var legendY = y + 6f
+            byCategory.take(7).forEachIndexed { i, (name, value) ->
+                val pct = (value / total * 100).toFloat()
+                val dotPaint = Paint().apply { color = chartColors[i % chartColors.size]; isAntiAlias = true }
+                c.drawCircle(legendX, legendY + 5f, 5f, dotPaint)
+                drawText(name, legendX + 12f, legendY + 9f, pBody, CONTENT_W - 200f - 12f - 50f)
+                drawTextRight("${pct.toDouble().fmt2()}%", MARGIN + CONTENT_W, legendY + 9f, pMuted)
+                legendY += 18f
+            }
+            y = cy + outerR + 16f
+        }
+
+        fun drawMonthlyBarChart() {
+            val monthly = visibleSpends.groupBy { spend ->
+                val ldt = spend.date.toLocalDateTime(tz)
+                ldt.year * 100 + ldt.month.number
+            }.entries.sortedBy { it.key }.takeLast(12)
+                .map { (key, list) ->
+                    val m = key % 100
+                    val yr = (key / 100).toString().takeLast(2)
+                    val monthNames = arrayOf("", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+                    "${monthNames[m]}/$yr" to list.sumOf { it.amount }
+                }
+            if (monthly.size < 2) return
+
+            sectionHeader("Evolución mensual")
+            ensureSpace(140f)
+
+            val maxVal = monthly.maxOf { it.second }.coerceAtLeast(0.001)
+            val barAreaH = 100f
+            val barAreaBottom = y + barAreaH
+            val barW = (CONTENT_W - 4f) / monthly.size - 4f
+            val barPaint = Paint().apply { color = GREEN_MID; isAntiAlias = true }
+            val barPaintHighlight = Paint().apply { color = GREEN_DARK; isAntiAlias = true }
+
+            monthly.forEachIndexed { i, (label, value) ->
+                val fraction = (value / maxVal).toFloat().coerceIn(0.02f, 1f)
+                val bx = MARGIN + i * (barW + 4f)
+                val barH = barAreaH * fraction
+                val isLast = i == monthly.size - 1
+                val p = if (isLast) barPaintHighlight else barPaint
+                c.drawRoundRect(
+                    android.graphics.RectF(bx, barAreaBottom - barH, bx + barW, barAreaBottom),
+                    3f, 3f, p
+                )
+                // Etiqueta de valor encima (solo si hay espacio)
+                if (fraction > 0.25f) {
+                    drawText(value.fmt2(), bx + 2f, barAreaBottom - barH - 2f, pMuted, barW)
+                }
+                // Etiqueta de mes debajo
+                drawText(label, bx, barAreaBottom + 12f, pMuted, barW)
+            }
+            // A1 — Tendencia: flecha y %
+            val lastVal = monthly.last().second
+            val prevVal = monthly[monthly.size - 2].second
+            if (prevVal > 0.0) {
+                val trend = ((lastVal - prevVal) / prevVal * 100)
+                val isUp = trend >= 0
+                val trendColor = if (isUp) Color.rgb(0xdc, 0x26, 0x26) else Color.rgb(0x16, 0xa3, 0x4a)
+                val arrow = if (isUp) "▲" else "▼"
+                val trendStr = "$arrow ${"%.1f".format(kotlin.math.abs(trend))}% vs. mes anterior"
+                drawText(trendStr, MARGIN + CONTENT_W - 150f, y + 10f, paint(8f, trendColor, bold = true))
+            }
+            y = barAreaBottom + 22f
+        }
+
+        fun drawPayerBarChart() {
+            val byPayer = visibleSpends.groupBy { it.payerId }
+                .map { (payerId, list) ->
+                    (partById[payerId]?.name ?: "Desconocido") to list.sumOf { it.amount }
+                }.sortedByDescending { it.second }
+            if (byPayer.size < 2) return
+
+            sectionHeader("Gasto por pagador")
+            val total = byPayer.sumOf { it.second }.coerceAtLeast(0.001)
+            val maxVal = byPayer.first().second.coerceAtLeast(0.001)
+            val chartColors = intArrayOf(GREEN_MID, GREEN_DARK, Color.rgb(0xf5, 0x9e, 0x0b),
+                Color.rgb(0x6b, 0x21, 0xa8), Color.rgb(0x0e, 0x7a, 0x9e))
+
+            byPayer.forEachIndexed { i, (name, value) ->
+                ensureSpace(26f)
+                val fraction = (value / maxVal).toFloat().coerceIn(0.01f, 1f)
+                val barMaxW = CONTENT_W - 130f
+                val barH = 10f
+                val barColor = chartColors[i % chartColors.size]
+                val barY = y + 4f
+
+                drawText(name, MARGIN, barY + 10f, pBody, 120f)
+                val barX = MARGIN + 130f
+                // Track
+                drawRect(barX, barY, barX + barMaxW, barY + barH, GREY_BG, 4f)
+                // Fill
+                drawRect(barX, barY, barX + barMaxW * fraction, barY + barH, barColor, 4f)
+                // Valor a la derecha
+                val pct = value / total * 100
+                drawTextRight("${value.fmt2()} (${pct.fmt2()}%)", MARGIN + CONTENT_W, barY + 10f, pMuted)
+                y += 22f
+            }
+            y += 8f
         }
 
         fun drawCategorySection() {

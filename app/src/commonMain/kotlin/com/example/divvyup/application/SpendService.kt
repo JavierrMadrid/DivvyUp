@@ -6,9 +6,17 @@ import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.domain.repository.SpendRepository
-import kotlin.time.Clock
-import kotlin.time.Instant
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToLong
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
+
 
 /**
  * Orquesta la lógica de creación/edición de gastos y cálculo de repartos.
@@ -276,6 +284,96 @@ class SpendService(
         if (ids.isNotEmpty()) spendRepository.deleteAll(ids)
     }
 
+    // --- Gastos recurrentes ---
+
+    /**
+     * Genera automáticamente las ocurrencias vencidas de todos los gastos recurrentes del grupo.
+     *
+     * Algoritmo:
+     * 1. Consulta gastos raíz con [recurrenceNextDue] ≤ [now].
+     * 2. Para cada raíz, crea una ocurrencia (gasto normal, recurrence=NONE, recurrenceParentId=root.id)
+     *    con fecha = recurrenceNextDue.
+     * 3. Clona las shares del raíz para la nueva ocurrencia.
+     * 4. Avanza el nextDue del raíz (semanal +7d, mensual +1 mes).
+     * 5. Si el nuevo nextDue también está vencido, repite (sin límite de iteraciones pero máx 24
+     *    para evitar bucles infinitos en grupos sin actividad durante mucho tiempo).
+     *
+     * La restricción SQL UNIQUE(recurrence_parent_id, recurrence_next_due) en BD garantiza
+     * idempotencia ante múltiples llamadas concurrentes.
+     */
+    suspend fun materializeRecurringSpends(groupId: Long, now: Instant = Clock.System.now()): Int {
+        val roots = try {
+            spendRepository.getRecurringRootsDue(groupId, now)
+        } catch (e: Exception) {
+            println("DEBUG SpendService: materializeRecurringSpends — getRecurringRootsDue falló: ${e.message}")
+            return 0
+        }
+
+        var created = 0
+
+        for (root in roots) {
+            var nextDue = root.recurrenceNextDue ?: continue
+            var iterations = 0
+
+            while (nextDue <= now && iterations < 24) {
+                iterations++
+
+                // Obtener shares del raíz para clonarlas
+                val originalShares = try {
+                    spendRepository.getSharesBySpend(root.id)
+                } catch (_: Exception) {
+                    emptyList()
+                }
+
+                // Construir ocurrencia
+                val occurrence = root.copy(
+                    id = 0,
+                    date = nextDue,
+                    recurrence = Recurrence.NONE,
+                    recurrenceParentId = root.id,
+                    recurrenceNextDue = null,
+                    createdAt = now
+                )
+
+                val occurrenceShares = originalShares.map { it.copy(id = 0, spendId = 0) }
+
+                try {
+                    spendRepository.create(occurrence, occurrenceShares)
+                    created++
+                } catch (e: Exception) {
+                    // Si viola la restricción única, ya existe → no es error, simplemente avanzar
+                    println("DEBUG SpendService: ocurrencia ya existía para root=${root.id} due=$nextDue (${e.message})")
+                }
+
+                // Calcular el próximo vencimiento
+                nextDue = advanceNextDue(nextDue, root.recurrence)
+            }
+
+            // Actualizar el nextDue del raíz al siguiente vencimiento futuro
+            try {
+                spendRepository.updateNextDue(root.id, nextDue)
+            } catch (e: Exception) {
+                println("DEBUG SpendService: updateNextDue falló para root=${root.id}: ${e.message}")
+            }
+        }
+
+        return created
+    }
+
+    /**
+     * Inicializa [recurrenceNextDue] en un gasto raíz recién creado.
+     * Debe llamarse inmediatamente después de crear el gasto.
+     */
+    suspend fun initializeNextDue(spend: Spend): Instant {
+        val nextDue = advanceNextDue(spend.date, spend.recurrence)
+        try {
+            spendRepository.updateNextDue(spend.id, nextDue)
+        } catch (e: Exception) {
+            println("DEBUG SpendService: initializeNextDue falló para spend=${spend.id}: ${e.message}")
+        }
+        return nextDue
+    }
+
     // --- Helpers ---
 
     private fun buildEqualShares(amount: Double, participantIds: List<Long>): List<SpendShare> {
@@ -306,5 +404,27 @@ class SpendService(
         if (normalizedNew.startsWith(SETTLEMENT_NOTE_PREFIX)) return normalizedNew
 
         return "$settlementToken|$normalizedNew"
+    }
+
+    /**
+     * Calcula la siguiente fecha de vencimiento dado un instante y una frecuencia.
+     * Usa zona horaria local del sistema para hacer el avance de mes/semana correctamente.
+     */
+    internal fun advanceNextDue(from: Instant, recurrence: Recurrence): Instant {
+        val tz = TimeZone.currentSystemDefault()
+        return when (recurrence) {
+            Recurrence.WEEKLY  -> from + 7.days
+            Recurrence.MONTHLY -> {
+                val localDt = from.toLocalDateTime(tz)
+                val nextLocalDate = localDt.date.plus(DatePeriod(months = 1))
+                // Reconstruir el Instant preservando la hora del día original
+                LocalDateTime(
+                    date = nextLocalDate,
+                    time = localDt.time
+                ).toInstant(tz)
+            }
+            Recurrence.DAILY   -> from + 1.days
+            Recurrence.NONE    -> from   // no debería llegar aquí
+        }
     }
 }

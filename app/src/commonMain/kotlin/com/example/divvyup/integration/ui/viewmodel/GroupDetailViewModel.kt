@@ -25,6 +25,8 @@ import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.domain.repository.ParticipantRepository
 import com.example.divvyup.domain.repository.ParticipantUserLinkRepository
 import com.example.divvyup.domain.repository.UserProfileRepository
+import com.example.divvyup.integration.notification.SpendNotificationEvent
+import com.example.divvyup.integration.notification.SpendNotifier
 import com.example.divvyup.integration.supabase.SupabaseStorageService
 import com.example.divvyup.integration.ui.resolveDefaultSplitPercentages
 import kotlinx.coroutines.async
@@ -36,6 +38,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
+import kotlin.math.abs
+import kotlin.math.round
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -111,7 +115,8 @@ class GroupDetailViewModel(
     private val participantUserLinkRepository: ParticipantUserLinkRepository? = null,
     private val userProfileRepository: UserProfileRepository? = null,
     private val activityLogService: ActivityLogService? = null,
-    private val storageService: SupabaseStorageService? = null
+    private val storageService: SupabaseStorageService? = null,
+    private val spendNotifier: SpendNotifier? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroupDetailUiState())
@@ -125,6 +130,21 @@ class GroupDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
+                // Materializar ocurrencias recurrentes vencidas antes de cargar gastos
+                try {
+                    val generated = spendService.materializeRecurringSpends(groupId)
+                    if (generated > 0) {
+                        println("DEBUG GroupDetailViewModel: $generated ocurrencias recurrentes generadas para grupo $groupId")
+                        activityLogService?.logEvent(
+                            groupId,
+                            com.example.divvyup.domain.model.ActivityEventType.GASTO_RECURRENTE_GENERADO,
+                            "$generated gasto(s) recurrente(s) generado(s) automáticamente"
+                        )
+                    }
+                } catch (e: Exception) {
+                    println("DEBUG GroupDetailViewModel: materializeRecurringSpends error — ${e.message}")
+                }
+
                 // Lanzar todas las peticiones en paralelo para reducir tiempo de carga inicial
                 coroutineScope {
                     val groupD        = async { groupService.getGroup(groupId) }
@@ -375,9 +395,20 @@ class GroupDetailViewModel(
                     date = date,
                     recurrence = recurrence,
                     receiptUrl = receiptUrl
-                )
+                ).also { created ->
+                    if (recurrence != Recurrence.NONE) {
+                        spendService.initializeNextDue(created)
+                    }
+                }
                 val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${"%.2f".format(amount)})", actorName = payerName)
+                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${amount.fmt2Kmp()})", actorName = payerName)
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Created(
+                        concept = concept,
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR"
+                    )
+                )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -414,9 +445,20 @@ class GroupDetailViewModel(
                     date = date,
                     recurrence = recurrence,
                     receiptUrl = receiptUrl
-                )
+                ).also { created ->
+                    if (recurrence != Recurrence.NONE) {
+                        spendService.initializeNextDue(created)
+                    }
+                }
                 val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${"%.2f".format(amount)})", actorName = payerName)
+                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${amount.fmt2Kmp()})", actorName = payerName)
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Created(
+                        concept = concept,
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR"
+                    )
+                )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -453,9 +495,20 @@ class GroupDetailViewModel(
                     date = date,
                     recurrence = recurrence,
                     receiptUrl = receiptUrl
-                )
+                ).also { created ->
+                    if (recurrence != Recurrence.NONE) {
+                        spendService.initializeNextDue(created)
+                    }
+                }
                 val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${"%.2f".format(amount)})", actorName = payerName)
+                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${amount.fmt2Kmp()})", actorName = payerName)
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Created(
+                        concept = concept,
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR"
+                    )
+                )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -480,12 +533,17 @@ class GroupDetailViewModel(
                     val fromName = participants.firstOrNull { it.id == spend.payerId }?.name ?: "?"
                     activityLogService?.logEvent(
                         groupId, ActivityEventType.LIQUIDACION_ELIMINADA,
-                        "Liquidación de $fromName eliminada (${"%.2f".format(spend.amount)})"
+                        "Liquidación de $fromName eliminada (${spend.amount.fmt2Kmp()})"
                     )
                 } else {
                     activityLogService?.logEvent(
                         groupId, ActivityEventType.GASTO_ELIMINADO,
                         "Gasto «${spend?.concept ?: "gasto"}» eliminado"
+                    )
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Deleted(
+                            concept = spend?.concept ?: "gasto"
+                        )
                     )
                 }
                 loadAll()
@@ -520,6 +578,13 @@ class GroupDetailViewModel(
                 )
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
                 activityLogService?.logEvent(groupId, ActivityEventType.GASTO_EDITADO, desc)
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Updated(
+                        concept = concept.trim(),
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR"
+                    )
+                )
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -564,6 +629,13 @@ class GroupDetailViewModel(
                 )
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
                 activityLogService?.logEvent(groupId, ActivityEventType.GASTO_EDITADO, desc)
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Updated(
+                        concept = concept.trim(),
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR"
+                    )
+                )
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -608,6 +680,13 @@ class GroupDetailViewModel(
                 )
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
                 activityLogService?.logEvent(groupId, ActivityEventType.GASTO_EDITADO, desc)
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Updated(
+                        concept = concept.trim(),
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR"
+                    )
+                )
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -641,7 +720,7 @@ class GroupDetailViewModel(
                 )
                 val fromName = _uiState.value.participants.firstOrNull { it.id == fromId }?.name ?: "?"
                 val toName = _uiState.value.participants.firstOrNull { it.id == toId }?.name ?: "?"
-                activityLogService?.logEvent(groupId, ActivityEventType.LIQUIDACION_CREADA, "Liquidación de $fromName a $toName (${"%.2f".format(amount)})")
+                activityLogService?.logEvent(groupId, ActivityEventType.LIQUIDACION_CREADA, "Liquidación de $fromName a $toName (${amount.fmt2Kmp()})")
                 _uiState.update { it.copy(isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -667,7 +746,7 @@ class GroupDetailViewModel(
                     val toName   = participants.firstOrNull { it.id == t.toParticipantId }?.name ?: "?"
                     activityLogService?.logEvent(
                         groupId, ActivityEventType.LIQUIDACION_CREADA,
-                        "Liquidación de $fromName a $toName (${"%.2f".format(t.amount)})"
+                        "Liquidación de $fromName a $toName (${t.amount.fmt2Kmp()})"
                     )
                 }
                 _uiState.update { it.copy(isLoading = false) }
@@ -846,6 +925,9 @@ class GroupDetailViewModel(
                     payerId = payerId,
                     beforeInstant = beforeInstant
                 )
+                if (spendIdsToDelete.isNotEmpty()) {
+                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(spendIdsToDelete.size))
+                }
                 loadAll()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -870,6 +952,9 @@ class GroupDetailViewModel(
                     }
                 }
                 spendService.deleteSpendsByIds(ids.toList())
+                if (ids.isNotEmpty()) {
+                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(ids.size))
+                }
                 loadAll()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -1031,7 +1116,7 @@ class GroupDetailViewModel(
         if (existing.concept.trim() != newConcept)
             changes += "Concepto: «${existing.concept}» → «$newConcept»"
         if (kotlin.math.abs(existing.amount - newAmount) >= 0.005)
-            changes += "Importe: ${"%.2f".format(existing.amount)} → ${"%.2f".format(newAmount)} $currency"
+            changes += "Importe: ${existing.amount.fmt2Kmp()} → ${newAmount.fmt2Kmp()} $currency"
         if (existing.payerId != newPayerId)
             changes += "Pagador: ${payerName(existing.payerId)} → ${payerName(newPayerId)}"
         if (existing.categoryId != newCategoryId)
@@ -1044,5 +1129,12 @@ class GroupDetailViewModel(
         val header = "Gasto «$newConcept» editado"
         return if (changes.isEmpty()) header
         else header + "\n" + changes.joinToString("\n") { "• $it" }
+    }
+
+    private fun Double.fmt2Kmp(): String {
+        val r = round(this * 100.0) / 100.0
+        val intPart = r.toLong()
+        val decPart = (abs(r % 1) * 100).toLong().toString().padStart(2, '0')
+        return "$intPart.$decPart"
     }
 }

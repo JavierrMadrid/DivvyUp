@@ -188,11 +188,12 @@ private fun ActivityLogItem(entry: ActivityLog) {
 }
 
 private fun ActivityEventType.iconAndColor(): Pair<ImageVector, Color> = when (this) {
-    ActivityEventType.GASTO_CREADO           -> Icons.Default.AddCircle    to JungleGreen100
-    ActivityEventType.GASTO_EDITADO          -> Icons.Default.Edit          to JungleGreen100
-    ActivityEventType.GASTO_ELIMINADO        -> Icons.Default.Delete        to Color(0xFFFFE0E0)
-    ActivityEventType.PARTICIPANTE_ANADIDO   -> Icons.Default.PersonAdd     to JungleGreen100
-    ActivityEventType.LIQUIDACION_CREADA     -> Icons.Default.CheckCircle   to JungleGreen100
-    ActivityEventType.LIQUIDACION_ELIMINADA  -> Icons.Default.Cancel        to Color(0xFFFFE0E0)
+    ActivityEventType.GASTO_CREADO              -> Icons.Default.AddCircle    to JungleGreen100
+    ActivityEventType.GASTO_EDITADO             -> Icons.Default.Edit          to JungleGreen100
+    ActivityEventType.GASTO_ELIMINADO           -> Icons.Default.Delete        to Color(0xFFFFE0E0)
+    ActivityEventType.PARTICIPANTE_ANADIDO      -> Icons.Default.PersonAdd     to JungleGreen100
+    ActivityEventType.LIQUIDACION_CREADA        -> Icons.Default.CheckCircle   to JungleGreen100
+    ActivityEventType.LIQUIDACION_ELIMINADA     -> Icons.Default.Cancel        to Color(0xFFFFE0E0)
+    ActivityEventType.GASTO_RECURRENTE_GENERADO -> Icons.Default.Autorenew     to JungleGreen100
 }
 

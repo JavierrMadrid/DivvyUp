@@ -1,14 +1,19 @@
 package com.example.divvyup
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -28,6 +33,8 @@ import com.example.divvyup.integration.cache.CachedGroupRepository
 import com.example.divvyup.integration.cache.CachedParticipantRepository
 import com.example.divvyup.integration.cache.CachedSettlementRepository
 import com.example.divvyup.integration.cache.CachedSpendRepository
+import com.example.divvyup.integration.notification.SpendNotificationService
+import com.example.divvyup.integration.ui.theme.NotificationPreferenceHolder
 import com.example.divvyup.integration.supabase.SupabaseActivityLogRepository
 import com.example.divvyup.integration.supabase.SupabaseCategoryRepository
 import com.example.divvyup.integration.supabase.SupabaseGroupRepository
@@ -61,6 +68,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
 
@@ -68,6 +76,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var supabaseClient: SupabaseClient
     private lateinit var invitationService: InvitationService
     private val pendingInviteToken = MutableStateFlow<String?>(null)
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,9 +90,25 @@ class MainActivity : ComponentActivity() {
         ThemePreferenceHolder.setThemeMode(
             runCatching { ThemeMode.valueOf(savedTheme ?: "") }.getOrDefault(ThemeMode.SYSTEM)
         )
+        NotificationPreferenceHolder.setSpendNotificationsEnabled(
+            prefs.getBoolean("spend_notifications_enabled", true)
+        )
+
+        requestNotificationPermissionIfNeeded()
+        SpendNotificationService.createChannel(this)
+        val rawSpendNotifier = SpendNotificationService.buildNotifier(this)
+        val spendNotifier = com.example.divvyup.integration.notification.SpendNotifier { event ->
+            if (NotificationPreferenceHolder.spendNotificationsEnabled.value) {
+                rawSpendNotifier.notify(event)
+            }
+        }
+
         // Persistir cambios futuros en SharedPreferences
         ThemePreferenceHolder.themeMode
-            .onEach { mode -> prefs.edit().putString("theme_mode", mode.name).apply() }
+            .onEach { mode -> prefs.edit { putString("theme_mode", mode.name) } }
+            .launchIn(CoroutineScope(Dispatchers.Main))
+        NotificationPreferenceHolder.spendNotificationsEnabled
+            .onEach { enabled -> prefs.edit {putBoolean("spend_notifications_enabled", enabled) } }
             .launchIn(CoroutineScope(Dispatchers.Main))
 
         supabaseClient = createSupabaseClient(
@@ -190,7 +217,8 @@ class MainActivity : ComponentActivity() {
                             participantUserLinkRepository = participantUserLinkRepo,
                             activityLogService = activityLogService,
                             userProfileRepository = userProfileRepository,
-                            storageService = storageService
+                            storageService = storageService,
+                            spendNotifier = spendNotifier
                         )
                     },
                     currentUserIdProvider = {
@@ -208,6 +236,18 @@ class MainActivity : ComponentActivity() {
 
         // Si la app se abre desde deep link en cold start
         consumeIncomingIntent(intent)
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (!NotificationPreferenceHolder.spendNotificationsEnabled.value) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val alreadyGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!alreadyGranted) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -2,6 +2,7 @@ package com.example.divvyup.domain.repository
 
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
+import kotlin.time.Instant
 
 interface SpendRepository {
     suspend fun getByGroup(groupId: Long): List<Spend>
@@ -16,5 +17,11 @@ interface SpendRepository {
     suspend fun delete(id: Long)
     /** Borra una lista de gastos por sus IDs */
     suspend fun deleteAll(ids: List<Long>)
+    /**
+     * Devuelve los gastos raíz recurrentes del grupo cuyos [recurrenceNextDue] ≤ [dueBeforeOrAt].
+     * Un gasto raíz tiene recurrence ≠ NONE y recurrenceParentId == null.
+     */
+    suspend fun getRecurringRootsDue(groupId: Long, dueBeforeOrAt: Instant): List<Spend>
+    /** Actualiza solo el campo [recurrenceNextDue] del gasto raíz indicado. */
+    suspend fun updateNextDue(spendId: Long, nextDue: Instant)
 }
-

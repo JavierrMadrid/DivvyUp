@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.divvyup.domain.model.Recurrence
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.Spend
@@ -481,6 +482,35 @@ internal fun SpendCard(
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    // Badge recurrencia (gasto raíz)
+                    if (spend.recurrence != Recurrence.NONE) {
+                        Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = JungleGreen.copy(alpha = 0.13f)) {
+                            Text(
+                                text = when (spend.recurrence) {
+                                    Recurrence.WEEKLY  -> "🔁 Semanal"
+                                    Recurrence.MONTHLY -> "🔁 Mensual"
+                                    Recurrence.DAILY   -> "🔁 Diario"
+                                    Recurrence.NONE    -> ""
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = JungleGreenDark,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    // Badge ocurrencia generada automáticamente
+                    if (spend.recurrenceParentId != null) {
+                        Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.secondaryContainer) {
+                            Text(
+                                "⚡ Auto",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }

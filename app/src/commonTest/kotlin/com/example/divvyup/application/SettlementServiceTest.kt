@@ -231,6 +231,11 @@ private class FakeSpendRepository(
         spends.removeAll { it.id in idSet }
         idSet.forEach { sharesBySpend.remove(it) }
     }
+
+    override suspend fun getRecurringRootsDue(groupId: Long, dueBeforeOrAt: kotlin.time.Instant) =
+        emptyList<Spend>()
+
+    override suspend fun updateNextDue(spendId: Long, nextDue: kotlin.time.Instant) {}
 }
 
 private class FakeParticipantRepository(

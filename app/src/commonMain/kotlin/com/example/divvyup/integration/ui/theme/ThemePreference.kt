@@ -28,3 +28,16 @@ object ThemePreferenceHolder {
     }
 }
 
+/**
+ * Preferencia global para notificaciones locales de acciones de gastos.
+ * Android la persiste en SharedPreferences y la UI la consume desde Compose.
+ */
+object NotificationPreferenceHolder {
+    private val _spendNotificationsEnabled = MutableStateFlow(true)
+    val spendNotificationsEnabled: StateFlow<Boolean> = _spendNotificationsEnabled.asStateFlow()
+
+    fun setSpendNotificationsEnabled(enabled: Boolean) {
+        _spendNotificationsEnabled.value = enabled
+    }
+}
+

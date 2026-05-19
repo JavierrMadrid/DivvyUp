@@ -20,9 +20,18 @@ create index if not exists spends_recurrence_due_idx
 
 -- Restricción única: una sola ocurrencia por (raíz, fecha programada)
 -- Evita duplicados si loadAll() se llama varias veces antes de que el servidor responda
-alter table spends
-    add constraint if not exists spends_recurrence_unique_occurrence
-    unique (recurrence_parent_id, recurrence_next_due);
+-- ADD CONSTRAINT no soporta IF NOT EXISTS en Postgres → usamos DO block
+do $$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conname = 'spends_recurrence_unique_occurrence'
+    ) then
+        alter table spends
+            add constraint spends_recurrence_unique_occurrence
+            unique (recurrence_parent_id, recurrence_next_due);
+    end if;
+end $$;
 
 comment on column spends.recurrence_parent_id is
     'FK al gasto raíz del que este gasto es una ocurrencia generada automáticamente. NULL en gastos raíz y gastos puntuales.';

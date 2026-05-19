@@ -246,10 +246,34 @@ fun SpendDetailScreen(
                         DetailRow(
                             label = "Repetición",
                             value = when (spend.recurrence) {
-                                Recurrence.WEEKLY -> "Semanal"
+                                Recurrence.DAILY   -> "Diario"
+                                Recurrence.WEEKLY  -> "Semanal"
                                 Recurrence.MONTHLY -> "Mensual"
-                                else -> ""
+                                Recurrence.NONE    -> ""
                             }
+                        )
+                        // Mostrar próxima ocurrencia si está disponible
+                        spend.recurrenceNextDue?.let { nextDue ->
+                            val nextDt = nextDue.toLocalDateTime(TimeZone.currentSystemDefault())
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            )
+                            DetailRow(
+                                label = "Próxima generación",
+                                value = "%02d/%02d/%04d".format(nextDt.day, nextDt.month.number, nextDt.year)
+                            )
+                        }
+                    }
+                    // Ocurrencia generada automáticamente — informar de qué raíz viene
+                    if (spend.recurrenceParentId != null) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(vertical = 10.dp)
+                        )
+                        DetailRow(
+                            label = "Origen",
+                            value = "⚡ Generado automáticamente"
                         )
                     }
                     if (!spend.notes.isBlank() && !spend.notes.startsWith("__settlement_id:")) {
