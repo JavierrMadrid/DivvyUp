@@ -37,24 +37,6 @@ import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.screens.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.*
 
-// ---------------------------------------------------------------------------
-// Palette helpers
-// ---------------------------------------------------------------------------
-
-private val chartPaletteTokens = listOf(
-    JungleGreen, BarkBrown, MossGold, JungleGreenMid, Amber,
-    BarkBrownLight, JungleGreenLight, Soil, BarkBrownDark, JungleGreenDark
-)
-
-@Composable
-internal fun rememberChartPalette(): List<Color> {
-    val isDark = MaterialTheme.colorScheme.surface == DarkJungleSurface ||
-            MaterialTheme.colorScheme.background.red < 0.3f
-    return if (isDark) listOf(
-        JungleGreenLight, BarkBrownLight, Amber, JungleGreenMid, MossGold,
-        JungleGreen, BarkBrown, JungleGreenDark, Soil, BarkBrownDark
-    ) else chartPaletteTokens
-}
 
 // ---------------------------------------------------------------------------
 // DonutChartCard
@@ -261,6 +243,7 @@ internal fun AnalyticsCardFullscreenDialog(
     tablePrimaryHeader: String,
     breakdownEntries: List<AnalyticsBreakdownEntry>,
     barEntries: List<AnalyticsBreakdownEntry> = breakdownEntries,
+    showCategoryIconLabelsInBars: Boolean = false,
     currency: String,
     initialTab: AnalyticsExpandedTab,
     onDismiss: () -> Unit
@@ -353,6 +336,7 @@ internal fun AnalyticsCardFullscreenDialog(
                         if (breakdownEntries.isNotEmpty()) {
                             AnalyticsBarsTabContent(
                                 breakdownEntries = barEntries,
+                                showCategoryIconLabels = showCategoryIconLabelsInBars,
                                 tablePrimaryHeader = tablePrimaryHeader,
                                 currency = currency
                             )
@@ -411,6 +395,7 @@ private fun AnalyticsDonutTabContent(
 @Composable
 private fun AnalyticsBarsTabContent(
     breakdownEntries: List<AnalyticsBreakdownEntry>,
+    showCategoryIconLabels: Boolean,
     tablePrimaryHeader: String,
     currency: String
 ) {
@@ -419,7 +404,11 @@ private fun AnalyticsBarsTabContent(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         item {
-            AnalyticsVerticalBarsPreview(entries = breakdownEntries, currency = currency)
+            AnalyticsVerticalBarsPreview(
+                entries = breakdownEntries,
+                currency = currency,
+                showCategoryIconLabels = showCategoryIconLabels
+            )
         }
         item { Spacer(Modifier.height(20.dp)) }
         item {
@@ -661,7 +650,11 @@ private fun AnalyticsBreakdownTable(
 }
 
 @Composable
-private fun AnalyticsVerticalBarsPreview(entries: List<AnalyticsBreakdownEntry>, currency: String) {
+private fun AnalyticsVerticalBarsPreview(
+    entries: List<AnalyticsBreakdownEntry>,
+    currency: String,
+    showCategoryIconLabels: Boolean
+) {
     val palette = rememberChartPalette()
     val maxValue = entries.maxOfOrNull { it.total.toFloat() }?.coerceAtLeast(1f) ?: 1f
 
@@ -714,15 +707,24 @@ private fun AnalyticsVerticalBarsPreview(entries: List<AnalyticsBreakdownEntry>,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             entries.take(12).forEach { entry ->
-                Text(
-                    text = entry.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                )
+                if (showCategoryIconLabels) {
+                    Text(
+                        text = entry.icon,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Text(
+                        text = entry.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
         Text(

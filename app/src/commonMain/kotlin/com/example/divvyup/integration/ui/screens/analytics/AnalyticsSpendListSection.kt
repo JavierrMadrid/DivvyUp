@@ -85,7 +85,7 @@ internal fun AnalyticsSpendList(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = category?.icon ?: DEFAULT_UNCATEGORIZED_ICON, fontSize = 20.sp)

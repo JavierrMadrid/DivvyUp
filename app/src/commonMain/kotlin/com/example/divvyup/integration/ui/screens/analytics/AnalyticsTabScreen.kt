@@ -313,6 +313,7 @@ internal fun AnalyticsTab(
             tablePrimaryHeader = "Mes",
             breakdownEntries = monthlyBreakdown,
             barEntries = monthlyBreakdown,
+            showCategoryIconLabelsInBars = false,
             currency = currency,
             initialTab = AnalyticsExpandedTab.BARRAS,
             onDismiss = { expandedCard = null }
@@ -323,6 +324,7 @@ internal fun AnalyticsTab(
             tablePrimaryHeader = "Categoría",
             breakdownEntries = categoryBreakdown,
             barEntries = categoryBreakdownForBars,
+            showCategoryIconLabelsInBars = true,
             currency = currency,
             initialTab = AnalyticsExpandedTab.ROSQUILLA,
             onDismiss = { expandedCard = null }
@@ -333,6 +335,7 @@ internal fun AnalyticsTab(
             tablePrimaryHeader = "Pagador",
             breakdownEntries = payerBreakdown,
             barEntries = payerBreakdownForBars,
+            showCategoryIconLabelsInBars = false,
             currency = currency,
             initialTab = AnalyticsExpandedTab.BARRAS,
             onDismiss = { expandedCard = null }

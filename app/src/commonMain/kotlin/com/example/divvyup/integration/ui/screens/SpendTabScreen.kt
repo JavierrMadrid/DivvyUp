@@ -452,7 +452,7 @@ internal fun SpendCard(
                 Spacer(Modifier.width(10.dp))
             }
             Box(
-                modifier = Modifier.size(46.dp).clip(CircleShape).background(Color.White),
+                modifier = Modifier.size(46.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerLow),
                 contentAlignment = Alignment.Center
             ) { Text(categoryIcon, fontSize = 22.sp) }
             Spacer(Modifier.width(14.dp))

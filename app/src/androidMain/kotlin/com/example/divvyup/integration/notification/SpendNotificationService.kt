@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.example.divvyup.R
 
 /**
  * Servicio Android de notificaciones locales para acciones sobre gastos.
@@ -51,7 +52,7 @@ object SpendNotificationService {
             if (!nm.areNotificationsEnabled()) return
 
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
