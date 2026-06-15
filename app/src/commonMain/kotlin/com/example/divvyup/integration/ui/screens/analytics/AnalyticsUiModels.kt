@@ -5,7 +5,8 @@ internal data class DonutEntry(
     val label: String,
     val icon: String,
     val value: Float,
-    val count: Int = 0
+    val count: Int = 0,
+    val color: String? = null  // Color hex de la categoría (si aplica)
 )
 
 /** Entrada para los gráficos de barras (mensual / por pagador). */
@@ -36,7 +37,8 @@ internal data class AnalyticsBreakdownEntry(
     val label: String,
     val icon: String,
     val total: Double,
-    val spendCount: Int
+    val spendCount: Int,
+    val color: String? = null  // Color hex (si aplica)
 )
 
 internal data class AnalyticsRankingEntry(

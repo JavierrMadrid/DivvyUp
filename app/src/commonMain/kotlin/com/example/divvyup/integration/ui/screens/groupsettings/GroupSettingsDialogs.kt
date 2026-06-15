@@ -152,6 +152,7 @@ internal fun AddCategoryDialog(
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var icon by rememberSaveable { mutableStateOf("📦") }
+    var customIconText by rememberSaveable { mutableStateOf("") }
     var nameError by rememberSaveable { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -208,7 +209,10 @@ internal fun AddCategoryDialog(
                     items(EMOJI_PICKER) { emoji ->
                         val isSelected = icon == emoji
                         Surface(
-                            onClick = { icon = emoji },
+                            onClick = {
+                                icon = emoji
+                                customIconText = ""
+                            },
                             shape = CircleShape,
                             color = if (isSelected) JungleGreen else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.size(42.dp)
@@ -219,6 +223,28 @@ internal fun AddCategoryDialog(
                         }
                     }
                 }
+                // Campo para escribir un emoji personalizado
+                OutlinedTextField(
+                    value = customIconText,
+                    onValueChange = { input ->
+                        // Tomamos solo el primer carácter gráfico (emoji o carácter)
+                        val trimmed = input.trimEnd()
+                        if (trimmed.isNotEmpty()) {
+                            // Extraer el primer codepoint completo (incluyendo emojis multi-codepoint)
+                            val firstEmoji = trimmed.take(8) // suficiente para cualquier secuencia emoji
+                            customIconText = firstEmoji
+                            icon = firstEmoji
+                        } else {
+                            customIconText = ""
+                        }
+                    },
+                    label = { Text("O escribe tu propio emoji") },
+                    placeholder = { Text("Ej: 🌟") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                    colors = appOutlinedTextFieldColors()
+                )
                 nameError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 }

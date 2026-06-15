@@ -33,6 +33,8 @@ import com.example.divvyup.integration.cache.CachedGroupRepository
 import com.example.divvyup.integration.cache.CachedParticipantRepository
 import com.example.divvyup.integration.cache.CachedSettlementRepository
 import com.example.divvyup.integration.cache.CachedSpendRepository
+import com.example.divvyup.domain.model.ActivityEventType
+import com.example.divvyup.integration.notification.SpendNotificationEvent
 import com.example.divvyup.integration.notification.SpendNotificationService
 import com.example.divvyup.integration.ui.theme.NotificationPreferenceHolder
 import com.example.divvyup.integration.supabase.SupabaseActivityLogRepository
@@ -64,7 +66,10 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -76,6 +81,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var supabaseClient: SupabaseClient
     private lateinit var invitationService: InvitationService
     private val pendingInviteToken = MutableStateFlow<String?>(null)
+    private val pendingActivityGroup = MutableStateFlow<Long?>(null)
+    private var remoteSpendNotificationJob: Job? = null
+    private val lastSeenActivityLogIdByGroup = mutableMapOf<Long, Long>()
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ -> }
@@ -153,6 +161,12 @@ class MainActivity : ComponentActivity() {
             participantUserLinkRepository = participantUserLinkRepo,
             inviteTokenRepository         = inviteTokenRepository
         )
+        startRemoteSpendNotificationPolling(
+            groupService = groupService,
+            activityLogService = activityLogService,
+            participantUserLinkRepo = participantUserLinkRepo,
+            spendNotifier = spendNotifier
+        )
 
         setContent {
             DivvyUpTheme {
@@ -173,6 +187,7 @@ class MainActivity : ComponentActivity() {
                 }
                 authViewModel = vm
                 val pendingToken by pendingInviteToken.collectAsState()
+                val pendingActivityGroupId by pendingActivityGroup.collectAsState()
 
                 val groupListViewModel = remember {
                     GroupListViewModel(
@@ -229,13 +244,102 @@ class MainActivity : ComponentActivity() {
                     onShareGroupInvite       = { groupId, groupName -> startShareInvite(groupId, groupName) },
                     onShareText              = { text -> startShareText(text) },
                     onSharePdf               = { data -> startSharePdf(data) },
-                    onShareExcel             = { data -> startShareExcel(data) }
+                    onShareExcel             = { data -> startShareExcel(data) },
+                    pendingOpenActivityGroupId = pendingActivityGroupId,
+                    consumePendingOpenActivityGroupId = { pendingActivityGroup.value = null }
                 )
             }
         }
 
         // Si la app se abre desde deep link en cold start
         consumeIncomingIntent(intent)
+    }
+
+    override fun onDestroy() {
+        remoteSpendNotificationJob?.cancel()
+        super.onDestroy()
+    }
+
+    private fun startRemoteSpendNotificationPolling(
+        groupService: GroupService,
+        activityLogService: ActivityLogService,
+        participantUserLinkRepo: SupabaseParticipantUserLinkRepository,
+        spendNotifier: com.example.divvyup.integration.notification.SpendNotifier
+    ) {
+        remoteSpendNotificationJob?.cancel()
+        remoteSpendNotificationJob = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                try {
+                    if (!NotificationPreferenceHolder.spendNotificationsEnabled.value) {
+                        delay(20_000)
+                        continue
+                    }
+                    val userId = supabaseClient.auth.currentSessionOrNull()?.user?.id
+                    if (userId == null) {
+                        delay(20_000)
+                        continue
+                    }
+
+                    val groups = groupService.getAllGroups()
+                    groups.forEach { group ->
+                        val logs = activityLogService.getActivityLog(group.id)
+                            .filter {
+                                it.eventType == ActivityEventType.GASTO_CREADO ||
+                                    it.eventType == ActivityEventType.GASTO_EDITADO ||
+                                    it.eventType == ActivityEventType.GASTO_ELIMINADO
+                            }
+                            .sortedBy { it.id }
+
+                        if (logs.isEmpty()) return@forEach
+
+                        val newestId = logs.last().id
+                        val previousSeenId = lastSeenActivityLogIdByGroup[group.id]
+                        if (previousSeenId == null) {
+                            // Primer arranque: tomar snapshot para no notificar histórico antiguo.
+                            lastSeenActivityLogIdByGroup[group.id] = newestId
+                            return@forEach
+                        }
+
+                        val myParticipantId = runCatching {
+                            participantUserLinkRepo.findParticipantIdByGroupAndUser(group.id, userId)
+                        }.getOrNull()
+
+                        logs.asSequence()
+                            .filter { it.id > previousSeenId }
+                            .forEach { log ->
+                                if (myParticipantId != null && log.actorParticipantId == myParticipantId) return@forEach
+                                val event = when (log.eventType) {
+                                    ActivityEventType.GASTO_CREADO -> SpendNotificationEvent.Activity(
+                                        groupId = group.id,
+                                        title = "Gasto añadido",
+                                        body = log.description,
+                                        actorName = log.actorName
+                                    )
+                                    ActivityEventType.GASTO_EDITADO -> SpendNotificationEvent.Activity(
+                                        groupId = group.id,
+                                        title = "Gasto editado",
+                                        body = log.description.lineSequence().firstOrNull() ?: "Se editó un gasto",
+                                        actorName = log.actorName
+                                    )
+                                    ActivityEventType.GASTO_ELIMINADO -> SpendNotificationEvent.Activity(
+                                        groupId = group.id,
+                                        title = "Gasto eliminado",
+                                        body = log.description,
+                                        actorName = log.actorName
+                                    )
+                                    else -> null
+                                }
+                                if (event != null) spendNotifier.notify(event)
+                            }
+
+                        lastSeenActivityLogIdByGroup[group.id] = newestId
+                    }
+                } catch (e: Exception) {
+                    println("DEBUG MainActivity: Poll notificaciones remotas error - ${e.message}")
+                }
+                delay(20_000)
+            }
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -260,6 +364,16 @@ class MainActivity : ComponentActivity() {
     private fun consumeIncomingIntent(intent: Intent?) {
         consumeOAuthIntent(intent)
         consumeJoinIntent(intent)
+        consumeNotificationIntent(intent)
+    }
+
+    private fun consumeNotificationIntent(intent: Intent?) {
+        val groupId = intent?.getLongExtra(SpendNotificationService.EXTRA_GROUP_ID, -1L) ?: -1L
+        val openTab = intent?.getBooleanExtra(SpendNotificationService.EXTRA_OPEN_ACTIVITY_TAB, false) ?: false
+        if (groupId > 0L && openTab) {
+            pendingActivityGroup.value = groupId
+            println("DEBUG MainActivity: Notificación → abrir pestaña Actividad groupId=$groupId")
+        }
     }
 
     private fun consumeOAuthIntent(intent: Intent?) {

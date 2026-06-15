@@ -77,13 +77,14 @@ internal fun AnalyticsTab(
         derivedStateOf { selectedCategories.intersect(categoryMap.keys) }
     }
     val now = remember { System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
+    val defaultPeriod = remember(now) { AnalyticsPeriod.PorMes(now.month, now.year) }
 
-    val hasActiveFilters by remember(searchQuery, selectedCategories, selectedParticipants, period) {
+    val hasActiveFilters by remember(searchQuery, selectedCategories, selectedParticipants, period, defaultPeriod) {
         derivedStateOf {
             searchQuery.isNotBlank() ||
                     selectedCategories.isNotEmpty() ||
                     selectedParticipants.isNotEmpty() ||
-                    period !is AnalyticsPeriod.Todo
+                    period != defaultPeriod
         }
     }
 
@@ -220,14 +221,16 @@ internal fun AnalyticsTab(
         }
     }
 
-    val categoryBreakdown by remember(byCategory) {
+    val categoryBreakdown by remember(byCategory, categoryMap) {
         derivedStateOf {
             byCategory.map { bucket ->
+                val category = bucket.id?.let { categoryMap[it] }
                 AnalyticsBreakdownEntry(
                     label = bucket.name,
                     icon = bucket.icon,
                     total = bucket.total,
-                    spendCount = bucket.count
+                    spendCount = bucket.count,
+                    color = category?.color
                 )
             }
         }
@@ -300,7 +303,13 @@ internal fun AnalyticsTab(
         derivedStateOf {
             when (period) {
                 is AnalyticsPeriod.Todo -> "Todos los periodos"
-                is AnalyticsPeriod.PorMes -> "${MES_NOMBRES[period.month.number - 1]} ${period.year}"
+                is AnalyticsPeriod.PorMes -> {
+                    if (period.month == now.month && period.year == now.year) {
+                        "Mes actual"
+                    } else {
+                        "${MES_NOMBRES[period.month.number - 1]} ${period.year}"
+                    }
+                }
                 is AnalyticsPeriod.PorAnyo -> "Año ${period.year}"
                 is AnalyticsPeriod.PorRango -> "${formatLocalDate(period.desde)} - ${formatLocalDate(period.hasta)}"
             }
@@ -500,7 +509,16 @@ internal fun AnalyticsTab(
             if (byCategory.isNotEmpty()) {
                 item {
                     DonutChartCard(
-                        entries = byCategory.map { DonutEntry(it.name, it.icon, it.total.toFloat(), it.count) },
+                        entries = byCategory.map { bucket ->
+                            val category = bucket.id?.let { categoryMap[it] }
+                            DonutEntry(
+                                label = bucket.name,
+                                icon = bucket.icon,
+                                value = bucket.total.toFloat(),
+                                count = bucket.count,
+                                color = category?.color
+                            )
+                        },
                         currency = currency,
                         title = "Por categoría",
                         onFullscreen = { expandedCard = AnalyticsCardType.CATEGORIA }

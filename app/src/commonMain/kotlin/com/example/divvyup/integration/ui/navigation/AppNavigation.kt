@@ -33,6 +33,7 @@ import com.example.divvyup.integration.ui.viewmodel.AddParticipantsViewModel
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
+import com.example.divvyup.integration.ui.viewmodel.GroupDetailTab
 import com.example.divvyup.integration.ui.viewmodel.JoinGroupParticipantViewModel
 
 @Composable
@@ -51,6 +52,9 @@ fun AppNavigation(
     onShareText: (text: String) -> Unit = {},
     onSharePdf: (com.example.divvyup.application.AnalyticsExportData) -> Unit = {},
     onShareExcel: (com.example.divvyup.application.AnalyticsExportData) -> Unit = {},
+    /** ID del grupo cuya pestaña Actividad debe abrirse al pulsar una notificación. */
+    pendingOpenActivityGroupId: Long? = null,
+    consumePendingOpenActivityGroupId: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val authState by authViewModel.uiState.collectAsState()
@@ -109,6 +113,17 @@ fun AppNavigation(
             ) {
                 launchSingleTop = true
             }
+        }
+    }
+
+    // Abrir GroupDetail en la pestaña Actividad cuando el usuario toca una notificación
+    LaunchedEffect(pendingOpenActivityGroupId) {
+        val gId = pendingOpenActivityGroupId ?: return@LaunchedEffect
+        consumePendingOpenActivityGroupId()
+        getOrCreateDetailVM(gId).selectTab(GroupDetailTab.ACTIVIDAD)
+        navController.navigate(Screen.GroupDetail(gId)) {
+            launchSingleTop = true
+            popUpTo(Screen.GroupList) { inclusive = false }
         }
     }
 

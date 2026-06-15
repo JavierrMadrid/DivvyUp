@@ -36,6 +36,17 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.screens.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.*
+import kotlin.math.abs
+import kotlin.math.round
+
+private fun DonutEntry.chartColorKey(): String = "$label|$icon"
+
+private fun AnalyticsBreakdownEntry.chartColorKey(): String = "$label|$icon"
+
+private fun Double.fmtBarAmount(): String {
+    val rounded = round(this * 100.0) / 100.0
+    return if (abs(rounded % 1.0) < 0.005) rounded.toLong().toString() else rounded.fmt2()
+}
 
 
 // ---------------------------------------------------------------------------
@@ -51,6 +62,7 @@ internal fun DonutChartCard(
     modifier: Modifier = Modifier
 ) {
     val chartPalette = rememberChartPalette()
+    val chartColorMap = rememberChartColorMap(entries.map { it.chartColorKey() })
     val total = entries.sumOf { it.value.toDouble() }.toFloat().coerceAtLeast(0.001f)
 
     Card(
@@ -108,8 +120,10 @@ internal fun DonutChartCard(
                         var startAngle = -90f
                         entries.forEachIndexed { index, entry ->
                             val sweepAngle = (entry.value / total) * 360f
+                            val entryColor = chartColorMap[entry.chartColorKey()]
+                                ?: chartPalette[index % chartPalette.size]
                             drawArc(
-                                color = chartPalette[index % chartPalette.size],
+                                color = entryColor,
                                 startAngle = startAngle,
                                 sweepAngle = sweepAngle - 2f,
                                 useCenter = false,
@@ -140,6 +154,8 @@ internal fun DonutChartCard(
                 ) {
                     entries.take(5).forEachIndexed { index, entry ->
                         val percentage = (entry.value / total) * 100f
+                        val entryColor = chartColorMap[entry.chartColorKey()]
+                            ?: chartPalette[index % chartPalette.size]
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -148,7 +164,7 @@ internal fun DonutChartCard(
                                 modifier = Modifier
                                     .size(10.dp)
                                     .clip(CircleShape)
-                                    .background(chartPalette[index % chartPalette.size])
+                                    .background(entryColor)
                             )
                             Text(
                                 text = entry.icon,
@@ -195,6 +211,7 @@ internal fun DonutChart(
     chartSize: Dp = 220.dp
 ) {
     val palette = rememberChartPalette()
+    val chartColorMap = rememberChartColorMap(entries.map { it.chartColorKey() })
     val total = entries.sumOf { it.value.toDouble() }.toFloat().coerceAtLeast(0.001f)
 
     Box(modifier = modifier.size(chartSize), contentAlignment = Alignment.Center) {
@@ -206,8 +223,10 @@ internal fun DonutChart(
             var startAngle = -90f
             entries.forEachIndexed { index, entry ->
                 val sweepAngle = (entry.value / total) * 360f
+                val entryColor = chartColorMap[entry.chartColorKey()]
+                    ?: palette[index % palette.size]
                 drawArc(
-                    color = palette[index % palette.size],
+                    color = entryColor,
                     startAngle = startAngle,
                     sweepAngle = sweepAngle - 2f,
                     useCenter = false,
@@ -369,7 +388,15 @@ private fun AnalyticsDonutTabContent(
     currency: String
 ) {
     val donutEntries = remember(breakdownEntries) {
-        breakdownEntries.map { DonutEntry(label = it.label, icon = it.icon, value = it.total.toFloat(), count = it.spendCount) }
+        breakdownEntries.map {
+            DonutEntry(
+                label = it.label,
+                icon = it.icon,
+                value = it.total.toFloat(),
+                count = it.spendCount,
+                color = it.color
+            )
+        }
     }
 
     LazyColumn(
@@ -551,6 +578,7 @@ private fun AnalyticsBreakdownTable(
 ) {
     val total = entries.sumOf { it.total }
     val palette = rememberChartPalette()
+    val chartColorMap = rememberChartColorMap(entries.map { it.chartColorKey() })
 
     // Anchos fijos para columnas numéricas — alineación cuadriculada
     val colGastos = 48.dp
@@ -602,7 +630,8 @@ private fun AnalyticsBreakdownTable(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         entries.forEachIndexed { index, entry ->
             val percentage = if (total > 0.0) (entry.total / total) * 100.0 else 0.0
-            val legendColor = palette[index % palette.size]
+            val legendColor = chartColorMap[entry.chartColorKey()]
+                ?: palette[index % palette.size]
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -656,6 +685,7 @@ private fun AnalyticsVerticalBarsPreview(
     showCategoryIconLabels: Boolean
 ) {
     val palette = rememberChartPalette()
+    val chartColorMap = rememberChartColorMap(entries.map { it.chartColorKey() })
     val maxValue = entries.maxOfOrNull { it.total.toFloat() }?.coerceAtLeast(1f) ?: 1f
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -669,6 +699,8 @@ private fun AnalyticsVerticalBarsPreview(
         ) {
             entries.take(12).forEachIndexed { index, entry ->
                 val fraction = (entry.total.toFloat() / maxValue).coerceIn(0.02f, 1f)
+                val barColor = chartColorMap[entry.chartColorKey()]
+                    ?: palette[index % palette.size]
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -677,7 +709,7 @@ private fun AnalyticsVerticalBarsPreview(
                     verticalArrangement = Arrangement.Bottom
                 ) {
                     Text(
-                        text = entry.total.fmt2(),
+                        text = entry.total.fmtBarAmount(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -692,8 +724,8 @@ private fun AnalyticsVerticalBarsPreview(
                             .background(
                                 Brush.verticalGradient(
                                     listOf(
-                                        palette[index % palette.size],
-                                        palette[index % palette.size].copy(alpha = 0.7f)
+                                        barColor,
+                                        barColor.copy(alpha = 0.7f)
                                     )
                                 )
                             )
@@ -824,7 +856,7 @@ internal fun MonthlyBarChartCard(
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         Text(
-                            text = entry.value.toDouble().fmt2(),
+                            text = entry.value.toDouble().fmtBarAmount(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -969,7 +1001,7 @@ internal fun HorizontalBarChartCard(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "${entry.value.toDouble().fmt2()} $currency",
+                            text = "${entry.value.toDouble().fmtBarAmount()} $currency",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = barColor

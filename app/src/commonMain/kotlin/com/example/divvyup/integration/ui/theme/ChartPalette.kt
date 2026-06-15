@@ -22,34 +22,46 @@ internal fun rememberChartPalette(): List<Color> {
     return palette.all
 }
 
+@Composable
+internal fun rememberChartColorMap(keys: List<String>): Map<String, Color> {
+    val palette = rememberChartPalette()
+    return remember(keys, palette) {
+        keys
+            .distinct()
+            .mapIndexed { index, key -> key to palette[index % palette.size] }
+            .toMap()
+    }
+}
+
 private fun buildAnalyticsChartPalette(colorScheme: ColorScheme): ChartPalette {
+    // Colores primero cercanos al tema, pero con separación visual clara.
     val themeAligned = listOf(
         colorScheme.primary,
         colorScheme.secondary,
         colorScheme.tertiary,
         colorScheme.error,
-        JungleGreenLight,
-        BarkBrownLight,
-        JungleGreenMid,
-        MossGold,
-        AppRed,
-        Soil
+        Color(0xFF2F7F73),
+        Color(0xFF516B8A),
+        Color(0xFF8A5A7A),
+        Color(0xFFB36A45),
+        Color(0xFF7A8F3D),
+        Color(0xFF6E5B95)
     )
 
-    // Extra colors with strong hue separation. They are used only after theme-like tones.
+    // Extensión para muchas categorías: siguen siendo armoniosos, pero menos ligados al tema.
     val extendedContrast = listOf(
         Color(0xFF1E88E5),
-        Color(0xFFD81B60),
-        Color(0xFF00897B),
+        Color(0xFFD95F5F),
+        Color(0xFF00AFA3),
+        Color(0xFF8E44AD),
+        Color(0xFFEF6C00),
         Color(0xFF3949AB),
-        Color(0xFFF4511E),
-        Color(0xFF8E24AA),
-        Color(0xFF00ACC1),
-        Color(0xFF43A047),
-        Color(0xFF5E35B1),
-        Color(0xFFEC407A),
-        Color(0xFF546E7A),
-        Color(0xFF9CCC65)
+        Color(0xFFC2185B),
+        Color(0xFF00838F),
+        Color(0xFF7CB342),
+        Color(0xFF5D4037),
+        Color(0xFFF9A825),
+        Color(0xFF6D4C41)
     )
 
     return ChartPalette(

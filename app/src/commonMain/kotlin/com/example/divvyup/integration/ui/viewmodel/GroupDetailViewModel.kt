@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
 import kotlin.math.round
 import kotlin.time.Clock
@@ -49,6 +51,11 @@ sealed class AnalyticsPeriod {
     data class PorMes(val month: Month, val year: Int) : AnalyticsPeriod()
     data class PorAnyo(val year: Int) : AnalyticsPeriod()
     data class PorRango(val desde: LocalDate, val hasta: LocalDate) : AnalyticsPeriod()
+}
+
+private fun defaultAnalyticsPeriod(): AnalyticsPeriod {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    return AnalyticsPeriod.PorMes(now.month, now.year)
 }
 
 data class GroupDetailUiState(
@@ -76,7 +83,7 @@ data class GroupDetailUiState(
     val analyticsSearchQuery: String = "",
     val analyticsSelectedCategories: Set<Long> = emptySet(),
     val analyticsSelectedParticipants: Set<Long> = emptySet(),
-    val analyticsPeriod: AnalyticsPeriod = AnalyticsPeriod.Todo,
+    val analyticsPeriod: AnalyticsPeriod = defaultAnalyticsPeriod(),
     // Ajustes del grupo
     val defaultSplitPercentages: Map<Long, Double> = emptyMap(),
     val settingsSavedMessage: String? = null,
@@ -401,14 +408,25 @@ class GroupDetailViewModel(
                     }
                 }
                 val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${amount.fmt2Kmp()})", actorName = payerName)
-                spendNotifier?.notify(
-                    SpendNotificationEvent.Created(
-                        concept = concept,
-                        formattedAmount = amount.fmt2Kmp(),
-                        currency = _uiState.value.group?.currency ?: "EUR"
-                    )
+                activityLogService?.logEvent(
+                    groupId = groupId,
+                    eventType = ActivityEventType.GASTO_CREADO,
+                    description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
+                    actorParticipantId = payerId,
+                    actorName = payerName
                 )
+                val myId = _uiState.value.myParticipantId
+                if (myId == null || myId in participantIds || myId == payerId) {
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Created(
+                            groupId = groupId,
+                            concept = concept,
+                            formattedAmount = amount.fmt2Kmp(),
+                            currency = _uiState.value.group?.currency ?: "EUR",
+                            actorName = payerName
+                        )
+                    )
+                }
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -451,14 +469,25 @@ class GroupDetailViewModel(
                     }
                 }
                 val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${amount.fmt2Kmp()})", actorName = payerName)
-                spendNotifier?.notify(
-                    SpendNotificationEvent.Created(
-                        concept = concept,
-                        formattedAmount = amount.fmt2Kmp(),
-                        currency = _uiState.value.group?.currency ?: "EUR"
-                    )
+                activityLogService?.logEvent(
+                    groupId = groupId,
+                    eventType = ActivityEventType.GASTO_CREADO,
+                    description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
+                    actorParticipantId = payerId,
+                    actorName = payerName
                 )
+                val myId2 = _uiState.value.myParticipantId
+                if (myId2 == null || myId2 in percentages.keys || myId2 == payerId) {
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Created(
+                            groupId = groupId,
+                            concept = concept,
+                            formattedAmount = amount.fmt2Kmp(),
+                            currency = _uiState.value.group?.currency ?: "EUR",
+                            actorName = payerName
+                        )
+                    )
+                }
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -501,14 +530,25 @@ class GroupDetailViewModel(
                     }
                 }
                 val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_CREADO, "Gasto «$concept» añadido (${amount.fmt2Kmp()})", actorName = payerName)
-                spendNotifier?.notify(
-                    SpendNotificationEvent.Created(
-                        concept = concept,
-                        formattedAmount = amount.fmt2Kmp(),
-                        currency = _uiState.value.group?.currency ?: "EUR"
-                    )
+                activityLogService?.logEvent(
+                    groupId = groupId,
+                    eventType = ActivityEventType.GASTO_CREADO,
+                    description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
+                    actorParticipantId = payerId,
+                    actorName = payerName
                 )
+                val myId3 = _uiState.value.myParticipantId
+                if (myId3 == null || myId3 in customAmounts.keys || myId3 == payerId) {
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Created(
+                            groupId = groupId,
+                            concept = concept,
+                            formattedAmount = amount.fmt2Kmp(),
+                            currency = _uiState.value.group?.currency ?: "EUR",
+                            actorName = payerName
+                        )
+                    )
+                }
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -536,15 +576,25 @@ class GroupDetailViewModel(
                         "Liquidación de $fromName eliminada (${spend.amount.fmt2Kmp()})"
                     )
                 } else {
+                    val payerName = _uiState.value.participants.firstOrNull { it.id == spend?.payerId }?.name
                     activityLogService?.logEvent(
-                        groupId, ActivityEventType.GASTO_ELIMINADO,
-                        "Gasto «${spend?.concept ?: "gasto"}» eliminado"
+                        groupId = groupId,
+                        eventType = ActivityEventType.GASTO_ELIMINADO,
+                        description = "Gasto «${spend?.concept ?: "gasto"}» eliminado",
+                        actorParticipantId = spend?.payerId
                     )
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Deleted(
-                            concept = spend?.concept ?: "gasto"
+                    val myIdDel = _uiState.value.myParticipantId
+                    val shareParticipants = _uiState.value.spendSharesBySpend[spendId]
+                        ?.map { it.participantId } ?: emptyList()
+                    if (myIdDel == null || myIdDel in shareParticipants || myIdDel == spend?.payerId) {
+                        spendNotifier?.notify(
+                            SpendNotificationEvent.Deleted(
+                                groupId = groupId,
+                                concept = spend?.concept ?: "gasto",
+                                actorName = payerName
+                            )
                         )
-                    )
+                    }
                 }
                 loadAll()
             } catch (e: Exception) {
@@ -576,15 +626,26 @@ class GroupDetailViewModel(
                     date = date ?: existing.date,
                     recurrence = recurrence, receiptUrl = receiptUrl
                 )
+                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_EDITADO, desc)
-                spendNotifier?.notify(
-                    SpendNotificationEvent.Updated(
-                        concept = concept.trim(),
-                        formattedAmount = amount.fmt2Kmp(),
-                        currency = _uiState.value.group?.currency ?: "EUR"
-                    )
+                activityLogService?.logEvent(
+                    groupId = groupId,
+                    eventType = ActivityEventType.GASTO_EDITADO,
+                    description = desc,
+                    actorParticipantId = payerId
                 )
+                val myIdUpd1 = _uiState.value.myParticipantId
+                if (myIdUpd1 == null || myIdUpd1 in participantIds || myIdUpd1 == payerId) {
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Updated(
+                            groupId = groupId,
+                            concept = concept.trim(),
+                            formattedAmount = amount.fmt2Kmp(),
+                            currency = _uiState.value.group?.currency ?: "EUR",
+                            actorName = payerName
+                        )
+                    )
+                }
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -627,15 +688,26 @@ class GroupDetailViewModel(
                     date = date ?: existing.date,
                     recurrence = recurrence, receiptUrl = receiptUrl
                 )
+                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_EDITADO, desc)
-                spendNotifier?.notify(
-                    SpendNotificationEvent.Updated(
-                        concept = concept.trim(),
-                        formattedAmount = amount.fmt2Kmp(),
-                        currency = _uiState.value.group?.currency ?: "EUR"
-                    )
+                activityLogService?.logEvent(
+                    groupId = groupId,
+                    eventType = ActivityEventType.GASTO_EDITADO,
+                    description = desc,
+                    actorParticipantId = payerId
                 )
+                val myIdUpd2 = _uiState.value.myParticipantId
+                if (myIdUpd2 == null || myIdUpd2 in percentages.keys || myIdUpd2 == payerId) {
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Updated(
+                            groupId = groupId,
+                            concept = concept.trim(),
+                            formattedAmount = amount.fmt2Kmp(),
+                            currency = _uiState.value.group?.currency ?: "EUR",
+                            actorName = payerName
+                        )
+                    )
+                }
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -678,15 +750,26 @@ class GroupDetailViewModel(
                     date = date ?: existing.date,
                     recurrence = recurrence, receiptUrl = receiptUrl
                 )
+                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
-                activityLogService?.logEvent(groupId, ActivityEventType.GASTO_EDITADO, desc)
-                spendNotifier?.notify(
-                    SpendNotificationEvent.Updated(
-                        concept = concept.trim(),
-                        formattedAmount = amount.fmt2Kmp(),
-                        currency = _uiState.value.group?.currency ?: "EUR"
-                    )
+                activityLogService?.logEvent(
+                    groupId = groupId,
+                    eventType = ActivityEventType.GASTO_EDITADO,
+                    description = desc,
+                    actorParticipantId = payerId
                 )
+                val myIdUpd3 = _uiState.value.myParticipantId
+                if (myIdUpd3 == null || myIdUpd3 in customAmounts.keys || myIdUpd3 == payerId) {
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Updated(
+                            groupId = groupId,
+                            concept = concept.trim(),
+                            formattedAmount = amount.fmt2Kmp(),
+                            currency = _uiState.value.group?.currency ?: "EUR",
+                            actorName = payerName
+                        )
+                    )
+                }
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -785,7 +868,7 @@ class GroupDetailViewModel(
             analyticsSearchQuery = "",
             analyticsSelectedCategories = emptySet(),
             analyticsSelectedParticipants = emptySet(),
-            analyticsPeriod = AnalyticsPeriod.Todo
+            analyticsPeriod = defaultAnalyticsPeriod()
         )
     }
 
@@ -926,7 +1009,7 @@ class GroupDetailViewModel(
                     beforeInstant = beforeInstant
                 )
                 if (spendIdsToDelete.isNotEmpty()) {
-                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(spendIdsToDelete.size))
+                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(groupId = groupId, count = spendIdsToDelete.size))
                 }
                 loadAll()
             } catch (e: Exception) {
@@ -946,14 +1029,16 @@ class GroupDetailViewModel(
                     val spend = spendsInState.firstOrNull { it.id == spendId }
                     if (spend != null) {
                         activityLogService?.logEvent(
-                            groupId, ActivityEventType.GASTO_ELIMINADO,
-                            "Gasto «${spend.concept}» eliminado"
+                            groupId = groupId,
+                            eventType = ActivityEventType.GASTO_ELIMINADO,
+                            description = "Gasto «${spend.concept}» eliminado",
+                            actorParticipantId = spend.payerId
                         )
                     }
                 }
                 spendService.deleteSpendsByIds(ids.toList())
                 if (ids.isNotEmpty()) {
-                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(ids.size))
+                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(groupId = groupId, count = ids.size))
                 }
                 loadAll()
             } catch (e: Exception) {

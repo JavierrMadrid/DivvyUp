@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
-import com.example.divvyup.integration.ui.screens.MES_NOMBRES
 import com.example.divvyup.integration.ui.screens.appDatePickerColors
 import com.example.divvyup.integration.ui.screens.formatLocalDate
 import com.example.divvyup.integration.ui.screens.localDateToMillis
@@ -26,13 +25,8 @@ import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AnalyticsPeriod
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
-
-// ---------------------------------------------------------------------------
-// PeriodFilterSelector
-// ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,31 +58,22 @@ internal fun PeriodFilterSelector(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 PeriodChip(
-                    label = "Todo",
-                    isSelected = period is AnalyticsPeriod.Todo,
-                    selectedColor = chipPalette.selectedColor,
-                    unselectedColor = chipPalette.unselectedColor,
-                    unselectedTextColor = chipPalette.unselectedTextColor,
-                    onClick = { onPeriodChange(AnalyticsPeriod.Todo) }
-                )
-            }
-            item {
-                val isSelected = period is AnalyticsPeriod.PorMes
-                PeriodChip(
-                    label = "Por mes",
-                    isSelected = isSelected,
+                    label = "Mes actual",
+                    isSelected = period is AnalyticsPeriod.PorMes,
                     selectedColor = chipPalette.selectedColor,
                     unselectedColor = chipPalette.unselectedColor,
                     unselectedTextColor = chipPalette.unselectedTextColor,
                     onClick = {
-                        if (!isSelected) onPeriodChange(AnalyticsPeriod.PorMes(currentMonth, currentYear))
+                        if (period !is AnalyticsPeriod.PorMes) {
+                            onPeriodChange(AnalyticsPeriod.PorMes(currentMonth, currentYear))
+                        }
                     }
                 )
             }
             item {
                 val isSelected = period is AnalyticsPeriod.PorAnyo
                 PeriodChip(
-                    label = "Por año",
+                    label = "Año",
                     isSelected = isSelected,
                     selectedColor = chipPalette.selectedColor,
                     unselectedColor = chipPalette.unselectedColor,
@@ -96,6 +81,17 @@ internal fun PeriodFilterSelector(
                     onClick = {
                         if (!isSelected) onPeriodChange(AnalyticsPeriod.PorAnyo(currentYear))
                     }
+                )
+            }
+            item {
+                val isSelected = period is AnalyticsPeriod.Todo
+                PeriodChip(
+                    label = "Todo",
+                    isSelected = isSelected,
+                    selectedColor = chipPalette.selectedColor,
+                    unselectedColor = chipPalette.unselectedColor,
+                    unselectedTextColor = chipPalette.unselectedTextColor,
+                    onClick = { onPeriodChange(AnalyticsPeriod.Todo) }
                 )
             }
             item {
@@ -115,28 +111,7 @@ internal fun PeriodFilterSelector(
                 )
             }
         }
-
         when (period) {
-            is AnalyticsPeriod.PorMes -> {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PeriodDropdown(
-                        options = Month.entries.map { it.number to MES_NOMBRES[it.number - 1] },
-                        selected = period.month.number,
-                        onSelect = { num ->
-                            onPeriodChange(
-                                AnalyticsPeriod.PorMes(Month.entries.first { it.number == num }, period.year)
-                            )
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    PeriodDropdown(
-                        options = availableYears.map { it to it.toString() },
-                        selected = period.year,
-                        onSelect = { onPeriodChange(AnalyticsPeriod.PorMes(period.month, it)) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
             is AnalyticsPeriod.PorAnyo -> {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PeriodDropdown(
@@ -174,10 +149,10 @@ internal fun PeriodFilterSelector(
                     }
                 }
             }
-            AnalyticsPeriod.Todo -> Unit
+            AnalyticsPeriod.Todo,
+            is AnalyticsPeriod.PorMes -> Unit
         }
     }
-
     if (showDatePickerDesde) {
         val state = rememberDatePickerState(initialSelectedDateMillis = rangeDesde?.let(::localDateToMillis))
         DatePickerDialog(
@@ -290,4 +265,3 @@ internal fun PeriodDropdown(
         }
     }
 }
-
