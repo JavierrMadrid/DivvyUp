@@ -80,11 +80,13 @@ object SpendNotificationService {
 
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.ic_notification))
                 .setContentTitle(title)
                 .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
+                .setColor(context.resources.getColor(android.R.color.holo_green_dark, context.theme))
                 .build()
 
             try {

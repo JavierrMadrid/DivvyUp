@@ -54,6 +54,7 @@ internal fun AnalyticsTab(
     settlements: List<Settlement>,
     /** spendId → lista de shares para calcular el pago neto real por pagador. */
     spendSharesBySpend: Map<Long, List<SpendShare>> = emptyMap(),
+    balances: List<com.example.divvyup.domain.model.ParticipantBalance> = emptyList(),
     currency: String,
     searchQuery: String,
     selectedCategories: Set<Long>,
@@ -73,6 +74,7 @@ internal fun AnalyticsTab(
     val chipPalette = rememberAppFilterChipPalette(selectedColor = JungleGreen)
     val categoryMap by remember(categories) { derivedStateOf { categories.associateBy { it.id } } }
     val participantMap by remember(participants) { derivedStateOf { participants.associateBy { it.id } } }
+    val balanceMap by remember(balances) { derivedStateOf { balances.associateBy { it.participantId } } }
     val effectiveSelectedCategories by remember(selectedCategories, categoryMap) {
         derivedStateOf { selectedCategories.intersect(categoryMap.keys) }
     }
@@ -537,8 +539,15 @@ internal fun AnalyticsTab(
                     Spacer(Modifier.height(4.dp))
                     if (nonEqualSpendCount > 0) NonEqualWarningRow(nonEqualSpendCount = nonEqualSpendCount)
                     Spacer(Modifier.height(6.dp))
+                    // Mapear payerBreakdown entries a IDs de participante
+                    val payerEntryMap = filteredNoSettlements
+                        .groupBy { it.payerId }
+                        .mapKeys { it.key }
                     HorizontalBarChartCard(
                         entries = payerBreakdownForBars.map { BarEntry(label = it.label, value = it.total.toFloat()) },
+                        payerBreakdown = payerBreakdown,
+                        balanceMap = balanceMap,
+                        participantMap = participantMap,
                         currency = currency,
                         total = totalNetPaid,
                         title = "Por pagador",

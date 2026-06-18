@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -84,6 +85,7 @@ class MainActivity : ComponentActivity() {
     private val pendingActivityGroup = MutableStateFlow<Long?>(null)
     private var remoteSpendNotificationJob: Job? = null
     private val lastSeenActivityLogIdByGroup = mutableMapOf<Long, Long>()
+    private val lastSeenActivityPrefKey = "notif_last_seen_activity_by_group"
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ -> }
@@ -101,6 +103,7 @@ class MainActivity : ComponentActivity() {
         NotificationPreferenceHolder.setSpendNotificationsEnabled(
             prefs.getBoolean("spend_notifications_enabled", true)
         )
+        restoreLastSeenActivitySnapshot(prefs)
 
         requestNotificationPermissionIfNeeded()
         SpendNotificationService.createChannel(this)
@@ -165,7 +168,8 @@ class MainActivity : ComponentActivity() {
             groupService = groupService,
             activityLogService = activityLogService,
             participantUserLinkRepo = participantUserLinkRepo,
-            spendNotifier = spendNotifier
+            spendNotifier = spendNotifier,
+            prefs = prefs
         )
 
         setContent {
@@ -264,7 +268,8 @@ class MainActivity : ComponentActivity() {
         groupService: GroupService,
         activityLogService: ActivityLogService,
         participantUserLinkRepo: SupabaseParticipantUserLinkRepository,
-        spendNotifier: com.example.divvyup.integration.notification.SpendNotifier
+        spendNotifier: com.example.divvyup.integration.notification.SpendNotifier,
+        prefs: SharedPreferences
     ) {
         remoteSpendNotificationJob?.cancel()
         remoteSpendNotificationJob = CoroutineScope(Dispatchers.Main).launch {
@@ -281,6 +286,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val groups = groupService.getAllGroups()
+                    var hasLastSeenChanges = false
                     groups.forEach { group ->
                         val logs = activityLogService.getActivityLog(group.id)
                             .filter {
@@ -297,6 +303,7 @@ class MainActivity : ComponentActivity() {
                         if (previousSeenId == null) {
                             // Primer arranque: tomar snapshot para no notificar histórico antiguo.
                             lastSeenActivityLogIdByGroup[group.id] = newestId
+                            hasLastSeenChanges = true
                             return@forEach
                         }
 
@@ -333,6 +340,10 @@ class MainActivity : ComponentActivity() {
                             }
 
                         lastSeenActivityLogIdByGroup[group.id] = newestId
+                        hasLastSeenChanges = true
+                    }
+                    if (hasLastSeenChanges) {
+                        persistLastSeenActivitySnapshot(prefs)
                     }
                 } catch (e: Exception) {
                     println("DEBUG MainActivity: Poll notificaciones remotas error - ${e.message}")
@@ -340,6 +351,31 @@ class MainActivity : ComponentActivity() {
                 delay(20_000)
             }
         }
+    }
+
+    private fun restoreLastSeenActivitySnapshot(prefs: SharedPreferences) {
+        val encoded = prefs.getString(lastSeenActivityPrefKey, null).orEmpty()
+        if (encoded.isBlank()) return
+
+        encoded.split(",")
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { pair ->
+                val separatorIndex = pair.indexOf(':')
+                if (separatorIndex <= 0 || separatorIndex >= pair.length - 1) return@forEach
+                val groupId = pair.substring(0, separatorIndex).toLongOrNull() ?: return@forEach
+                val lastSeenId = pair.substring(separatorIndex + 1).toLongOrNull() ?: return@forEach
+                lastSeenActivityLogIdByGroup[groupId] = lastSeenId
+            }
+    }
+
+    private fun persistLastSeenActivitySnapshot(prefs: SharedPreferences) {
+        val encoded = lastSeenActivityLogIdByGroup
+            .entries
+            .sortedBy { it.key }
+            .joinToString(separator = ",") { entry -> "${entry.key}:${entry.value}" }
+        prefs.edit { putString(lastSeenActivityPrefKey, encoded) }
     }
 
     private fun requestNotificationPermissionIfNeeded() {

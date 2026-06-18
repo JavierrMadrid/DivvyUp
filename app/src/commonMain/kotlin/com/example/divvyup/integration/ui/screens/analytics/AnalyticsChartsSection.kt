@@ -917,6 +917,9 @@ internal fun HorizontalBarChartCard(
     total: Double,
     title: String,
     onFullscreen: (() -> Unit)? = null,
+    payerBreakdown: List<AnalyticsBreakdownEntry> = emptyList(),
+    balanceMap: Map<Long, com.example.divvyup.domain.model.ParticipantBalance> = emptyMap(),
+    participantMap: Map<Long, com.example.divvyup.domain.model.Participant> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val chartPalette = rememberChartPalette()
@@ -967,10 +970,23 @@ internal fun HorizontalBarChartCard(
                 val fraction = (entry.value / maxValue).coerceIn(0f, 1f)
                 val percentage = if (total > 0) (entry.value / total.toFloat()) * 100f else 0f
                 val isMinBar = entries.size > 1 && entry.value == minValue
-                val barColor = if (isMinBar) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    chartPalette[index % chartPalette.size]
+                
+                // Encontrar el participante correspondiente y su balance
+                val correspondingPayer = payerBreakdown.find { it.label == entry.label }
+                val payerId = participantMap.entries.find { it.value.name == entry.label }?.key
+                val balance = payerId?.let { balanceMap[it] }
+                
+                // Determinar color basado en el balance del participante
+                val barColor = when {
+                    // Si hay información de balance, usarla
+                    balance != null -> when {
+                        balance.netBalance > 0.005 -> Color(0xFF16A34A)        // Verde — le deben dinero
+                        balance.netBalance < -0.005 -> Color(0xFFDC2626)        // Rojo — debe dinero
+                        else -> Color(0xFFF59E0B)                               // Amarillo/naranja — equilibrio
+                    }
+                    // Si no hay balance, usar el color antiguo (mínimo = rojo, resto = paleta)
+                    isMinBar -> MaterialTheme.colorScheme.error
+                    else -> chartPalette[index % chartPalette.size]
                 }
                 val avatarColor = participantAvatarPalette[entry.label.length % participantAvatarPalette.size]
 

@@ -126,8 +126,21 @@ class GroupDetailViewModel(
     private val spendNotifier: SpendNotifier? = null
 ) : ViewModel() {
 
+    private data class ActionActor(
+        val participantId: Long?,
+        val name: String?
+    )
+
     private val _uiState = MutableStateFlow(GroupDetailUiState())
     val uiState: StateFlow<GroupDetailUiState> = _uiState.asStateFlow()
+
+    private suspend fun resolveActionActor(fallbackParticipantId: Long? = null): ActionActor {
+        val actorId = runCatching { myParticipantIdProvider() }.getOrNull() ?: fallbackParticipantId
+        val actorName = actorId?.let { id ->
+            _uiState.value.participants.firstOrNull { participant -> participant.id == id }?.name
+        }
+        return ActionActor(participantId = actorId, name = actorName)
+    }
 
     init {
         loadAll()
@@ -407,26 +420,24 @@ class GroupDetailViewModel(
                         spendService.initializeNextDue(created)
                     }
                 }
-                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
+                val actor = resolveActionActor(fallbackParticipantId = payerId)
                 activityLogService?.logEvent(
                     groupId = groupId,
                     eventType = ActivityEventType.GASTO_CREADO,
                     description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
-                    actorParticipantId = payerId,
-                    actorName = payerName
+                    actorParticipantId = actor.participantId,
+                    actorName = actor.name
                 )
-                val myId = _uiState.value.myParticipantId
-                if (myId == null || myId in participantIds || myId == payerId) {
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Created(
-                            groupId = groupId,
-                            concept = concept,
-                            formattedAmount = amount.fmt2Kmp(),
-                            currency = _uiState.value.group?.currency ?: "EUR",
-                            actorName = payerName
-                        )
+                // Enviar notificación a TODOS los participantes involucrados
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Created(
+                        groupId = groupId,
+                        concept = concept,
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR",
+                        actorName = actor.name
                     )
-                }
+                )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -468,26 +479,24 @@ class GroupDetailViewModel(
                         spendService.initializeNextDue(created)
                     }
                 }
-                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
+                val actor = resolveActionActor(fallbackParticipantId = payerId)
                 activityLogService?.logEvent(
                     groupId = groupId,
                     eventType = ActivityEventType.GASTO_CREADO,
                     description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
-                    actorParticipantId = payerId,
-                    actorName = payerName
+                    actorParticipantId = actor.participantId,
+                    actorName = actor.name
                 )
-                val myId2 = _uiState.value.myParticipantId
-                if (myId2 == null || myId2 in percentages.keys || myId2 == payerId) {
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Created(
-                            groupId = groupId,
-                            concept = concept,
-                            formattedAmount = amount.fmt2Kmp(),
-                            currency = _uiState.value.group?.currency ?: "EUR",
-                            actorName = payerName
-                        )
+                // Enviar notificación a TODOS los participantes involucrados
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Created(
+                        groupId = groupId,
+                        concept = concept,
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR",
+                        actorName = actor.name
                     )
-                }
+                )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -529,26 +538,24 @@ class GroupDetailViewModel(
                         spendService.initializeNextDue(created)
                     }
                 }
-                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
+                val actor = resolveActionActor(fallbackParticipantId = payerId)
                 activityLogService?.logEvent(
                     groupId = groupId,
                     eventType = ActivityEventType.GASTO_CREADO,
                     description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
-                    actorParticipantId = payerId,
-                    actorName = payerName
+                    actorParticipantId = actor.participantId,
+                    actorName = actor.name
                 )
-                val myId3 = _uiState.value.myParticipantId
-                if (myId3 == null || myId3 in customAmounts.keys || myId3 == payerId) {
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Created(
-                            groupId = groupId,
-                            concept = concept,
-                            formattedAmount = amount.fmt2Kmp(),
-                            currency = _uiState.value.group?.currency ?: "EUR",
-                            actorName = payerName
-                        )
+                // Enviar notificación a TODOS los participantes involucrados
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Created(
+                        groupId = groupId,
+                        concept = concept,
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR",
+                        actorName = actor.name
                     )
-                }
+                )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
             } catch (e: Exception) {
@@ -576,25 +583,22 @@ class GroupDetailViewModel(
                         "Liquidación de $fromName eliminada (${spend.amount.fmt2Kmp()})"
                     )
                 } else {
-                    val payerName = _uiState.value.participants.firstOrNull { it.id == spend?.payerId }?.name
+                    val actor = resolveActionActor(fallbackParticipantId = spend?.payerId)
                     activityLogService?.logEvent(
                         groupId = groupId,
                         eventType = ActivityEventType.GASTO_ELIMINADO,
                         description = "Gasto «${spend?.concept ?: "gasto"}» eliminado",
-                        actorParticipantId = spend?.payerId
+                        actorParticipantId = actor.participantId,
+                        actorName = actor.name
                     )
-                    val myIdDel = _uiState.value.myParticipantId
-                    val shareParticipants = _uiState.value.spendSharesBySpend[spendId]
-                        ?.map { it.participantId } ?: emptyList()
-                    if (myIdDel == null || myIdDel in shareParticipants || myIdDel == spend?.payerId) {
-                        spendNotifier?.notify(
-                            SpendNotificationEvent.Deleted(
-                                groupId = groupId,
-                                concept = spend?.concept ?: "gasto",
-                                actorName = payerName
-                            )
+                    // Enviar notificación a TODOS los participantes involucrados
+                    spendNotifier?.notify(
+                        SpendNotificationEvent.Deleted(
+                            groupId = groupId,
+                            concept = spend?.concept ?: "gasto",
+                            actorName = actor.name
                         )
-                    }
+                    )
                 }
                 loadAll()
             } catch (e: Exception) {
@@ -626,26 +630,25 @@ class GroupDetailViewModel(
                     date = date ?: existing.date,
                     recurrence = recurrence, receiptUrl = receiptUrl
                 )
-                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
+                val actor = resolveActionActor(fallbackParticipantId = payerId)
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
                 activityLogService?.logEvent(
                     groupId = groupId,
                     eventType = ActivityEventType.GASTO_EDITADO,
                     description = desc,
-                    actorParticipantId = payerId
+                    actorParticipantId = actor.participantId,
+                    actorName = actor.name
                 )
-                val myIdUpd1 = _uiState.value.myParticipantId
-                if (myIdUpd1 == null || myIdUpd1 in participantIds || myIdUpd1 == payerId) {
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Updated(
-                            groupId = groupId,
-                            concept = concept.trim(),
-                            formattedAmount = amount.fmt2Kmp(),
-                            currency = _uiState.value.group?.currency ?: "EUR",
-                            actorName = payerName
-                        )
+                // Enviar notificación a TODOS los participantes involucrados
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Updated(
+                        groupId = groupId,
+                        concept = concept.trim(),
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR",
+                        actorName = actor.name
                     )
-                }
+                )
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -688,26 +691,25 @@ class GroupDetailViewModel(
                     date = date ?: existing.date,
                     recurrence = recurrence, receiptUrl = receiptUrl
                 )
-                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
+                val actor = resolveActionActor(fallbackParticipantId = payerId)
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
                 activityLogService?.logEvent(
                     groupId = groupId,
                     eventType = ActivityEventType.GASTO_EDITADO,
                     description = desc,
-                    actorParticipantId = payerId
+                    actorParticipantId = actor.participantId,
+                    actorName = actor.name
                 )
-                val myIdUpd2 = _uiState.value.myParticipantId
-                if (myIdUpd2 == null || myIdUpd2 in percentages.keys || myIdUpd2 == payerId) {
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Updated(
-                            groupId = groupId,
-                            concept = concept.trim(),
-                            formattedAmount = amount.fmt2Kmp(),
-                            currency = _uiState.value.group?.currency ?: "EUR",
-                            actorName = payerName
-                        )
+                // Enviar notificación a TODOS los participantes involucrados
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Updated(
+                        groupId = groupId,
+                        concept = concept.trim(),
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR",
+                        actorName = actor.name
                     )
-                }
+                )
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
@@ -750,26 +752,25 @@ class GroupDetailViewModel(
                     date = date ?: existing.date,
                     recurrence = recurrence, receiptUrl = receiptUrl
                 )
-                val payerName = _uiState.value.participants.firstOrNull { it.id == payerId }?.name
+                val actor = resolveActionActor(fallbackParticipantId = payerId)
                 val desc = buildSpendEditDescription(existing, concept.trim(), amount, payerId, categoryId, existing.splitType, recurrence)
                 activityLogService?.logEvent(
                     groupId = groupId,
                     eventType = ActivityEventType.GASTO_EDITADO,
                     description = desc,
-                    actorParticipantId = payerId
+                    actorParticipantId = actor.participantId,
+                    actorName = actor.name
                 )
-                val myIdUpd3 = _uiState.value.myParticipantId
-                if (myIdUpd3 == null || myIdUpd3 in customAmounts.keys || myIdUpd3 == payerId) {
-                    spendNotifier?.notify(
-                        SpendNotificationEvent.Updated(
-                            groupId = groupId,
-                            concept = concept.trim(),
-                            formattedAmount = amount.fmt2Kmp(),
-                            currency = _uiState.value.group?.currency ?: "EUR",
-                            actorName = payerName
-                        )
+                // Enviar notificación a TODOS los participantes involucrados
+                spendNotifier?.notify(
+                    SpendNotificationEvent.Updated(
+                        groupId = groupId,
+                        concept = concept.trim(),
+                        formattedAmount = amount.fmt2Kmp(),
+                        currency = _uiState.value.group?.currency ?: "EUR",
+                        actorName = actor.name
                     )
-                }
+                )
                 _uiState.update {
                     it.copy(
                         spendSaved = true,
