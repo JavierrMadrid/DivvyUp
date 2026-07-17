@@ -74,6 +74,7 @@ import com.example.divvyup.domain.model.Group
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppSearchField
+import com.example.divvyup.integration.ui.components.SkeletonCard
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
 import com.example.divvyup.integration.ui.theme.Amber
 import com.example.divvyup.integration.ui.theme.BarkBrown
@@ -221,14 +222,20 @@ fun GroupListScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 uiState.isLoading && uiState.groups.isEmpty() -> {
+                    // Skeleton list en lugar de spinner — al usuario se le muestra
+                    // ya la forma de la lista que verá, lo que reduce perceived loading.
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(DivvyUpTokens.ScreenPaddingH),
+                        verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapMd)
                     ) {
-                        CircularProgressIndicator(color = JungleGreenMid, strokeWidth = 3.dp)
-                        Text("Cargando grupos…", style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        repeat(3) {
+                            SkeletonCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 88.dp
+                            )
+                        }
                     }
                 }
                 uiState.groups.isEmpty() -> {
