@@ -139,7 +139,7 @@ fun JoinGroupParticipantScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(DivvyUpTokens.RadiusRow))
                         .background(
                             if (isSelected) MaterialTheme.colorScheme.primaryContainer
                             else MaterialTheme.colorScheme.surfaceVariant

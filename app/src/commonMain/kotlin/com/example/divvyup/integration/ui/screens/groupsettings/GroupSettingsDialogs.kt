@@ -430,7 +430,7 @@ internal fun DefaultSplitDialog(
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.width(90.dp),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(DivvyUpTokens.ShapeChipMini),
                             colors = appOutlinedTextFieldColors()
                         )
                     }

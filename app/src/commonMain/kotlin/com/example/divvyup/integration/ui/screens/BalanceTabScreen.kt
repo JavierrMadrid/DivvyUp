@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.DebtTransfer
 import com.example.divvyup.domain.model.ParticipantBalance
+import com.example.divvyup.integration.ui.components.AppAvatar
+import com.example.divvyup.integration.ui.components.AppCard
+import com.example.divvyup.integration.ui.components.AppCardLevel
 import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
@@ -142,17 +145,16 @@ internal fun BalanceCard(
     }
     val avatarColor = participantAvatarPalette[balance.participantName.length % participantAvatarPalette.size]
 
-    Card(
-        modifier = modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(0.dp)
+    AppCard(
+        modifier = modifier.fillMaxWidth(),
+        level = AppCardLevel.Flat,
+        contentPadding = PaddingValues(DivvyUpTokens.ScreenPaddingH)
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(avatarColor), contentAlignment = Alignment.Center) {
                 Text(balance.participantName.first().uppercaseChar().toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.White)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(DivvyUpTokens.GapMdPlus))
             Column(modifier = Modifier.weight(1f)) {
                 Text(balance.participantName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(debtSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
