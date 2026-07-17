@@ -31,6 +31,7 @@ import com.example.divvyup.integration.supabase.SupabaseStorageService
 import com.example.divvyup.integration.ui.resolveDefaultSplitPercentages
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -142,11 +143,27 @@ class GroupDetailViewModel(
         return ActionActor(participantId = actorId, name = actorName)
     }
 
-    init {
-        loadAll()
+    /**
+     * Envía una notificación local de cambio de gasto sólo si la acción NO la realizó
+     * el propio usuario. Sin esta comprobación, el mismo usuario que crea/edita/elimina
+     * un gasto desde su móvil vería una notificación "Gasto X añadido por ti" cada vez.
+     *
+     * @param actorParticipantId participante que ejecutó la acción (null = sin info, se notifica).
+     *        Si coincide con el participante vinculado al usuario actual, se omite.
+     */
+    private suspend fun notifySpend(event: SpendNotificationEvent, actorParticipantId: Long?) {
+        val myPid = runCatching { myParticipantIdProvider() }.getOrNull()
+        if (myPid != null && actorParticipantId != null && actorParticipantId == myPid) {
+            return
+        }
+        spendNotifier?.notify(event)
     }
 
-    fun loadAll() {
+    init {
+        loadAll(isInitialLoad = true)
+    }
+
+    fun loadAll(isInitialLoad: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
@@ -235,7 +252,132 @@ class GroupDetailViewModel(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                println("DEBUG GroupDetailViewModel: loadAll error (initial=$isInitialLoad) — ${e.message}")
+                if (isInitialLoad) {
+                    // Carga inicial tras reabrir la app: no mostrar error al usuario
+                    // (el frío post-arranque puede fallar por red transitoria). Reintentar
+                    // silenciosamente una vez tras 1.5 s; los reintentos manuales (pull-to-refresh)
+                    // sí muestran el error para diagnóstico.
+                    scheduleSilentRetry()
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = e.message) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Programa un único reintento silencioso de la carga inicial. Si la red / sesión
+     * aún no está lista (cold start del proceso o sesión recargándose), llena la UI
+     * sin exponer un error al usuario. Si la próxima carga también falla, se reintenta
+     * una sola vez más para evitar bucles infinitos.
+     */
+    private var silentRetryInFlight = false
+
+    private fun scheduleSilentRetry() {
+        if (silentRetryInFlight) return
+        silentRetryInFlight = true
+        viewModelScope.launch {
+            try {
+                delay(1_500L)
+                runSilentInitialLoad()
+            } finally {
+                silentRetryInFlight = false
+            }
+        }
+    }
+
+    /**
+     * Variante de loadAll que NUNCA expone errores al UI. Usada por el reintento inicial.
+     * Termina cargando los datos en el state o agotando el intento sin afectar uiState.error.
+     */
+    private fun runSilentInitialLoad() {
+        viewModelScope.launch {
+            try {
+                // Materializar recurrentes (best-effort)
+                try {
+                    val generated = spendService.materializeRecurringSpends(groupId)
+                    if (generated > 0) {
+                        activityLogService?.logEvent(
+                            groupId,
+                            com.example.divvyup.domain.model.ActivityEventType.GASTO_RECURRENTE_GENERADO,
+                            "$generated gasto(s) recurrente(s) generado(s) automáticamente"
+                        )
+                    }
+                } catch (_: Exception) { }
+
+                coroutineScope {
+                    val groupD        = async { groupService.getGroup(groupId) }
+                    val participantsD = async { participantRepository.getByGroup(groupId) }
+                    val spendsD       = async { spendService.getSpends(groupId) }
+                    val categoriesD   = async { categoryService.getCategories(groupId) }
+                    val balancesD     = async { settlementService.getBalances(groupId) }
+                    val settlementsD  = async { settlementService.getSettlements(groupId) }
+                    val sharesD       = async {
+                        try { spendService.getSharesByGroup(groupId) } catch (_: Exception) { emptyList() }
+                    }
+                    val myPartIdD     = async { myParticipantIdProvider() }
+                    val currentUserD  = async { currentUserIdProvider() }
+                    val avatarsD      = async {
+                        try { userProfileRepository?.getAvatarUrlsForGroup(groupId) ?: emptyMap() }
+                        catch (_: Exception) { emptyMap<Long, String>() }
+                    }
+                    val activityD     = async {
+                        try { activityLogService?.getActivityLog(groupId) ?: emptyList() }
+                        catch (_: Exception) { emptyList<ActivityLog>() }
+                    }
+
+                    val group         = groupD.await()
+                    val participants  = participantsD.await()
+                    val spends        = spendsD.await()
+                    val categories    = categoriesD.await()
+                    val balances      = balancesD.await()
+                    val settlements   = settlementsD.await()
+                    val groupShares   = sharesD.await()
+                    val myParticipantId = myPartIdD.await()
+                    val currentUserId = currentUserD.await()
+                    val avatarUrls    = avatarsD.await()
+                    val activityLog   = activityD.await()
+
+                    val transfers = settlementService.simplifyDebts(balances)
+                    val isOwner = group.ownerUserId == null ||
+                        (currentUserId != null && group.ownerUserId == currentUserId)
+                    val personalImpact = if (myParticipantId != null) {
+                        spendService.getPersonalImpactByGroup(groupId, myParticipantId)
+                    } else emptyMap()
+
+                    _uiState.update {
+                        it.copy(
+                            group = group,
+                            participants = participants,
+                            spends = spends,
+                            spendSharesBySpend = groupShares.groupBy { s -> s.spendId },
+                            categories = categories,
+                            balances = balances,
+                            debtTransfers = transfers,
+                            settlements = settlements,
+                            defaultSplitPercentages = resolveDefaultSplitPercentages(
+                                participantIds = participants.map { p -> p.id },
+                                savedPercentages = it.defaultSplitPercentages
+                            ),
+                            myParticipantId = myParticipantId,
+                            isOwner = isOwner,
+                            activityLog = activityLog,
+                            spendPersonalImpact = personalImpact,
+                            participantAvatarUrls = avatarUrls,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                    if (currentUserId == null && group.ownerUserId != null) {
+                        scheduleOwnershipRecheck(group.ownerUserId)
+                    }
+                }
+            } catch (e: Exception) {
+                println("DEBUG GroupDetailViewModel: silent retry falló — ${e.message}")
+                // Agotamos el intento silencioso sin marcar error. El usuario puede hacer
+                // pull-to-refresh para forzar un retry con error visible.
+                _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -405,7 +547,7 @@ class GroupDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                spendService.createEqualSpend(
+                val created = spendService.createEqualSpend(
                     groupId = groupId,
                     concept = concept,
                     amount = amount,
@@ -415,10 +557,9 @@ class GroupDetailViewModel(
                     date = date,
                     recurrence = recurrence,
                     receiptUrl = receiptUrl
-                ).also { created ->
-                    if (recurrence != Recurrence.NONE) {
-                        spendService.initializeNextDue(created)
-                    }
+                )
+                if (recurrence != Recurrence.NONE) {
+                    spendService.initializeNextDue(created)
                 }
                 val actor = resolveActionActor(fallbackParticipantId = payerId)
                 activityLogService?.logEvent(
@@ -426,17 +567,20 @@ class GroupDetailViewModel(
                     eventType = ActivityEventType.GASTO_CREADO,
                     description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
                     actorParticipantId = actor.participantId,
-                    actorName = actor.name
+                    actorName = actor.name,
+                    entityId = created.id
                 )
                 // Enviar notificación a TODOS los participantes involucrados
-                spendNotifier?.notify(
+                // (excepto al propio usuario, vía notifySpend).
+                notifySpend(
                     SpendNotificationEvent.Created(
                         groupId = groupId,
                         concept = concept,
                         formattedAmount = amount.fmt2Kmp(),
                         currency = _uiState.value.group?.currency ?: "EUR",
                         actorName = actor.name
-                    )
+                    ),
+                    actorParticipantId = actor.participantId
                 )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
@@ -464,7 +608,7 @@ class GroupDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                spendService.createPercentageSpend(
+                val created = spendService.createPercentageSpend(
                     groupId = groupId,
                     concept = concept,
                     amount = amount,
@@ -474,10 +618,9 @@ class GroupDetailViewModel(
                     date = date,
                     recurrence = recurrence,
                     receiptUrl = receiptUrl
-                ).also { created ->
-                    if (recurrence != Recurrence.NONE) {
-                        spendService.initializeNextDue(created)
-                    }
+                )
+                if (recurrence != Recurrence.NONE) {
+                    spendService.initializeNextDue(created)
                 }
                 val actor = resolveActionActor(fallbackParticipantId = payerId)
                 activityLogService?.logEvent(
@@ -485,17 +628,19 @@ class GroupDetailViewModel(
                     eventType = ActivityEventType.GASTO_CREADO,
                     description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
                     actorParticipantId = actor.participantId,
-                    actorName = actor.name
+                    actorName = actor.name,
+                    entityId = created.id
                 )
-                // Enviar notificación a TODOS los participantes involucrados
-                spendNotifier?.notify(
+                // Enviar notificación a los demás participantes (no al propio autor).
+                notifySpend(
                     SpendNotificationEvent.Created(
                         groupId = groupId,
                         concept = concept,
                         formattedAmount = amount.fmt2Kmp(),
                         currency = _uiState.value.group?.currency ?: "EUR",
                         actorName = actor.name
-                    )
+                    ),
+                    actorParticipantId = actor.participantId
                 )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
@@ -523,7 +668,7 @@ class GroupDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                spendService.createCustomSpend(
+                val created = spendService.createCustomSpend(
                     groupId = groupId,
                     concept = concept,
                     amount = amount,
@@ -533,10 +678,9 @@ class GroupDetailViewModel(
                     date = date,
                     recurrence = recurrence,
                     receiptUrl = receiptUrl
-                ).also { created ->
-                    if (recurrence != Recurrence.NONE) {
-                        spendService.initializeNextDue(created)
-                    }
+                )
+                if (recurrence != Recurrence.NONE) {
+                    spendService.initializeNextDue(created)
                 }
                 val actor = resolveActionActor(fallbackParticipantId = payerId)
                 activityLogService?.logEvent(
@@ -544,17 +688,19 @@ class GroupDetailViewModel(
                     eventType = ActivityEventType.GASTO_CREADO,
                     description = "Gasto «$concept» añadido (${amount.fmt2Kmp()})",
                     actorParticipantId = actor.participantId,
-                    actorName = actor.name
+                    actorName = actor.name,
+                    entityId = created.id
                 )
-                // Enviar notificación a TODOS los participantes involucrados
-                spendNotifier?.notify(
+                // Enviar notificación a los demás participantes (no al propio autor).
+                notifySpend(
                     SpendNotificationEvent.Created(
                         groupId = groupId,
                         concept = concept,
                         formattedAmount = amount.fmt2Kmp(),
                         currency = _uiState.value.group?.currency ?: "EUR",
                         actorName = actor.name
-                    )
+                    ),
+                    actorParticipantId = actor.participantId
                 )
                 _uiState.update { it.copy(spendSaved = true, isLoading = false) }
                 loadAll()
@@ -589,15 +735,17 @@ class GroupDetailViewModel(
                         eventType = ActivityEventType.GASTO_ELIMINADO,
                         description = "Gasto «${spend?.concept ?: "gasto"}» eliminado",
                         actorParticipantId = actor.participantId,
-                        actorName = actor.name
+                        actorName = actor.name,
+                        entityId = spendId
                     )
-                    // Enviar notificación a TODOS los participantes involucrados
-                    spendNotifier?.notify(
+                    // Notificación local: omitir si el actor es el propio usuario actual.
+                    notifySpend(
                         SpendNotificationEvent.Deleted(
                             groupId = groupId,
                             concept = spend?.concept ?: "gasto",
                             actorName = actor.name
-                        )
+                        ),
+                        actorParticipantId = actor.participantId ?: spend?.payerId
                     )
                 }
                 loadAll()
@@ -637,17 +785,19 @@ class GroupDetailViewModel(
                     eventType = ActivityEventType.GASTO_EDITADO,
                     description = desc,
                     actorParticipantId = actor.participantId,
-                    actorName = actor.name
+                    actorName = actor.name,
+                    entityId = existing.id
                 )
-                // Enviar notificación a TODOS los participantes involucrados
-                spendNotifier?.notify(
+                // Notificación local: omitir si el actor es el propio usuario actual.
+                notifySpend(
                     SpendNotificationEvent.Updated(
                         groupId = groupId,
                         concept = concept.trim(),
                         formattedAmount = amount.fmt2Kmp(),
                         currency = _uiState.value.group?.currency ?: "EUR",
                         actorName = actor.name
-                    )
+                    ),
+                    actorParticipantId = actor.participantId
                 )
                 _uiState.update {
                     it.copy(
@@ -698,17 +848,19 @@ class GroupDetailViewModel(
                     eventType = ActivityEventType.GASTO_EDITADO,
                     description = desc,
                     actorParticipantId = actor.participantId,
-                    actorName = actor.name
+                    actorName = actor.name,
+                    entityId = existing.id
                 )
-                // Enviar notificación a TODOS los participantes involucrados
-                spendNotifier?.notify(
+                // Notificación local: omitir si el actor es el propio usuario actual.
+                notifySpend(
                     SpendNotificationEvent.Updated(
                         groupId = groupId,
                         concept = concept.trim(),
                         formattedAmount = amount.fmt2Kmp(),
                         currency = _uiState.value.group?.currency ?: "EUR",
                         actorName = actor.name
-                    )
+                    ),
+                    actorParticipantId = actor.participantId
                 )
                 _uiState.update {
                     it.copy(
@@ -759,17 +911,19 @@ class GroupDetailViewModel(
                     eventType = ActivityEventType.GASTO_EDITADO,
                     description = desc,
                     actorParticipantId = actor.participantId,
-                    actorName = actor.name
+                    actorName = actor.name,
+                    entityId = existing.id
                 )
-                // Enviar notificación a TODOS los participantes involucrados
-                spendNotifier?.notify(
+                // Notificación local: omitir si el actor es el propio usuario actual.
+                notifySpend(
                     SpendNotificationEvent.Updated(
                         groupId = groupId,
                         concept = concept.trim(),
                         formattedAmount = amount.fmt2Kmp(),
                         currency = _uiState.value.group?.currency ?: "EUR",
                         actorName = actor.name
-                    )
+                    ),
+                    actorParticipantId = actor.participantId
                 )
                 _uiState.update {
                     it.copy(
@@ -992,15 +1146,14 @@ class GroupDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val spendIdsToDelete = spendService.getSpends(groupId)
+                val matchingSpends = spendService.getSpends(groupId)
                     .filter { spend ->
                         val catOk = categoryId == null || spend.categoryId == categoryId
                         val payerOk = payerId == null || spend.payerId == payerId
                         val dateOk = beforeInstant == null || spend.date < beforeInstant
                         catOk && payerOk && dateOk
                     }
-                    .map { it.id }
-                    .toSet()
+                val spendIdsToDelete = matchingSpends.map { it.id }.toSet()
 
                 deleteMirroredSettlementsForSpendIds(spendIdsToDelete)
                 spendService.deleteSpendsFiltered(
@@ -1009,8 +1162,22 @@ class GroupDetailViewModel(
                     payerId = payerId,
                     beforeInstant = beforeInstant
                 )
-                if (spendIdsToDelete.isNotEmpty()) {
-                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(groupId = groupId, count = spendIdsToDelete.size))
+                if (matchingSpends.isNotEmpty()) {
+                    val actor = resolveActionActor(fallbackParticipantId = payerId)
+                    matchingSpends.forEach { spend ->
+                        activityLogService?.logEvent(
+                            groupId = groupId,
+                            eventType = ActivityEventType.GASTO_ELIMINADO,
+                            description = "Gasto «${spend.concept}» eliminado",
+                            actorParticipantId = actor.participantId,
+                            actorName = actor.name,
+                            entityId = spend.id
+                        )
+                    }
+                    notifySpend(
+                        SpendNotificationEvent.BulkDeleted(groupId = groupId, count = matchingSpends.size),
+                        actorParticipantId = actor.participantId
+                    )
                 }
                 loadAll()
             } catch (e: Exception) {
@@ -1024,22 +1191,25 @@ class GroupDetailViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 deleteMirroredSettlementsForSpendIds(ids)
-                // Log de actividad: un evento por gasto eliminado
                 val spendsInState = _uiState.value.spends
-                ids.forEach { spendId ->
-                    val spend = spendsInState.firstOrNull { it.id == spendId }
-                    if (spend != null) {
-                        activityLogService?.logEvent(
-                            groupId = groupId,
-                            eventType = ActivityEventType.GASTO_ELIMINADO,
-                            description = "Gasto «${spend.concept}» eliminado",
-                            actorParticipantId = spend.payerId
-                        )
-                    }
+                val matchingSpends = ids.mapNotNull { id -> spendsInState.firstOrNull { it.id == id } }
+                val actor = resolveActionActor(fallbackParticipantId = matchingSpends.firstOrNull()?.payerId)
+                matchingSpends.forEach { spend ->
+                    activityLogService?.logEvent(
+                        groupId = groupId,
+                        eventType = ActivityEventType.GASTO_ELIMINADO,
+                        description = "Gasto «${spend.concept}» eliminado",
+                        actorParticipantId = actor.participantId,
+                        actorName = actor.name,
+                        entityId = spend.id
+                    )
                 }
                 spendService.deleteSpendsByIds(ids.toList())
-                if (ids.isNotEmpty()) {
-                    spendNotifier?.notify(SpendNotificationEvent.BulkDeleted(groupId = groupId, count = ids.size))
+                if (matchingSpends.isNotEmpty()) {
+                    notifySpend(
+                        SpendNotificationEvent.BulkDeleted(groupId = groupId, count = matchingSpends.size),
+                        actorParticipantId = actor.participantId
+                    )
                 }
                 loadAll()
             } catch (e: Exception) {
