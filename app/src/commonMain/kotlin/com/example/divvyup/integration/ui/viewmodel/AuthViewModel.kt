@@ -15,7 +15,6 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -49,51 +48,80 @@ class AuthViewModel(
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    /**
+     * Evita bucles de reintento cuando `signInAnonymously()` falla por red.
+     * Se resetea tras login/logout o un nuevo ciclo del VM.
+     */
+    private var anonymousSignInAttempted = false
+
     init {
-        // Esperar a que el gestor de sesión termine de cargar desde almacenamiento antes de
-        // evaluar el estado — evita la race condition que creaba una sesión anónima encima
-        // de una sesión real ya almacenada.
+        // Suscripción continua al flow nativo de supabase-kt. Reacciona a TODAS las
+        // transiciones (loading inicial, autenticado, no autenticado, refresh failure),
+        // no sólo a la primera como hacía la versión anterior con `first { … }`.
+        // Esto cierra la ventana donde el token podía caducar sin que nadie se enterase,
+        // dejando al ViewModel con un estado de auth obsoleto y a loadGroups() lanzando
+        // queries con 401.
         viewModelScope.launch {
-            auth.sessionStatus.first { it !is SessionStatus.Initializing }
-            checkSession()
+            auth.sessionStatus.collect { status ->
+                when (status) {
+                    is SessionStatus.Initializing -> {
+                        // Todavía estamos cargando la sesión persistida — no tocar UI.
+                    }
+                    is SessionStatus.Authenticated -> {
+                        val session = status.session
+                        val isAnon = session.user?.isAnonymous == true
+                        val displayName = session.user?.userMetadata?.get("display_name")
+                            ?.jsonPrimitive?.contentOrNull ?: ""
+                        val email = session.user?.email ?: ""
+                        _uiState.update {
+                            it.copy(
+                                isAuthenticated = !isAnon,
+                                isAnonymous = isAnon,
+                                displayName = displayName,
+                                userEmail = email
+                            )
+                        }
+                        // Cargar avatar desde user_profiles si hay sesión real
+                        if (!isAnon) loadAvatarUrl(session.user?.id)
+                        println("DEBUG AuthViewModel: sesión lista uid=${session.user?.id} isAnon=$isAnon")
+                    }
+                    is SessionStatus.NotAuthenticated -> {
+                        // No hay sesión activa. Intentar signup anónimo una sola vez por ciclo
+                        // del VM para no spammear supabase si falla por red.
+                        if (!anonymousSignInAttempted &&
+                            !_uiState.value.isAuthenticated
+                        ) {
+                            anonymousSignInAttempted = true
+                            try {
+                                auth.signInAnonymously()
+                                // El flow re-emitirá Authenticated y we'll update arriba.
+                            } catch (e: Exception) {
+                                println("DEBUG AuthViewModel: signInAnonymously falló (sin red?) — ${e.message}")
+                                // Permitir reintento más adelante si la red vuelve.
+                                anonymousSignInAttempted = false
+                                _uiState.update {
+                                    it.copy(isAnonymous = false, isAuthenticated = false)
+                                }
+                            }
+                        }
+                    }
+                    is SessionStatus.RefreshFailure -> {
+                        // supabase-kt ya intentó refresh y falló. Sólo logueamos;
+                        // la próxima apertura de la app empezará desde Initializing.
+                        println("DEBUG AuthViewModel: refresh error — ${status.cause}")
+                    }
+                }
+            }
         }
     }
 
+    /**
+     * Método público mantenido por compatibilidad (lo llama MainActivity tras OAuth deeplink).
+     * Con el sessionStatus flow activo, este método ya no es estrictamente necesario — el flow
+     * recogerá el cambio automáticamente — pero lo dejamos para no romper el wiring existente.
+     */
     fun checkSession() {
-        viewModelScope.launch {
-            val session = auth.currentSessionOrNull()
-            if (session == null) {
-                // No hay sesión → crear sesión anónima automáticamente (modo invitado)
-                try {
-                    auth.signInAnonymously()
-                    val newSession = auth.currentSessionOrNull()
-                    val isAnon = newSession?.user?.isAnonymous == true
-                    _uiState.update {
-                        it.copy(isAnonymous = isAnon, isAuthenticated = !isAnon && newSession != null)
-                    }
-                    println("DEBUG AuthViewModel: sesión anónima creada uid=${newSession?.user?.id}")
-                } catch (e: Exception) {
-                    println("DEBUG AuthViewModel: signInAnonymously falló (sin red?) — ${e.message}")
-                    _uiState.update { it.copy(isAnonymous = false, isAuthenticated = false) }
-                }
-            } else {
-                val isAnon = session.user?.isAnonymous == true
-                val displayName = session.user?.userMetadata?.get("display_name")
-                    ?.jsonPrimitive?.contentOrNull ?: ""
-                val email = session.user?.email ?: ""
-                _uiState.update {
-                    it.copy(
-                        isAuthenticated = !isAnon,
-                        isAnonymous = isAnon,
-                        displayName = displayName,
-                        userEmail = email
-                    )
-                }
-                // Cargar avatar desde user_profiles si hay sesión real
-                if (!isAnon) loadAvatarUrl(session.user?.id)
-                println("DEBUG AuthViewModel: sesión existente uid=${session.user?.id} isAnon=$isAnon")
-            }
-        }
+        // No-op: el init {} ya está suscrito a auth.sessionStatus y se actualiza solo.
     }
 
     fun login(email: String, password: String) {
@@ -295,6 +323,9 @@ class AuthViewModel(
             } catch (e: Exception) {
                 println("DEBUG AuthViewModel: logout error — ${e.message}")
             }
+            // Tras cerrar sesión, resetear el flag para que el flow pueda intentar
+            // signInAnonymously() de nuevo si llega un NotAuthenticated.
+            anonymousSignInAttempted = false
             // Tras cerrar sesión, crear sesión anónima automáticamente (modo invitado)
             try {
                 auth.signInAnonymously()
@@ -302,11 +333,8 @@ class AuthViewModel(
             } catch (e: Exception) {
                 println("DEBUG AuthViewModel: signInAnonymously tras logout falló — ${e.message}")
             }
-            val session = auth.currentSessionOrNull()
-            val isAnon = session?.user?.isAnonymous == true
-            _uiState.update {
-                it.copy(isLoading = false, isAuthenticated = !isAnon && session != null, isAnonymous = isAnon)
-            }
+            // El flow sessionStatus emitirá Authenticated y actualizará isAuthenticated/isAnonymous.
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 

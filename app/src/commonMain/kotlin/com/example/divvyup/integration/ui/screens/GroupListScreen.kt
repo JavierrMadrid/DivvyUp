@@ -125,8 +125,10 @@ fun GroupListScreen(
     // Estado del dialog de confirmar borrado de seleccionados
     var showDeleteSelectedConfirm by rememberSaveable { mutableStateOf(false) }
 
+    // Al re-entrar a esta pantalla (p.ej. desde GroupDetail tras crear un gasto),
+    // refrescamos para reflejar cambios recientes. El guard `loadInFlight` del VM
+    // evita duplicar si ya hay una carga en vuelo (p.ej. cold start).
     LaunchedEffect(Unit) {
-        // El ViewModel es compartido en navegación; al volver, refrescamos para reflejar cambios recientes.
         if (uiState.groups.isNotEmpty()) viewModel.loadGroups()
     }
 

@@ -5,7 +5,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavHostController
@@ -76,13 +78,31 @@ fun AppNavigation(
         }
     }
 
-    // Cuando cambia el estado de autenticación, invalidar caché de ViewModels y recargar grupos.
-    // Es imprescindible limpiar detailViewModels para que el próximo usuario obtenga un ViewModel
-    // fresco con su propio isOwner/myParticipantId, evitando que se reutilice el del usuario anterior.
-    LaunchedEffect(authState.isAuthenticated, authState.isAnonymous) {
-        detailViewModels.clear()
-        joinViewModels.clear()
-        groupListViewModel.reloadAfterAuthChange()
+    // ── Transiciones de auth IN-APP (login, logout, upgrade anónimo) ────────
+    // Sólo recargamos cuando hay un cambio REAL en la sesión. detailViewModels.clear()
+    // es imprescindible para que el próximo usuario obtenga un ViewModel fresco
+    // con su propio isOwner/myParticipantId. NO se dispara en cold start (cuando
+    // el snapshot inicial es (false, false) y llega (true, *)) porque entonces
+    // invalidaríamos la caché antes de que la primera carga del VM termine.
+    //
+    // La carga inicial la hace `init { loadGroups() }` en GroupListViewModel; aquí
+    // sólo reaccionamos a transiciones de auth REALES que ocurran con la app ya
+    // mostrando datos (login desde anónimo, logout, etc.).
+    val authKey = authState.isAuthenticated to authState.isAnonymous
+    var lastAuthSnapshot by remember { mutableStateOf(authKey) }
+    LaunchedEffect(authKey) {
+        val previous = lastAuthSnapshot
+        lastAuthSnapshot = authKey
+        // Consideramos "transición real" sólo cuando veníamos de un estado de auth
+        // DEFINITIVO (authenticated o anonymous) y vamos a otro. La primera
+        // transición desde Initializing (false, false) la gestiona el init del VM.
+        val wasAuthed = previous.first || previous.second
+        val isAuthed = authKey.first || authKey.second
+        if (wasAuthed && isAuthed && previous != authKey) {
+            detailViewModels.clear()
+            joinViewModels.clear()
+            groupListViewModel.reloadAfterAuthChange()
+        }
     }
 
     // Tras un registro con confirmación pendiente → ir a Login con mensaje informativo
