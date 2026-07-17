@@ -30,6 +30,7 @@ import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppSearchField
+import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
 import com.example.divvyup.integration.ui.screens.analytics.*
 import com.example.divvyup.integration.ui.theme.*

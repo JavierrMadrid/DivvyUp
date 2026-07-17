@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.divvyup.integration.ui.screens.fmt2
-import com.example.divvyup.integration.ui.screens.participantAvatarPalette
+import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.*
 import kotlin.math.abs
 import kotlin.math.round

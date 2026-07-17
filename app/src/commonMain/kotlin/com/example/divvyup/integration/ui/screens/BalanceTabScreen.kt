@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.DebtTransfer
 import com.example.divvyup.domain.model.ParticipantBalance
+import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
