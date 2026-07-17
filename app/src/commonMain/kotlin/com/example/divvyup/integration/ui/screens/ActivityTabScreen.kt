@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.ActivityEventType
 import com.example.divvyup.domain.model.ActivityLog
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.theme.ErrorContainerLight
+import com.example.divvyup.integration.ui.theme.ErrorOnContainerDark
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
@@ -147,7 +149,7 @@ private fun ActivityLogItem(entry: ActivityLog) {
             ) {
                 val iconTint = when (entry.eventType) {
                     ActivityEventType.GASTO_ELIMINADO,
-                    ActivityEventType.LIQUIDACION_ELIMINADA -> Color(0xFFB71C1C)
+                    ActivityEventType.LIQUIDACION_ELIMINADA -> ErrorOnContainerDark
                     else -> JungleGreenDark
                 }
                 Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(DivvyUpTokens.IconMd))
@@ -190,10 +192,10 @@ private fun ActivityLogItem(entry: ActivityLog) {
 private fun ActivityEventType.iconAndColor(): Pair<ImageVector, Color> = when (this) {
     ActivityEventType.GASTO_CREADO              -> Icons.Default.AddCircle    to JungleGreen100
     ActivityEventType.GASTO_EDITADO             -> Icons.Default.Edit          to JungleGreen100
-    ActivityEventType.GASTO_ELIMINADO           -> Icons.Default.Delete        to Color(0xFFFFE0E0)
+    ActivityEventType.GASTO_ELIMINADO           -> Icons.Default.Delete        to ErrorContainerLight
     ActivityEventType.PARTICIPANTE_ANADIDO      -> Icons.Default.PersonAdd     to JungleGreen100
     ActivityEventType.LIQUIDACION_CREADA        -> Icons.Default.CheckCircle   to JungleGreen100
-    ActivityEventType.LIQUIDACION_ELIMINADA     -> Icons.Default.Cancel        to Color(0xFFFFE0E0)
+    ActivityEventType.LIQUIDACION_ELIMINADA     -> Icons.Default.Cancel        to ErrorContainerLight
     ActivityEventType.GASTO_RECURRENTE_GENERADO -> Icons.Default.Autorenew     to JungleGreen100
 }
 

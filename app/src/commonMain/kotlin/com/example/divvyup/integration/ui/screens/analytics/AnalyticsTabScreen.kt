@@ -717,7 +717,7 @@ private fun AnalyticsSummaryCard(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isUp) Color(0xFFFCA5A5) else Color(0xFF86EFAC)
+                                color = if (isUp) TrendDown else TrendUp
                             )
                         }
                     }

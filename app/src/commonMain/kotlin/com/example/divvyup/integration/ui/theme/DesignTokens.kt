@@ -53,18 +53,32 @@ object DivvyUpTokens {
     val RadiusRow = 14.dp
     /** Esquinas para dialogs. */
     val RadiusDialog = 24.dp
+    /** Esquinas para badges (chips pequeños inline). */
+    val ShapeBadge = 6.dp
+    val ShapeBadgeMd = 8.dp
+    /** Esquinas para chips mini (estado / trend). */
+    val ShapeChipMini = 10.dp
 
     // ── Espaciados frecuentes ──────────────────────────────────────────────────
+    /** Gap mínimo (inline icon-text, dots). */
+    val GapXs = 4.dp
     /** Gap horizontal estándar entre controles en una fila. */
     val GapSm = 8.dp
     /** Gap entre secciones de formulario. */
     val GapMd = 12.dp
+    /** Gap intermedio (entre GapMd y GapLg). */
+    val GapMdPlus = 14.dp
     /** Gap entre cards de lista. */
     val GapLg = 20.dp
+    /** Gap hero (entre secciones grandes, hero → list). */
+    val GapXl = 28.dp
 
     // ── Padding de pantalla ────────────────────────────────────────────────────
     /** Padding horizontal estándar de pantallas (LazyColumn, forms). */
     val ScreenPaddingH = 16.dp
+    /** Padding horizontal generoso (hero cards, dialogs). */
     val ScreenPaddingHLg = 20.dp
+    /** Padding vertical estándar (top/bottom de LazyColumn). */
+    val ScreenPaddingV = 12.dp
 }
 

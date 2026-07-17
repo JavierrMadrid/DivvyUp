@@ -72,9 +72,11 @@ import com.example.divvyup.integration.ui.components.AppFilterLabel
 import com.example.divvyup.integration.ui.components.AppSearchField
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.theme.ErrorRed
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
+import com.example.divvyup.integration.ui.theme.SuccessGreen
 import kotlinx.datetime.LocalDate
 import kotlin.time.Clock.System
 import kotlin.time.Duration.Companion.days
@@ -410,8 +412,8 @@ internal fun SpendCard(
     // Colores del badge personal
     val impactColor: Color? = when {
         personalImpact == null -> null
-        personalImpact > 0.005 -> Color(0xFF16A34A)  // verde — le deben
-        personalImpact < -0.005 -> Color(0xFFDC2626)  // rojo — debe
+        personalImpact > 0.005 -> SuccessGreen       // verde — le deben
+        personalImpact < -0.005 -> ErrorRed           // rojo — debe
         else -> null                                    // cero exacto → no mostrar
     }
     val impactSign = if ((personalImpact ?: 0.0) >= 0) "+" else ""

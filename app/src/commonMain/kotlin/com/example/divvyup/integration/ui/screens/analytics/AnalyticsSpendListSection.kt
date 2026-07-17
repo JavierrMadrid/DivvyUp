@@ -27,11 +27,13 @@ import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.screens.formatLocalDate
 import com.example.divvyup.integration.ui.screens.toLocalDate
 import com.example.divvyup.integration.ui.theme.JungleGreen
+import com.example.divvyup.integration.ui.theme.WarningContainer
+import com.example.divvyup.integration.ui.theme.WarningOnContainer
 import com.example.divvyup.integration.ui.viewmodel.AnalyticsPeriod
 
 private const val DEFAULT_UNCATEGORIZED_ICON = "📦"
-private const val WARNING_TEXT_COLOR_HEX = 0xFF7C5200L
-private const val WARNING_CONTAINER_COLOR_HEX = 0xFFFFF3CDL
+private val WarningTextColor = WarningOnContainer
+private val WarningContainerColor = WarningContainer
 
 @Composable
 internal fun AnalyticsSpendList(
@@ -106,7 +108,7 @@ internal fun AnalyticsSpendList(
                             if (isNonEqual) {
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = Color(WARNING_CONTAINER_COLOR_HEX)
+                                    color = WarningContainerColor
                                 ) {
                                     Text(
                                         text = when (spend.splitType) {
@@ -116,7 +118,7 @@ internal fun AnalyticsSpendList(
                                         },
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(WARNING_TEXT_COLOR_HEX),
+                                        color = WarningTextColor,
                                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                     )
                                 }

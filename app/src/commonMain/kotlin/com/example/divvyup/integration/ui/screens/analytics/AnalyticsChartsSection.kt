@@ -491,15 +491,15 @@ private fun AnalyticsRankingTabContent(
             val fraction = (entry.total / maxTotal).toFloat().coerceIn(0f, 1f)
             val percentage = if (totalAll > 0.0) (entry.total / totalAll) * 100.0 else 0.0
             val medalColor = when (index) {
-                0 -> Color(0xFFFFD700) // oro
-                1 -> Color(0xFFC0C0C0) // plata
-                2 -> Color(0xFFCD7F32) // bronce
+                0 -> MedalGold   // oro
+                1 -> MedalSilver // plata
+                2 -> MedalBronze // bronce
                 else -> JungleGreen
             }
             val medalTextColor = when (index) {
-                0 -> Color(0xFF7A5700)
-                1 -> Color(0xFF4A4A4A)
-                2 -> Color(0xFF5C3210)
+                0 -> MedalGoldText
+                1 -> MedalSilverText
+                2 -> MedalBronzeText
                 else -> Color.White
             }
             val barColor = medalColor
@@ -980,9 +980,9 @@ internal fun HorizontalBarChartCard(
                 val barColor = when {
                     // Si hay información de balance, usarla
                     balance != null -> when {
-                        balance.netBalance > 0.005 -> Color(0xFF16A34A)        // Verde — le deben dinero
-                        balance.netBalance < -0.005 -> Color(0xFFDC2626)        // Rojo — debe dinero
-                        else -> Color(0xFFF59E0B)                               // Amarillo/naranja — equilibrio
+                        balance.netBalance > 0.005 -> SuccessGreen               // Verde — le deben dinero
+                        balance.netBalance < -0.005 -> ErrorRed                   // Rojo — debe dinero
+                        else -> WarningAmber                                     // Amarillo/naranja — equilibrio
                     }
                     // Si no hay balance, usar el color antiguo (mínimo = rojo, resto = paleta)
                     isMinBar -> MaterialTheme.colorScheme.error
