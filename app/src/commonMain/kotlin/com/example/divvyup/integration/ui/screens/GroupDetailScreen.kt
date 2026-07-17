@@ -1,25 +1,23 @@
 package com.example.divvyup.integration.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.divvyup.application.AnalyticsExportData
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Spend
+import com.example.divvyup.integration.ui.components.AppTabsRow
+import com.example.divvyup.integration.ui.components.AppTopBar
+import com.example.divvyup.integration.ui.components.PillFab
+import com.example.divvyup.integration.ui.components.TopBarVariant
 import com.example.divvyup.integration.ui.theme.*
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailTab
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
@@ -29,12 +27,6 @@ import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
-
-internal val participantAvatarPalette = listOf(
-    JungleGreen, JungleGreenDark, BarkBrown,
-    MossGold, Soil, JungleGreenMid,
-    BarkBrownDark, Amber
-)
 
 internal val MES_CORTO =
     listOf("", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
@@ -82,36 +74,6 @@ internal fun appDatePickerColors() = DatePickerDefaults.colors(
     selectedYearContainerColor = if (isSystemInDarkTheme()) BarkBrown else JungleGreen,
     selectedYearContentColor = Color.White
 )
-
-@Composable
-internal fun FintechFab(
-    onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    modifier: Modifier = Modifier
-) {
-    FloatingActionButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-        containerColor = JungleGreen,
-        contentColor = Color.White,
-        modifier = modifier.shadow(
-            elevation = 12.dp,
-            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-            ambientColor = JungleGreen.copy(alpha = 0.25f),
-            spotColor = JungleGreen.copy(alpha = 0.4f)
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-        }
-    }
-}
 
 @Composable
 fun GroupDetailScreen(
@@ -165,93 +127,34 @@ fun GroupDetailScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // Header estilo fintech con gradiente navy
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(JungleGreen, JungleGreenDark)
-                        )
-                    )
-                    .statusBarsPadding()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Color.White
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = uiState.group?.name ?: "Cargando...",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        uiState.group?.let { group ->
-                            Text(
-                                text = "${uiState.participants.size} participantes - ${group.currency}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.7f)
+            Column {
+                AppTopBar(
+                    title = uiState.group?.name ?: "Cargando...",
+                    subtitle = uiState.group?.let {
+                        "${uiState.participants.size} participantes - ${it.currency}"
+                    },
+                    variant = TopBarVariant.Gradient,
+                    onBack = onBack,
+                    actions = {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Ajustes del grupo",
+                                tint = Color.White
                             )
                         }
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Ajustes del grupo",
-                            tint = Color.White
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    GroupDetailTab.entries.forEach { tab ->
-                        val isSelected = uiState.selectedTab == tab
-                        Surface(
-                            onClick = { viewModel.selectTab(tab) },
-                            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                            color = if (isSelected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
-                            contentColor = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = when (tab) {
-                                        GroupDetailTab.GASTOS -> "Gastos"
-                                        GroupDetailTab.BALANCES -> "Balances"
-                                        GroupDetailTab.ANALITICAS -> "Analíticas"
-                                        GroupDetailTab.ACTIVIDAD -> "Actividad"
-                                    },
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-                }
+                )
+                AppTabsRow(
+                    selectedIndex = uiState.selectedTab.ordinal,
+                    onSelect = { idx -> viewModel.selectTab(GroupDetailTab.entries[idx]) },
+                    tabLabels = listOf("Gastos", "Balances", "Analíticas", "Actividad")
+                )
             }
         },
         floatingActionButton = {
             when (uiState.selectedTab) {
-                GroupDetailTab.GASTOS -> FintechFab(
+                GroupDetailTab.GASTOS -> PillFab(
                     onClick = onAddSpend,
                     icon = Icons.Default.Add,
                     label = "Nuevo gasto"
