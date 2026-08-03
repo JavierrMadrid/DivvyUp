@@ -222,9 +222,9 @@ fun SpendDetailScreen(
                     )
                     DetailRow(
                         label = "Fecha",
-                        value = "%02d/%02d/%04d".format(
-                            dateTime.day, dateTime.month.number, dateTime.year
-                        )
+                        value = dateTime.day.toString().padStart(2, '0') + "/" +
+                                dateTime.month.number.toString().padStart(2, '0') + "/" +
+                                dateTime.year.toString().padStart(4, '0')
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -261,7 +261,9 @@ fun SpendDetailScreen(
                             )
                             DetailRow(
                                 label = "Próxima generación",
-                                value = "%02d/%02d/%04d".format(nextDt.day, nextDt.month.number, nextDt.year)
+                                value = nextDt.day.toString().padStart(2, '0') + "/" +
+                                        nextDt.month.number.toString().padStart(2, '0') + "/" +
+                                        nextDt.year.toString().padStart(4, '0')
                             )
                         }
                     }

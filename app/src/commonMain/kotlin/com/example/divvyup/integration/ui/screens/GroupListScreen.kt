@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -59,6 +61,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,7 +93,6 @@ import com.example.divvyup.integration.ui.theme.Soil
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 // -- Colores avatar — paleta extraída de Color.kt -------------------------------
@@ -126,11 +130,30 @@ fun GroupListScreen(
     // Estado del dialog de confirmar borrado de seleccionados
     var showDeleteSelectedConfirm by rememberSaveable { mutableStateOf(false) }
 
-    // Al re-entrar a esta pantalla (p.ej. desde GroupDetail tras crear un gasto),
-    // refrescamos para reflejar cambios recientes. El guard `loadInFlight` del VM
-    // evita duplicar si ya hay una carga en vuelo (p.ej. cold start).
+    // Refrescar SIEMPRE al re-entrar a la pantalla (desde GroupDetail, desde
+    // Settings, etc.). El guard `loadInFlight` del VM evita duplicar si ya hay
+    // una carga en vuelo. Antes la guard era `if (uiState.groups.isNotEmpty())…`
+    // lo que dejaba atrapada la UI en el empty state si la primera carga falló
+    // — por eso el usuario veía "no hay grupos" cuando sí los había.
     LaunchedEffect(Unit) {
-        if (uiState.groups.isNotEmpty()) viewModel.loadGroups()
+        viewModel.loadGroups()
+    }
+
+    // Refresh on app resume — si la app vuelve de background y la pantalla está
+    // activa, los datos cacheados pueden estar stale (TTL expirado, cambios en
+    // otro dispositivo, etc.). Sin este observer, la UI seguía mostrando datos
+    // viejos o el empty state ficticio de la carga fallida inicial.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshOnResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(uiState.createdGroupId) {
@@ -160,20 +183,35 @@ fun GroupListScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text(
-                            if (isSelectionMode) "${selectedGroupIds.size} seleccionados"
-                            else "DivvyUp",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
-                        )
-                        Text(
-                            if (isSelectionMode) "Mantén pulsado para seleccionar más"
-                            else "Tus grupos de gastos",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
+                    // Cabecera pulsable: tocar el título abre ajustes de usuario.
+                    // Antes era un Text sin onClick → los toques caían sin respuesta
+                    // y la sensación era de "pantalla en blanco". Ahora se comporta
+                    // igual que el IconButton de la derecha, compartiendo callback.
+                    Row(
+                        modifier = Modifier
+                            .clickable(
+                                onClick = onOpenUserSettings,
+                                role = androidx.compose.ui.semantics.Role.Button,
+                                onClickLabel = "Ajustes de usuario"
+                            )
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                if (isSelectionMode) "${selectedGroupIds.size} seleccionados"
+                                else "DivvyUp",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                if (isSelectionMode) "Mantén pulsado para seleccionar más"
+                                else "Tus grupos de gastos",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                     // Icono de usuario
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -372,7 +410,6 @@ private fun GroupSelectorDialog(
     )
 }
 
-@OptIn(ExperimentalTime::class)
 @Composable
 private fun GroupList(
     groups: List<Group>,
@@ -432,7 +469,7 @@ private fun GroupList(
     }
 }
 
-@OptIn(ExperimentalTime::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun GroupCard(
     group: Group,
@@ -569,7 +606,6 @@ private enum class DeleteTimeOption(val label: String) {
     ANTES_ANYO("Anteriores a 1 año")
 }
 
-@OptIn(ExperimentalTime::class)
 @Composable
 private fun AdvancedDeleteDialog(
     groupName: String,

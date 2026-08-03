@@ -63,6 +63,17 @@ fun AppNavigation(
     val detailViewModels = remember { mutableMapOf<Long, GroupDetailViewModel>() }
     val joinViewModels = remember { mutableMapOf<String, JoinGroupParticipantViewModel>() }
 
+    // Gateo de carga inicial: sólo lanzamos la primera carga de grupos cuando
+    // Supabase ya resolvió el estado de sesión persistido. Antes, el `init { loadGroups() }`
+    // del VM se ejecutaba durante SessionStatus.Initializing, las queries salían
+    // con 401 y la app pintaba "no hay grupos" durante varios segundos. Ahora
+    // loadIfReady ignora el trigger hasta que isSessionReady = true.
+    LaunchedEffect(authState.isSessionReady) {
+        if (authState.isSessionReady) {
+            groupListViewModel.loadIfReady(authReady = true)
+        }
+    }
+
     fun getOrCreateDetailVM(groupId: Long) =
         detailViewModels.getOrPut(groupId) { detailViewModelFactory(groupId) }
 

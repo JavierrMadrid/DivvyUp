@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.divvyup.integration.ui.components.AppTopBar
 import com.example.divvyup.integration.ui.components.TopBarVariant
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
@@ -55,6 +59,23 @@ internal fun SettleUpScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Refresh on app resume — SettleUp reusa el GroupDetailViewModel pero está
+    // en el top del back stack (GroupDetail queda paused). Si el usuario entra
+    // en SettleUp tras un periodo largo en background, también refrescamos para
+    // que los balances no vengan stale.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshOnResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     val transfers = uiState.debtTransfers
     val transferKeys = remember(transfers) {
         transfers.map { "${it.fromParticipantId}-${it.toParticipantId}" }

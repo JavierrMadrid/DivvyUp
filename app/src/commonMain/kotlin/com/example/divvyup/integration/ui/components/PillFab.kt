@@ -84,7 +84,7 @@ fun IconFab(
         )
     ) {
         Icon(
-            Icons.Filled.Add,
+            Icons.Default.Add,
             contentDescription = contentDescription,
             modifier = Modifier.size(20.dp)
         )

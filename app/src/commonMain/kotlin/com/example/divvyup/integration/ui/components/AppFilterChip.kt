@@ -1,6 +1,7 @@
 package com.example.divvyup.integration.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.theme.FilterChipUnselectedLight
+import com.example.divvyup.integration.ui.theme.FilterChipUnselectedTextLight
 
 @Composable
 fun AppFilterChip(
@@ -26,8 +29,17 @@ fun AppFilterChip(
     selected: Boolean,
     selectedColor: Color,
     modifier: Modifier = Modifier,
-    unselectedColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-    unselectedTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // Defaults sensibles al tema: en modo claro los tokens vanilla del
+    // colorScheme (surfaceVariant) caen demasiado cerca del background verde
+    // claro y la card casi blanca, así que el chip se "come" el fondo.
+    unselectedColor: Color = if (isSystemInDarkTheme())
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    else
+        FilterChipUnselectedLight,
+    unselectedTextColor: Color = if (isSystemInDarkTheme())
+        MaterialTheme.colorScheme.onSurface
+    else
+        FilterChipUnselectedTextLight,
     maxWidth: Dp = 180.dp,
     height: Dp = DivvyUpTokens.ChipSmallHeight,
     onClick: () -> Unit

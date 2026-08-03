@@ -24,6 +24,12 @@ import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 /**
  * Tabs pill unificados para barras superiores (GroupDetail, GroupSettings, etc.).
  *
+ * Pensados para vivir BAJO un [AppTopBar] con `variant = Gradient`, que pinta
+ * un gradiente verde oscuro. Por defecto la fila de tabs también pinta ese
+ * mismo fondo (`containerColor` jungle oscuro) para que el bloque entero
+ * (título + tabs) se vea como una cabecera continua con buen contraste en
+ * tema claro. Si se quiere integrar con otro fondo, pasar otro `containerColor`.
+ *
  * - Indicador animado (color de fondo del tab seleccionado).
  * - Tabs equi-distribuidos vía `Modifier.weight(1f)`.
  * - El caller controla el contenido (texto) y el callback de selección.
@@ -33,11 +39,13 @@ fun AppTabsRow(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    tabLabels: List<String>
+    tabLabels: List<String>,
+    containerColor: Color = Color(0xFF1B4332) // JungleGreenDark — encaja con TopBarVariant.Gradient
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(containerColor)
             .padding(horizontal = DivvyUpTokens.GapMd, vertical = DivvyUpTokens.GapSm),
         horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapXs)
     ) {

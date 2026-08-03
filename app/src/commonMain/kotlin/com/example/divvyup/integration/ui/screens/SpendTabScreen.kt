@@ -80,7 +80,6 @@ import com.example.divvyup.integration.ui.theme.SuccessGreen
 import kotlinx.datetime.LocalDate
 import kotlin.time.Clock.System
 import kotlin.time.Duration.Companion.days
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 private const val DEFAULT_UNCATEGORIZED_ICON = "📦"
@@ -96,7 +95,6 @@ internal enum class SpendDeleteTimeOption(val label: String) {
 
 // --- Tab: Gastos -------------------------------------------------------------
 
-@OptIn(ExperimentalTime::class)
 @Composable
 internal fun SpendTab(
     spends: List<Spend>,

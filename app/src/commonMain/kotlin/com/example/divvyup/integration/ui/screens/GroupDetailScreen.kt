@@ -11,6 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.divvyup.application.AnalyticsExportData
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Spend
@@ -89,6 +92,23 @@ fun GroupDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Refresh on app resume — si la app vuelve de background y esta pantalla
+    // está activa, los datos cacheados (gastos, balances, actividad) pueden estar
+    // stale. Sin este observer, la UI seguía mostrando "no hay gastos" cuando
+    // sí los había (cache TTL 1 min de CachedSpendRepository expirado).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshOnResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Consumir texto de exportación pendiente → disparar share del sistema
     LaunchedEffect(uiState.pendingExportText) {

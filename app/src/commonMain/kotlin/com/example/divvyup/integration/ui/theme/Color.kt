@@ -42,6 +42,14 @@ val White              = Color(0xFFFFFFFF)
 val DarkJungleBg       = Color(0xFF0D1F13)
 val DarkJungleSurface  = Color(0xFF264734)
 
+// ── Tokens específicos para chips / pills en tema claro ────────────────────────
+// En tema claro el screen background es verde muy claro (#DFEBE1) y la card
+// es casi blanca (#F7FAF7), por lo que `surfaceVariant` (#CCDFCE) es tan
+// parecido que el chip "desaparece". Usamos un verde medio oscuro para que
+// el chip no seleccionado tenga contraste claro y siga en paleta Jungle.
+val FilterChipUnselectedLight = Color(0xFFB7CFB9) // verde grisáceo medio
+val FilterChipUnselectedTextLight = ForestDark
+
 // ── Beige de texto oscuro: de blanco puro (primario) a beige claro (secundario) ──
 // Nunca marrón, nunca verdoso. Escala: White → Beige100 → Beige200
 val DarkTextBeige100   = Color(0xFFF0EBE3)   // beige muy claro — textos secundarios
