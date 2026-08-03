@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.components.AppIconButton
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AddParticipantsViewModel
@@ -344,14 +345,13 @@ private fun ParticipantChipRow(
                     }
                 }
 
-                IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Quitar participante",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                AppIconButton(
+                    onClick = onRemove,
+                    icon = Icons.Default.Close,
+                    contentDescription = "Quitar participante",
+                    onClickLabel = "Quitar participante",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
         }
     }

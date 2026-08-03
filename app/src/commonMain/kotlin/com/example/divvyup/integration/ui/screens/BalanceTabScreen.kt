@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,6 +32,7 @@ import com.example.divvyup.domain.model.ParticipantBalance
 import com.example.divvyup.integration.ui.components.AppAvatar
 import com.example.divvyup.integration.ui.components.AppCard
 import com.example.divvyup.integration.ui.components.AppCardLevel
+import com.example.divvyup.integration.ui.components.AmountWithSign
 import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
@@ -146,7 +150,19 @@ internal fun BalanceCard(
     val avatarColor = participantAvatarPalette[balance.participantName.length % participantAvatarPalette.size]
 
     AppCard(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                // Anunciar el estado del balance para TalkBack:
+                // "Te deben 12,50 EUR" / "Debes 12,50 EUR" / "Balance 0 EUR".
+                val signText = when {
+                    balance.netBalance > 0 -> "Te deben"
+                    balance.netBalance < 0 -> "Debes"
+                    else -> "Balance"
+                }
+                stateDescription = "$signText ${kotlin.math.abs(balance.netBalance).fmt2()} $currency"
+                liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+            },
         level = AppCardLevel.Flat,
         contentPadding = PaddingValues(DivvyUpTokens.ScreenPaddingH)
     ) {
@@ -160,8 +176,15 @@ internal fun BalanceCard(
                 Text(debtSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = "${if (isPositive) "+" else ""}${balance.netBalance.fmt2()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = amountColor)
-                Text(currency, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AmountWithSign(
+                    amount = balance.netBalance,
+                    currency = currency,
+                    positiveColor = amountColor,
+                    negativeColor = amountColor,
+                    neutralColor = amountColor,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
         }
     }

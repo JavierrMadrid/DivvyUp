@@ -70,6 +70,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -147,7 +149,7 @@ fun GroupListScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshOnResume()
+                viewModel.loadGroups()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -499,7 +501,15 @@ private fun GroupCard(
                 color = borderColor,
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusCard)
             )
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                onClickLabel = if (isSelected) "Deseleccionar grupo" else "Abrir grupo",
+                onLongClickLabel = if (isSelected) "Deseleccionar grupo" else "Seleccionar grupo"
+            )
+            .semantics {
+                selected = isSelected
+            }
             .animateContentSize(),
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(

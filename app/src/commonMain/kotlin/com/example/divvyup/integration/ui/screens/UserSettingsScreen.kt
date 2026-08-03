@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.integration.ui.rememberImagePickerLauncher
+import com.example.divvyup.integration.ui.components.AppIconButton
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
@@ -244,14 +245,13 @@ private fun AuthenticatedContent(
                     .border(2.dp, MaterialTheme.colorScheme.background, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                IconButton(onClick = pickAvatar, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = "Cambiar foto de perfil",
-                        tint = Color.White,
-                        modifier = Modifier.size(DivvyUpTokens.IconSm)
-                    )
-                }
+                AppIconButton(
+                    onClick = pickAvatar,
+                    icon = Icons.Default.CameraAlt,
+                    contentDescription = "Cambiar foto de perfil",
+                    onClickLabel = "Cambiar foto de perfil",
+                    tint = Color.White
+                )
             }
         }
 

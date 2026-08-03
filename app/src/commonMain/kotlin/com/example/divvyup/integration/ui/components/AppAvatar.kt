@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,9 @@ val participantAvatarPalette = listOf(
  * @param paletteIndex índice en la paleta jungle (se aplica módulo para estabilidad).
  * @param ring dibuja un anillo claro alrededor del avatar (útil sobre imágenes).
  * @param onClick callback opcional para hacerlo tappable.
+ * @param contentDescription descripción semántica cuando el avatar es clickable
+ *   (default: las iniciales). Si `onClick == null`, el avatar es decorativo y
+ *   no se anuncia.
  */
 @Composable
 fun AppAvatar(
@@ -50,7 +54,8 @@ fun AppAvatar(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     ring: Boolean = false,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    contentDescription: String? = initials.takeIf { onClick != null }
 ) {
     val palette = participantAvatarPalette
     val bg = palette[((paletteIndex % palette.size) + palette.size) % palette.size]
@@ -64,7 +69,15 @@ fun AppAvatar(
         .shadow(if (ring) 2.dp else 0.dp, CircleShape)
         .clip(CircleShape)
         .background(bg)
-        .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+        .let {
+            if (onClick != null) {
+                it.clickable(
+                    onClick = onClick,
+                    onClickLabel = contentDescription,
+                    role = Role.Button
+                )
+            } else it
+        }
 
     Box(
         modifier = baseModifier,

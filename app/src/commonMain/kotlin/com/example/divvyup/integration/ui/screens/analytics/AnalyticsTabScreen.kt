@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,6 +30,7 @@ import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.integration.ui.components.AppFilterChip
+import com.example.divvyup.integration.ui.components.AppIconButton
 import com.example.divvyup.integration.ui.components.AppSearchField
 import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
@@ -821,7 +823,20 @@ private fun BudgetProgressCard(
 private fun NonEqualWarningRow(nonEqualSpendCount: Int, modifier: Modifier = Modifier) {
     var showWarningPopup by remember { mutableStateOf(false) }
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        IconButton(onClick = { showWarningPopup = true }, modifier = Modifier.size(28.dp)) {
+        // Warning clickable: 48dp tap target via AppIconButton semantics.
+        // El emoji se envuelve en un Row clickable con role+onClickLabel para
+        // que TalkBack anuncie "Mostrar aviso de gastos no equilibrados".
+        Row(
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(
+                    onClick = { showWarningPopup = true },
+                    onClickLabel = "Mostrar aviso de gastos no equilibrados",
+                    role = Role.Button
+                )
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(text = "⚠️", fontSize = 18.sp)
         }
         if (showWarningPopup) {

@@ -59,24 +59,45 @@ fun AppCard(
     )
     val pressModifier = if (onClick != null) Modifier.scale(scale) else Modifier
 
-    Card(
-        onClick = onClick ?: {},
-        enabled = onClick != null,
-        shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor ?: baseContainer,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (level == AppCardLevel.Elevated) 2.dp else 0.dp,
-            pressedElevation = if (onClick != null) 1.dp else 0.dp
-        ),
-        border = border,
-        interactionSource = interactionSource,
-        modifier = modifier.then(pressModifier)
-    ) {
-        Box(modifier = Modifier.padding(contentPadding)) {
-            content()
+    // Si la card no es clickeable, renderizamos un Card plano (sin el slot
+    // onClick) para que TalkBack no la describa como "disabled" —
+    // semantics incorrecta para cards puramente visuales.
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            shape = shape,
+            colors = CardDefaults.cardColors(
+                containerColor = containerColor ?: baseContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (level == AppCardLevel.Elevated) 2.dp else 0.dp,
+                pressedElevation = 1.dp
+            ),
+            border = border,
+            interactionSource = interactionSource,
+            modifier = modifier.then(pressModifier)
+        ) {
+            Box(modifier = Modifier.padding(contentPadding)) {
+                content()
+            }
+        }
+    } else {
+        Card(
+            shape = shape,
+            colors = CardDefaults.cardColors(
+                containerColor = containerColor ?: baseContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = if (level == AppCardLevel.Elevated) 2.dp else 0.dp
+            ),
+            border = border,
+            modifier = modifier
+        ) {
+            Box(modifier = Modifier.padding(contentPadding)) {
+                content()
+            }
         }
     }
 }

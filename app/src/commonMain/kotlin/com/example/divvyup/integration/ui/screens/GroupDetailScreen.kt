@@ -101,7 +101,7 @@ fun GroupDetailScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshOnResume()
+                viewModel.loadAll()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
