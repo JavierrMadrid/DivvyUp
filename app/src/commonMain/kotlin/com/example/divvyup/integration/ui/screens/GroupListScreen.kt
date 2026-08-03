@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Group
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppSearchField
 import com.example.divvyup.integration.ui.components.SkeletonCard
@@ -194,22 +195,22 @@ fun GroupListScreen(
                             .clickable(
                                 onClick = onOpenUserSettings,
                                 role = androidx.compose.ui.semantics.Role.Button,
-                                onClickLabel = "Ajustes de usuario"
+                                onClickLabel = Strings.GroupList.A11Y_USER_SETTINGS
                             )
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
                             Text(
-                                if (isSelectionMode) "${selectedGroupIds.size} seleccionados"
-                                else "DivvyUp",
+                                if (isSelectionMode) Strings.Common.selectedCount(selectedGroupIds.size)
+                                else Strings.GroupList.APP_TITLE_FALLBACK,
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.White
                             )
                             Text(
-                                if (isSelectionMode) "Mantén pulsado para seleccionar más"
-                                else "Tus grupos de gastos",
+                                if (isSelectionMode) Strings.GroupList.SUBTITLE_SELECTION
+                                else Strings.GroupList.SUBTITLE_DEFAULT,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.White.copy(alpha = 0.8f)
                             )
@@ -220,7 +221,7 @@ fun GroupListScreen(
                         IconButton(onClick = onOpenUserSettings) {
                             Icon(
                                 Icons.Default.AccountCircle,
-                                contentDescription = "Ajustes de usuario",
+                                contentDescription = Strings.GroupList.A11Y_USER_SETTINGS,
                                 tint = if (isAuthenticated) Color.White
                                        else Color.White.copy(alpha = 0.6f)
                             )
@@ -252,7 +253,7 @@ fun GroupListScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                     Text(
-                        if (isSelectionMode) "Cancelar" else "Nuevo grupo",
+                        if (isSelectionMode) Strings.Common.CANCEL else Strings.GroupList.FAB_NEW_GROUP,
                         fontWeight = FontWeight.SemiBold, fontSize = 15.sp
                     )
                 }
@@ -323,7 +324,7 @@ fun GroupListScreen(
                     modifier = Modifier.align(Alignment.BottomCenter).padding(20.dp),
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
                 ) { Text(errorMsg) }
             }
         }
@@ -360,12 +361,9 @@ fun GroupListScreen(
         AlertDialog(
             onDismissRequest = { showDeleteSelectedConfirm = false },
             shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-            title = { Text("Borrar grupos seleccionados", fontWeight = FontWeight.Bold) },
+            title = { Text(Strings.GroupList.DELETE_SELECTED_TITLE, fontWeight = FontWeight.Bold) },
             text = {
-                Text(
-                    "¿Eliminar ${selectedGroupIds.size} grupo(s) seleccionado(s)? " +
-                    "Se borrarán todos sus gastos y participantes."
-                )
+                Text(Strings.GroupList.deleteConfirmGroupsSelected(selectedGroupIds.size))
             },
             confirmButton = {
                 TextButton(
@@ -375,10 +373,10 @@ fun GroupListScreen(
                         showDeleteSelectedConfirm = false
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Eliminar", fontWeight = FontWeight.SemiBold) }
+                ) { Text(Strings.Common.DELETE, fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteSelectedConfirm = false }) { Text("Cancelar") }
+                TextButton(onClick = { showDeleteSelectedConfirm = false }) { Text(Strings.Common.CANCEL) }
             }
         )
     }
@@ -394,7 +392,7 @@ private fun GroupSelectorDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = { Text("Selecciona un grupo", fontWeight = FontWeight.Bold) },
+        title = { Text(Strings.GroupList.SELECT_GROUP_TITLE, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 groups.forEach { group ->
@@ -408,7 +406,7 @@ private fun GroupSelectorDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
@@ -435,7 +433,7 @@ private fun GroupList(
             AppSearchField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                placeholder = "Buscar grupo",
+                placeholder = Strings.GroupList.SEARCH_PLACEHOLDER,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = DivvyUpTokens.ControlHeight)
@@ -446,7 +444,7 @@ private fun GroupList(
         if (groups.isEmpty()) {
             item {
                 Text(
-                    "No hay grupos que coincidan con la búsqueda",
+                    Strings.GroupList.SEARCH_EMPTY,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 12.dp)
@@ -504,8 +502,8 @@ private fun GroupCard(
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
-                onClickLabel = if (isSelected) "Deseleccionar grupo" else "Abrir grupo",
-                onLongClickLabel = if (isSelected) "Deseleccionar grupo" else "Seleccionar grupo"
+                onClickLabel = if (isSelected) Strings.GroupList.A11Y_DESELECT_GROUP else Strings.GroupList.A11Y_OPEN_GROUP,
+                onLongClickLabel = if (isSelected) Strings.GroupList.A11Y_DESELECT_GROUP else Strings.GroupList.A11Y_SELECT_GROUP
             )
             .semantics {
                 selected = isSelected
@@ -564,7 +562,7 @@ private fun GroupCard(
                     )
                     val participantCount = participants.size
                     Text(
-                        text = "$participantCount participante${if (participantCount == 1) "" else "s"}",
+                        text = Strings.GroupList.participantsCount(participantCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -583,7 +581,7 @@ private fun GroupCard(
             // Solo mostrar botones de acción si NO estamos en modo selección
             if (!isSelected) {
                 IconButton(onClick = { showDeleteGroupConfirm = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar grupo",
+                    Icon(Icons.Default.Delete, contentDescription = Strings.GroupList.A11Y_REMOVE_GROUP,
                         tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -594,26 +592,26 @@ private fun GroupCard(
         AlertDialog(
             onDismissRequest = { showDeleteGroupConfirm = false },
             shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-            title = { Text("Eliminar grupo", fontWeight = FontWeight.Bold) },
-            text = { Text("¿Eliminar \"${group.name}\"? Se borrarán todos sus gastos y participantes.") },
+            title = { Text(Strings.GroupList.DELETE_GROUP_TITLE, fontWeight = FontWeight.Bold) },
+            text = { Text(Strings.GroupList.deleteGroupConfirm(group.name)) },
             confirmButton = {
                 TextButton(
                     onClick = { showDeleteGroupConfirm = false; onDelete() },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Eliminar", fontWeight = FontWeight.SemiBold) }
+                ) { Text(Strings.Common.DELETE, fontWeight = FontWeight.SemiBold) }
             },
-            dismissButton = { TextButton(onClick = { showDeleteGroupConfirm = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showDeleteGroupConfirm = false }) { Text(Strings.Common.CANCEL) } }
         )
     }
 }
 
 // -- Opciones de tiempo para borrado avanzado ----------------------------------
 private enum class DeleteTimeOption(val label: String) {
-    TODO("Todos los gastos"),
-    ANTES_SEMANA("Anteriores a 1 semana"),
-    ANTES_MES("Anteriores a 1 mes"),
-    ANTES_TRES_MESES("Anteriores a 3 meses"),
-    ANTES_ANYO("Anteriores a 1 año")
+    TODO(Strings.GroupList.TIME_ALL),
+    ANTES_SEMANA(Strings.GroupList.TIME_LAST_WEEK),
+    ANTES_MES(Strings.GroupList.TIME_LAST_MONTH),
+    ANTES_TRES_MESES(Strings.GroupList.TIME_LAST_3_MONTHS),
+    ANTES_ANYO(Strings.GroupList.TIME_LAST_YEAR)
 }
 
 @Composable
@@ -652,16 +650,16 @@ private fun AdvancedDeleteDialog(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.DeleteSweep, contentDescription = null,
                     tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(22.dp))
-                Text("Borrar gastos", fontWeight = FontWeight.Bold)
+                Text(Strings.Common.DELETE_SPENDS_TITLE, fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Grupo: $groupName", style = MaterialTheme.typography.bodySmall,
+                Text(Strings.GroupList.groupNameLabel(groupName), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 // -- Filtro por tiempo --------------------------------------
-                Text("Período", style = MaterialTheme.typography.labelMedium,
+                Text(Strings.Common.PERIOD_LABEL, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(DeleteTimeOption.entries.toList()) { opt ->
@@ -681,13 +679,13 @@ private fun AdvancedDeleteDialog(
 
                 // -- Filtro por categoría -----------------------------------
                 if (categories.isNotEmpty()) {
-                    Text("Categoría (opcional)", style = MaterialTheme.typography.labelMedium,
+                    Text(Strings.Common.CATEGORY_OPTIONAL_LABEL, style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         item {
                             val isSel = selectedCategory == null
                             AppFilterChip(
-                                label = "Todas",
+                                label = Strings.Common.ALL_FEMININE,
                                 selected = isSel,
                                 selectedColor = chipSelectedColor,
                                 unselectedColor = chipUnselectedColor,
@@ -711,13 +709,13 @@ private fun AdvancedDeleteDialog(
 
                 // -- Filtro por persona -------------------------------------
                 if (participants.isNotEmpty()) {
-                    Text("Persona (opcional)", style = MaterialTheme.typography.labelMedium,
+                    Text(Strings.Common.PERSON_OPTIONAL_LABEL, style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         item {
                             val isSel = selectedParticipant == null
                             AppFilterChip(
-                                label = "Todos",
+                                label = Strings.Common.ALL_MASCULINE,
                                 selected = isSel,
                                 selectedColor = chipSelectedColor,
                                 unselectedColor = chipUnselectedColor,
@@ -741,20 +739,19 @@ private fun AdvancedDeleteDialog(
 
                 // Aviso resumen
                 Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusControl), color = MaterialTheme.colorScheme.errorContainer) {
+                    val timeSuffix = when (selectedTime) {
+                        DeleteTimeOption.TODO             -> Strings.GroupList.SUMMARY_ALL_SUFFIX
+                        DeleteTimeOption.ANTES_SEMANA     -> Strings.GroupList.SUMMARY_LAST_WEEK
+                        DeleteTimeOption.ANTES_MES        -> Strings.GroupList.SUMMARY_LAST_MONTH
+                        DeleteTimeOption.ANTES_TRES_MESES -> Strings.GroupList.SUMMARY_LAST_3_MONTHS
+                        DeleteTimeOption.ANTES_ANYO       -> Strings.GroupList.SUMMARY_LAST_YEAR
+                    }
                     Text(
-                        buildString {
-                            append("Se borrarán los gastos")
-                            when (selectedTime) {
-                                DeleteTimeOption.TODO             -> append(" (todos)")
-                                DeleteTimeOption.ANTES_SEMANA     -> append(" anteriores a la última semana")
-                                DeleteTimeOption.ANTES_MES        -> append(" anteriores al último mes")
-                                DeleteTimeOption.ANTES_TRES_MESES -> append(" anteriores a los últimos 3 meses")
-                                DeleteTimeOption.ANTES_ANYO       -> append(" anteriores al último año")
-                            }
-                            if (selectedCategory    != null) append(" de la categoría seleccionada")
-                            if (selectedParticipant != null) append(" pagados por la persona seleccionada")
-                            append(". Esta acción no se puede deshacer.")
-                        },
+                        Strings.GroupList.deleteSummary(
+                            timeSuffix = timeSuffix,
+                            hasCategory = selectedCategory != null,
+                            hasPerson = selectedParticipant != null
+                        ),
                         modifier = Modifier.padding(10.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
@@ -766,9 +763,9 @@ private fun AdvancedDeleteDialog(
             Button(
                 onClick = { onConfirm(selectedCategory, selectedParticipant, computeBeforeInstant()) },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) { Text("Borrar gastos", fontWeight = FontWeight.SemiBold) }
+            ) { Text(Strings.Common.DELETE_SPENDS_CONFIRM, fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
@@ -789,10 +786,10 @@ private fun EmptyGroupsPlaceholder(modifier: Modifier = Modifier) {
             Icon(Icons.Default.Groups, contentDescription = null,
                 modifier = Modifier.size(48.dp), tint = Color.White)
         }
-        Text("Sin grupos todavía", style = MaterialTheme.typography.headlineSmall,
+        Text(Strings.GroupList.EMPTY_HEADLINE, style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         Text(
-            "Crea tu primer grupo para empezar\na compartir gastos con tus amigos",
+            Strings.GroupList.EMPTY_SUBTITLE,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
         )

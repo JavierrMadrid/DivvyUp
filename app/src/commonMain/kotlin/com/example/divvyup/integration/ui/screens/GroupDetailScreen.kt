@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.divvyup.application.AnalyticsExportData
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Spend
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppTabsRow
 import com.example.divvyup.integration.ui.components.AppTopBar
 import com.example.divvyup.integration.ui.components.PillFab
@@ -33,6 +34,9 @@ import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 
 internal val MES_CORTO =
     listOf("", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+// MES_NOMBRES: nombres de mes para formatLocalDate. Mantener inline (es un
+// array pequeño de constantes, no texto suelto en pantalla) — candidato
+// natural para un DateFormatter service fuera de Phase 6.
 internal val MES_NOMBRES = listOf(
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -149,9 +153,9 @@ fun GroupDetailScreen(
         topBar = {
             Column {
                 AppTopBar(
-                    title = uiState.group?.name ?: "Cargando...",
+                    title = uiState.group?.name ?: Strings.GroupDetail.LOADING_FALLBACK,
                     subtitle = uiState.group?.let {
-                        "${uiState.participants.size} participantes - ${it.currency}"
+                        Strings.GroupDetail.participantsHeader(uiState.participants.size, it.currency)
                     },
                     variant = TopBarVariant.Gradient,
                     onBack = onBack,
@@ -159,7 +163,7 @@ fun GroupDetailScreen(
                         IconButton(onClick = onOpenSettings) {
                             Icon(
                                 Icons.Default.Settings,
-                                contentDescription = "Ajustes del grupo",
+                                contentDescription = Strings.GroupDetail.A11Y_GROUP_SETTINGS,
                                 tint = Color.White
                             )
                         }
@@ -168,7 +172,12 @@ fun GroupDetailScreen(
                 AppTabsRow(
                     selectedIndex = uiState.selectedTab.ordinal,
                     onSelect = { idx -> viewModel.selectTab(GroupDetailTab.entries[idx]) },
-                    tabLabels = listOf("Gastos", "Balances", "Analíticas", "Actividad")
+                    tabLabels = listOf(
+                        Strings.GroupDetail.TAB_GASTOS,
+                        Strings.GroupDetail.TAB_BALANCES,
+                        Strings.GroupDetail.TAB_ANALYTICS,
+                        Strings.GroupDetail.TAB_ACTIVITY
+                    )
                 )
             }
         },
@@ -177,7 +186,7 @@ fun GroupDetailScreen(
                 GroupDetailTab.GASTOS -> PillFab(
                     onClick = onAddSpend,
                     icon = Icons.Default.Add,
-                    label = "Nuevo gasto"
+                    label = Strings.GroupDetail.FAB_NEW_SPEND
                 )
 
                 GroupDetailTab.BALANCES -> {}
@@ -277,7 +286,7 @@ fun GroupDetailScreen(
                         .padding(20.dp),
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
                 ) { Text(errorMsg) }
             }
         }

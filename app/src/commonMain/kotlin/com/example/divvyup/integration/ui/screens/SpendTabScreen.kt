@@ -66,6 +66,7 @@ import com.example.divvyup.domain.model.Recurrence
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.Spend
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppFilterChipRow
 import com.example.divvyup.integration.ui.components.AppFilterLabel
@@ -86,11 +87,11 @@ private const val DEFAULT_UNCATEGORIZED_ICON = "📦"
 
 // ── Opciones de tiempo para borrado avanzado ──────────────────────────────────
 internal enum class SpendDeleteTimeOption(val label: String) {
-    TODOS("Todos"),
-    ANTES_ULTIMA_SEMANA("Anteriores a la última semana"),
-    ANTES_ULTIMO_MES("Anteriores al último mes"),
-    ANTES_TRES_MESES("Anteriores a los últimos 3 meses"),
-    ANTES_ULTIMO_ANYO("Anteriores al último año")
+    TODOS(Strings.SpendTab.TIME_ALL),
+    ANTES_ULTIMA_SEMANA(Strings.SpendTab.TIME_LAST_WEEK),
+    ANTES_ULTIMO_MES(Strings.SpendTab.TIME_LAST_MONTH),
+    ANTES_TRES_MESES(Strings.SpendTab.TIME_LAST_3_MONTHS),
+    ANTES_ULTIMO_ANYO(Strings.SpendTab.TIME_LAST_YEAR)
 }
 
 // --- Tab: Gastos -------------------------------------------------------------
@@ -189,7 +190,7 @@ internal fun SpendTab(
                     AppSearchField(
                         value = spendSearchQuery,
                         onValueChange = { spendSearchQuery = it },
-                        placeholder = "Buscar gasto",
+                        placeholder = Strings.SpendTab.SEARCH_PLACEHOLDER,
                         onClear = { spendSearchQuery = "" },
                         modifier = Modifier
                             .weight(1f)
@@ -201,7 +202,7 @@ internal fun SpendTab(
                     ) {
                         Icon(
                             Icons.Default.FilterList,
-                            contentDescription = "Filtros",
+                            contentDescription = Strings.SpendTab.A11Y_FILTERS,
                             tint = if (hasActiveFilters) JungleGreen else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -219,7 +220,7 @@ internal fun SpendTab(
                     ) {
                         Icon(
                             Icons.Default.DoneAll,
-                            contentDescription = "Selección múltiple",
+                            contentDescription = Strings.SpendTab.A11Y_MULTI_SELECT,
                             tint = if (isSelectionMode) JungleGreen else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -229,7 +230,7 @@ internal fun SpendTab(
             if (filteredSpends.isEmpty()) {
                 item {
                     Text(
-                        text = "No hay gastos que coincidan",
+                        text = Strings.SpendTab.FILTERED_EMPTY,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -242,7 +243,7 @@ internal fun SpendTab(
                 val isSettlementMirroredSpend = spend.isSettlementSpend(settlementCategoryIds)
                     SpendCard(
                         spend = spend,
-                        payerName = participantMap[spend.payerId]?.name ?: "Desconocido",
+                        payerName = participantMap[spend.payerId]?.name ?: Strings.SpendTab.PAYER_UNKNOWN,
                         categoryIcon = spend.categoryId?.let { categoryMap[it]?.icon } ?: DEFAULT_UNCATEGORIZED_ICON,
                         categoryName = spend.categoryId?.let { categoryMap[it]?.name },
                         currency = currency,
@@ -298,11 +299,11 @@ internal fun SpendTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Borrar seleccionados", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Delete, contentDescription = Strings.SpendTab.A11Y_DELETE_SELECTED, modifier = Modifier.size(20.dp))
                     Text("${selectedSpendIds.size}", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 }
             } else {
-                Icon(Icons.Default.DeleteSweep, contentDescription = "Borrado avanzado", modifier = Modifier.size(22.dp))
+                Icon(Icons.Default.DeleteSweep, contentDescription = Strings.SpendTab.A11Y_ADVANCED_DELETE, modifier = Modifier.size(22.dp))
             }
         }
     }
@@ -336,8 +337,8 @@ internal fun SpendTab(
         AlertDialog(
             onDismissRequest = { showDeleteSelectedConfirm = false },
             shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-            title = { Text("Borrar gastos seleccionados", fontWeight = FontWeight.Bold) },
-            text = { Text("¿Eliminar ${selectedSpendIds.size} gasto(s) seleccionado(s)?") },
+            title = { Text(Strings.SpendTab.DELETE_SELECTED_TITLE, fontWeight = FontWeight.Bold) },
+            text = { Text(Strings.SpendTab.deleteConfirmSpendsSelected(selectedSpendIds.size)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -347,9 +348,9 @@ internal fun SpendTab(
                         showDeleteSelectedConfirm = false
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Eliminar", fontWeight = FontWeight.SemiBold) }
+                ) { Text(Strings.Common.DELETE, fontWeight = FontWeight.SemiBold) }
             },
-            dismissButton = { TextButton(onClick = { showDeleteSelectedConfirm = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showDeleteSelectedConfirm = false }) { Text(Strings.Common.CANCEL) } }
         )
     }
 
@@ -377,10 +378,10 @@ internal fun SpendEmptyState(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.padding(40.dp)
         ) {
-            Text("💸", fontSize = 48.sp)
-            Text("Sin gastos todavía", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(Strings.SpendTab.EMOJI_EMPTY, fontSize = 48.sp)
+            Text(Strings.SpendTab.EMPTY_HEADLINE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                "Pulsa el botón para añadir el primer gasto",
+                Strings.SpendTab.EMPTY_SUBTITLE,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -491,9 +492,9 @@ internal fun SpendCard(
                         Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = JungleGreen.copy(alpha = 0.13f)) {
                             Text(
                                 text = when (spend.recurrence) {
-                                    Recurrence.WEEKLY  -> "🔁 Semanal"
-                                    Recurrence.MONTHLY -> "🔁 Mensual"
-                                    Recurrence.DAILY   -> "🔁 Diario"
+                                    Recurrence.WEEKLY  -> Strings.SpendTab.RECURRENCE_WEEKLY
+                                    Recurrence.MONTHLY -> Strings.SpendTab.RECURRENCE_MONTHLY
+                                    Recurrence.DAILY   -> Strings.SpendTab.RECURRENCE_DAILY
                                     Recurrence.NONE    -> ""
                                 },
                                 style = MaterialTheme.typography.labelSmall,
@@ -507,7 +508,7 @@ internal fun SpendCard(
                     if (spend.recurrenceParentId != null) {
                         Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.secondaryContainer) {
                             Text(
-                                "⚡ Auto",
+                                Strings.SpendTab.AUTO_BADGE,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -520,7 +521,7 @@ internal fun SpendCard(
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "${spend.amount.fmt2()} $currency",
+                    text = Strings.Common.amountCurrency(spend.amount.fmt2(), currency),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -533,7 +534,7 @@ internal fun SpendCard(
                         color = impactColor.copy(alpha = 0.12f)
                     ) {
                         Text(
-                            text = "$impactSign${personalImpact.fmt2()} $currency",
+                            text = Strings.Common.amountCurrencySigned(impactSign, personalImpact.fmt2(), currency),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = impactColor,
@@ -577,11 +578,11 @@ internal fun SpendListFiltersDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = { Text("Filtros", fontWeight = FontWeight.Bold) },
+        title = { Text(Strings.SpendTab.FILTER_TITLE, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (categories.isNotEmpty()) {
-                    AppFilterLabel("Categoría")
+                    AppFilterLabel(Strings.SpendTab.FILTER_CATEGORY)
                     AppFilterChipRow(items = categories) { category ->
                         AppFilterChip(
                             label = "${category.icon} ${category.name}",
@@ -594,7 +595,7 @@ internal fun SpendListFiltersDialog(
                     }
                 }
                 if (participants.isNotEmpty()) {
-                    AppFilterLabel("Persona")
+                    AppFilterLabel(Strings.SpendTab.FILTER_PERSON)
                     AppFilterChipRow(items = participants) { participant ->
                         AppFilterChip(
                             label = participant.name,
@@ -606,7 +607,7 @@ internal fun SpendListFiltersDialog(
                         }
                     }
                 }
-                AppFilterLabel("Rango de fechas")
+                AppFilterLabel(Strings.SpendTab.FILTER_DATE_RANGE)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = { showDatePickerDesde = true },
@@ -617,7 +618,7 @@ internal fun SpendListFiltersDialog(
                     ) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(if (localFromDate != null) formatLocalDate(localFromDate!!) else "Desde")
+                        Text(if (localFromDate != null) formatLocalDate(localFromDate!!) else Strings.SpendTab.DATE_FROM_LABEL)
                     }
                     OutlinedButton(
                         onClick = { showDatePickerHasta = true },
@@ -628,14 +629,14 @@ internal fun SpendListFiltersDialog(
                     ) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(if (localToDate != null) formatLocalDate(localToDate!!) else "Hasta")
+                        Text(if (localToDate != null) formatLocalDate(localToDate!!) else Strings.SpendTab.DATE_TO_LABEL)
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = { onApply(localCategoryIds, localParticipantIds, localFromDate, localToDate) }) {
-                Text("Aplicar", fontWeight = FontWeight.SemiBold)
+                Text(Strings.SpendTab.FILTER_APPLY, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -646,8 +647,8 @@ internal fun SpendListFiltersDialog(
                     localFromDate = null
                     localToDate = null
                     onClear()
-                }) { Text("Limpiar") }
-                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                }) { Text(Strings.SpendTab.FILTER_CLEAR) }
+                TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) }
             }
         }
     )
@@ -666,9 +667,9 @@ internal fun SpendListFiltersDialog(
                         if (localToDate != null && localToDate!! < newFrom) localToDate = newFrom
                     }
                     showDatePickerDesde = false
-                }) { Text("Aceptar") }
+                }) { Text(Strings.Common.ACCEPT) }
             },
-            dismissButton = { TextButton(onClick = { showDatePickerDesde = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showDatePickerDesde = false }) { Text(Strings.Common.CANCEL) } }
         ) { DatePicker(state = state, colors = appDatePickerColors()) }
     }
 
@@ -686,9 +687,9 @@ internal fun SpendListFiltersDialog(
                         if (localFromDate != null && localFromDate!! > newTo) localFromDate = newTo
                     }
                     showDatePickerHasta = false
-                }) { Text("Aceptar") }
+                }) { Text(Strings.Common.ACCEPT) }
             },
-            dismissButton = { TextButton(onClick = { showDatePickerHasta = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showDatePickerHasta = false }) { Text(Strings.Common.CANCEL) } }
         ) { DatePicker(state = state, colors = appDatePickerColors()) }
     }
 }
@@ -728,12 +729,12 @@ internal fun SpendAdvancedDeleteDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                Text("Borrar gastos", fontWeight = FontWeight.Bold)
+                Text(Strings.Common.DELETE_SPENDS_TITLE, fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                AppFilterLabel("Período")
+                AppFilterLabel(Strings.Common.PERIOD_LABEL)
                 AppFilterChipRow(SpendDeleteTimeOption.entries) { opt ->
                     AppFilterChip(
                         label = opt.label,
@@ -745,10 +746,10 @@ internal fun SpendAdvancedDeleteDialog(
                 }
                 HorizontalDivider()
                 if (categories.isNotEmpty()) {
-                    AppFilterLabel("Categoría (opcional)")
+                    AppFilterLabel(Strings.Common.CATEGORY_OPTIONAL_LABEL)
                     AppFilterChipRow(
                         items = categories,
-                        leadingAllLabel = "Todas",
+                        leadingAllLabel = Strings.Common.ALL_FEMININE,
                         onLeadingAllClick = { selectedCategory = null },
                         isLeadingAllSelected = selectedCategory == null
                     ) { cat ->
@@ -764,10 +765,10 @@ internal fun SpendAdvancedDeleteDialog(
                     }
                 }
                 if (participants.isNotEmpty()) {
-                    AppFilterLabel("Persona (opcional)")
+                    AppFilterLabel(Strings.Common.PERSON_OPTIONAL_LABEL)
                     AppFilterChipRow(
                         items = participants,
-                        leadingAllLabel = "Todos",
+                        leadingAllLabel = Strings.Common.ALL_MASCULINE,
                         onLeadingAllClick = { selectedParticipant = null },
                         isLeadingAllSelected = selectedParticipant == null
                     ) { p ->
@@ -783,14 +784,13 @@ internal fun SpendAdvancedDeleteDialog(
                     }
                 }
                 Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusControl), color = summaryContainerColor) {
+                    val timeSuffix = if (selectedTime != SpendDeleteTimeOption.TODOS) selectedTime.label.lowercase() else null
                     Text(
-                        buildString {
-                            append("Se borrarán los gastos")
-                            if (selectedTime != SpendDeleteTimeOption.TODOS) append(" ${selectedTime.label.lowercase()}")
-                            if (selectedCategory    != null) append(" de la categoría seleccionada")
-                            if (selectedParticipant != null) append(" pagados por la persona seleccionada")
-                            append(". Esta acción no se puede deshacer.")
-                        },
+                        Strings.SpendTab.deleteSummary(
+                            timeSuffix = timeSuffix,
+                            hasCategory = selectedCategory != null,
+                            hasPerson = selectedParticipant != null
+                        ),
                         modifier = Modifier.padding(10.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
@@ -802,9 +802,9 @@ internal fun SpendAdvancedDeleteDialog(
             Button(
                 onClick = { onConfirm(selectedCategory, selectedParticipant, beforeInstant()) },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White)
-            ) { Text("Borrar gastos", fontWeight = FontWeight.SemiBold) }
+            ) { Text(Strings.Common.DELETE_SPENDS_CONFIRM, fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
