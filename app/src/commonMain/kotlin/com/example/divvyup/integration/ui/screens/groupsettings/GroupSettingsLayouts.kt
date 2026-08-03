@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.screens.isSettlementCategory
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
@@ -94,12 +95,12 @@ internal fun GroupSettingsTopBar(
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Volver",
+                    contentDescription = Strings.GroupSettings.A11Y_BACK,
                     tint = Color.White
                 )
             }
             Text(
-                text = "Ajustes del grupo",
+                text = Strings.GroupSettings.TITLE,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -150,7 +151,7 @@ internal fun OwnerSaveBar(
                 )
                 Spacer(Modifier.width(8.dp))
             }
-            Text("Guardar cambios", fontWeight = FontWeight.SemiBold)
+            Text(Strings.GroupSettings.SAVE_BUTTON, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -351,7 +352,7 @@ private fun MemberReadonlyBanner(modifier: Modifier = Modifier) {
                 modifier = Modifier.size(DivvyUpTokens.IconMd)
             )
             Text(
-                "Solo el creador del grupo puede editar su información y categorías. Aquí puedes indicar cuál eres tú.",
+                Strings.GroupSettings.MEMBER_READONLY_BANNER,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onTertiaryContainer
             )
@@ -376,7 +377,7 @@ private fun OwnerGroupInfoSection(
     modifier: Modifier = Modifier
 ) {
     SettingsSectionCard(
-        title = "Información del grupo",
+        title = Strings.GroupSettings.SECTION_INFO,
         modifier = modifier
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -399,7 +400,7 @@ private fun OwnerGroupInfoSection(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = groupName.take(1).uppercase().ifBlank { "G" },
+                            text = groupName.take(1).uppercase().ifBlank { Strings.GroupSettings.AVATAR_FALLBACK_LETTER },
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -424,7 +425,7 @@ private fun OwnerGroupInfoSection(
                         ) {
                             Icon(
                                 Icons.Default.CameraAlt,
-                                contentDescription = "Cambiar foto del grupo",
+                                contentDescription = Strings.GroupSettings.A11Y_CHANGE_GROUP_PHOTO,
                                 tint = Color.White,
                                 modifier = Modifier.size(DivvyUpTokens.IconSm)
                             )
@@ -436,7 +437,7 @@ private fun OwnerGroupInfoSection(
             OutlinedTextField(
                 value = groupName,
                 onValueChange = onGroupNameChange,
-                label = { Text("Nombre del grupo *") },
+                label = { Text(Strings.GroupSettings.FIELD_GROUP_NAME) },
                 isError = nameError,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -446,7 +447,7 @@ private fun OwnerGroupInfoSection(
             )
             if (nameError) {
                 Text(
-                    "El nombre no puede estar vacío",
+                    Strings.GroupSettings.ERROR_NAME_EMPTY,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -454,7 +455,7 @@ private fun OwnerGroupInfoSection(
             OutlinedTextField(
                 value = groupDescription,
                 onValueChange = onGroupDescriptionChange,
-                label = { Text("Descripción (opcional)") },
+                label = { Text(Strings.GroupSettings.FIELD_DESCRIPTION) },
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
@@ -462,7 +463,7 @@ private fun OwnerGroupInfoSection(
                 colors = appOutlinedTextFieldColors()
             )
             Text(
-                "Moneda",
+                Strings.GroupSettings.LABEL_CURRENCY,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -497,7 +498,7 @@ private fun OwnerGroupInfoSection(
             }
             if (visibleCategories.isNotEmpty()) {
                 Text(
-                    "Categoría por defecto",
+                    Strings.GroupSettings.LABEL_DEFAULT_CATEGORY,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -515,9 +516,9 @@ private fun OwnerGroupInfoSection(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text("📦", fontSize = 14.sp)
+                                Text(Strings.GroupSettings.NONE_EMOJI, fontSize = 14.sp)
                                 Text(
-                                    "Ninguna",
+                                    Strings.GroupSettings.NONE_LABEL,
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
@@ -569,7 +570,7 @@ private fun OwnerGroupInfoSection(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Compartir enlace de invitación",
+                    Strings.GroupSettings.BUTTON_SHARE_INVITE,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -590,7 +591,7 @@ private fun ParticipantsSection(
     modifier: Modifier = Modifier
 ) {
     SettingsSectionCard(
-        title = "Participantes",
+        title = Strings.GroupSettings.SECTION_PARTICIPANTS,
         modifier = modifier
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -605,7 +606,7 @@ private fun ParticipantsSection(
                     Spacer(Modifier.width(12.dp))
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "Reparto",
+                        Strings.GroupSettings.HEADER_SPLIT,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -614,7 +615,7 @@ private fun ParticipantsSection(
                     )
                     Spacer(Modifier.width(DivvyUpTokens.GapSm))
                     Text(
-                        "Soy yo",
+                        Strings.GroupSettings.HEADER_IS_ME,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -671,7 +672,7 @@ private fun ParticipantsSection(
                                     color = JungleGreen
                                 ) {
                                     Text(
-                                        "Yo",
+                                        Strings.GroupSettings.ME_BADGE,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -696,7 +697,7 @@ private fun ParticipantsSection(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (pct != null) "${pct.fmt2s()}%" else "—",
+                            text = if (pct != null) "${pct.fmt2s()}%" else Strings.GroupSettings.PERCENTAGE_EMDASH,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = if (pct != null) {
@@ -721,7 +722,7 @@ private fun ParticipantsSection(
                         ) {
                             Icon(
                                 Icons.Default.Person,
-                                contentDescription = "Soy yo",
+                                contentDescription = Strings.GroupSettings.HEADER_IS_ME,
                                 tint = if (isMe) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -734,7 +735,7 @@ private fun ParticipantsSection(
                         ) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Eliminar participante",
+                                contentDescription = Strings.GroupSettings.A11Y_DELETE_PARTICIPANT,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(DivvyUpTokens.IconSm)
                             )
@@ -771,7 +772,7 @@ private fun ParticipantsSection(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "Añadir",
+                            Strings.GroupSettings.BUTTON_ADD_PARTICIPANT,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -793,7 +794,7 @@ private fun ParticipantsSection(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "Reparto",
+                            Strings.GroupSettings.BUTTON_SPLIT,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -819,13 +820,13 @@ private fun OwnerCustomCategoriesSection(
     }
 
     SettingsSectionCard(
-        title = "Categorías personalizadas",
+        title = Strings.GroupSettings.SECTION_CUSTOM_CATEGORIES,
         modifier = modifier
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
             if (customCategories.isEmpty()) {
                 Text(
-                    "Aún no has creado categorías para este grupo",
+                    Strings.GroupSettings.EMPTY_CUSTOM_CATEGORIES,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 8.dp)
@@ -856,7 +857,7 @@ private fun OwnerCustomCategoriesSection(
                             )
                             if (category.budget != null) {
                                 Text(
-                                    "Presupuesto: ${category.budget.fmt2()} $currency/mes",
+                                    Strings.GroupSettings.categoryBudgetLine(category.budget.fmt2(), currency),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -868,7 +869,7 @@ private fun OwnerCustomCategoriesSection(
                         ) {
                             Icon(
                                 Icons.Default.Wallet,
-                                contentDescription = "Presupuesto",
+                                contentDescription = Strings.GroupSettings.A11Y_BUDGET,
                                 tint = if (category.budget != null) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
@@ -883,7 +884,7 @@ private fun OwnerCustomCategoriesSection(
                         ) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Eliminar categoría",
+                                contentDescription = Strings.GroupSettings.A11Y_DELETE_CATEGORY,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(DivvyUpTokens.IconSm)
                             )
@@ -914,7 +915,7 @@ private fun OwnerCustomCategoriesSection(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    "Nueva categoría",
+                    Strings.GroupSettings.BUTTON_NEW_CATEGORY,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold
                 )

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppTopBar
 import com.example.divvyup.integration.ui.components.TopBarVariant
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
@@ -99,7 +100,7 @@ internal fun SettleUpScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AppTopBar(
-                title = "Liquidar cuentas",
+                title = Strings.SettleUp.TITLE,
                 variant = TopBarVariant.Gradient,
                 onBack = onBack
             )
@@ -122,7 +123,7 @@ internal fun SettleUpScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total a liquidar", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(Strings.SettleUp.TOTAL_LABEL, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             "${totalSelected.fmt2()} ${uiState.group?.currency ?: "EUR"}",
                             style = MaterialTheme.typography.titleMedium,
@@ -142,7 +143,7 @@ internal fun SettleUpScreen(
                     ) {
                         Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(8.dp))
-                        Text("Confirmar liquidación", fontWeight = FontWeight.SemiBold)
+                        Text(Strings.SettleUp.CONFIRM_BUTTON, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -161,7 +162,7 @@ internal fun SettleUpScreen(
             if (uiState.error != null) {
                 item {
                     Snackbar(
-                        action = { TextButton(onClick = viewModel::clearError) { Text("Cerrar") } },
+                        action = { TextButton(onClick = viewModel::clearError) { Text(Strings.SettleUp.SNACKBAR_ACTION) } },
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ) { Text(uiState.error.orEmpty()) }
@@ -175,7 +176,7 @@ internal fun SettleUpScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "${selectedKeys.size} de ${transfers.size} seleccionados",
+                        Strings.SettleUp.selectionCount(selectedKeys.size, transfers.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -188,7 +189,7 @@ internal fun SettleUpScreen(
                         )
                     ) {
                         Text(
-                            if (allSelected) "Deseleccionar todos" else "Seleccionar todos",
+                            if (allSelected) Strings.SettleUp.ACTION_DESELECT_ALL else Strings.SettleUp.ACTION_SELECT_ALL,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -210,9 +211,9 @@ internal fun SettleUpScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("✅", fontSize = 24.sp)
+                            Text(Strings.SettleUp.SUCCESS_EMOJI, fontSize = 24.sp)
                             Text(
-                                "Las cuentas ya estan saldadas",
+                                Strings.SettleUp.ALREADY_SETTLED,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = highlightedText

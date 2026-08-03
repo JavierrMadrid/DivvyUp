@@ -4,9 +4,9 @@ import kotlin.math.abs
 import kotlin.math.round
 
 /**
- * Strings centralizados para las 5 pantallas principales del rediseño visual
- * (Phase 6). Antes vivían inline en cada Composable como literales; ahora son
- * una sola fuente para editar la copia.
+ * Strings centralizados para el rediseño visual (Phases 6–7). Antes vivían
+ * inline en cada Composable como literales; ahora son una sola fuente para
+ * editar la copia.
  *
  * Mantener esto en Kotlin (no `strings.xml`) es una decisión deliberada:
  *
@@ -326,5 +326,202 @@ object Strings {
         const val THEME_SYSTEM = "Sistema"
         const val THEME_LIGHT = "Claro"
         const val THEME_DARK = "Oscuro"
+    }
+
+    // ── Auth (compartido por Register y Login) ───────────────────────────────
+
+    object Auth {
+        // Logo / hero
+        const val LOGO_EMOJI = "💸"
+        const val APP_NAME = "DivvyUp"
+
+        // A11y password toggle
+        const val A11Y_HIDE_PASSWORD = "Ocultar contraseña"
+        const val A11Y_SHOW_PASSWORD = "Mostrar contraseña"
+
+        // Login-only separator
+        const val OR_SEPARATOR = "  o  "
+    }
+
+    // ── RegisterScreen ──────────────────────────────────────────────────────
+
+    object Register {
+        const val HEADLINE = "Crea tu cuenta"
+        const val FIELD_EMAIL = "Correo electrónico"
+        const val FIELD_PASSWORD_HINT = "Contraseña (mín. 6 caracteres)"
+        const val BUTTON_CREATE = "Crear cuenta"
+        const val PROMPT_LOGIN = "¿Ya tienes cuenta? Inicia sesión"
+    }
+
+    // ── LoginScreen ──────────────────────────────────────────────────────────
+
+    object Login {
+        const val HEADLINE = "Inicia sesión para continuar"
+        const val FIELD_EMAIL = "Correo electrónico"
+        const val FIELD_PASSWORD = "Contraseña"
+        const val BUTTON_LOGIN = "Iniciar sesión"
+        const val PROVIDER_GOOGLE = "Google"
+        const val BUTTON_CONTINUE_GOOGLE = "Continuar con Google"
+        const val PROMPT_REGISTER = "¿No tienes cuenta? Regístrate"
+    }
+
+    // ── ChangePasswordScreen ─────────────────────────────────────────────────
+
+    object ChangePassword {
+        const val A11Y_BACK = "Volver"
+        const val TITLE = "Cambiar contraseña"
+        const val INTRO = "Introduce tu contraseña actual y una nueva para actualizarla."
+        const val FIELD_CURRENT = "Contraseña actual"
+        const val FIELD_NEW = "Nueva contraseña"
+        const val FIELD_NEW_HINT = "Mínimo 6 caracteres"
+        const val FIELD_CONFIRM = "Confirmar nueva contraseña"
+
+        /** Mensaje de error inline en formulario. */
+        const val ERROR_MISMATCH = "Las contraseñas no coinciden"
+
+        const val BUTTON_UPDATE = "Actualizar contraseña"
+    }
+
+    // ── JoinGroupParticipantScreen ───────────────────────────────────────────
+
+    object JoinGroup {
+        const val A11Y_BACK = "Volver"
+        const val TITLE = "Unirse al grupo"
+        const val BUTTON_CONTINUE = "Continuar"
+        const val INSTRUCTION =
+            "Selecciona qué participante eres para vincular tu usuario a este grupo."
+
+        /** "Te han invitado a \"<groupName>\"" — ensamblado para preservar comillas. */
+        fun invitedToGroup(groupName: String): String =
+            "Te han invitado a \"$groupName\""
+    }
+
+    // ── ActivityTabScreen ────────────────────────────────────────────────────
+
+    object Activity {
+        const val EMOJI_EMPTY = "📋"
+        const val EMPTY_HEADLINE = "Sin actividad registrada aún"
+        const val EMPTY_SUBTITLE =
+            "Los gastos, liquidaciones y cambios en el grupo aparecerán aquí."
+        const val SECTION_HISTORY = "Historial de actividad"
+        const val MONTH_HINT = "Se muestran los eventos del último mes"
+
+        /** "$count eventos" — cabecera de sección. */
+        fun eventCount(count: Int): String = "$count eventos"
+
+        /** "por $actor" — atribución de evento. */
+        fun byActor(actorName: String): String = "por $actorName"
+    }
+
+    // ── SettleUpScreen ───────────────────────────────────────────────────────
+
+    object SettleUp {
+        const val TITLE = "Liquidar cuentas"
+        const val TOTAL_LABEL = "Total a liquidar"
+        const val CONFIRM_BUTTON = "Confirmar liquidación"
+        const val SNACKBAR_ACTION = "Cerrar"
+        const val ACTION_DESELECT_ALL = "Deseleccionar todos"
+        const val ACTION_SELECT_ALL = "Seleccionar todos"
+        const val SUCCESS_EMOJI = "✅"
+
+        /** "$selected de $total seleccionados" — barra de selección. */
+        fun selectionCount(selected: Int, total: Int): String =
+            "$selected de $total seleccionados"
+
+        /** Mensaje cuando ya no quedan transferencias que liquidar. */
+        const val ALREADY_SETTLED = "Las cuentas ya estan saldadas"
+    }
+
+    // ── GroupSettings (pantalla + dialogs + layouts) ─────────────────────────
+
+    object GroupSettings {
+        // TopBar
+        const val A11Y_BACK = "Volver"
+        const val TITLE = "Ajustes del grupo"
+        const val SAVE_BUTTON = "Guardar cambios"
+
+        // Section: Información del grupo
+        const val SECTION_INFO = "Información del grupo"
+        const val AVATAR_FALLBACK_LETTER = "G"
+        const val A11Y_CHANGE_GROUP_PHOTO = "Cambiar foto del grupo"
+        const val FIELD_GROUP_NAME = "Nombre del grupo *"
+        const val ERROR_NAME_EMPTY = "El nombre no puede estar vacío"
+        const val FIELD_DESCRIPTION = "Descripción (opcional)"
+        const val LABEL_CURRENCY = "Moneda"
+        const val LABEL_DEFAULT_CATEGORY = "Categoría por defecto"
+        const val NONE_EMOJI = "📦"
+        const val NONE_LABEL = "Ninguna"
+        const val BUTTON_SHARE_INVITE = "Compartir enlace de invitación"
+
+        // Section: Participantes
+        const val SECTION_PARTICIPANTS = "Participantes"
+        const val HEADER_SPLIT = "Reparto"
+        const val HEADER_IS_ME = "Soy yo"
+        const val ME_BADGE = "Yo"
+        const val PERCENTAGE_EMDASH = "—"
+        const val A11Y_DELETE_PARTICIPANT = "Eliminar participante"
+        const val BUTTON_ADD_PARTICIPANT = "Añadir"
+        const val BUTTON_SPLIT = "Reparto"
+
+        // Member-only banner
+        const val MEMBER_READONLY_BANNER =
+            "Solo el creador del grupo puede editar su información y categorías. " +
+            "Aquí puedes indicar cuál eres tú."
+
+        // Section: Categorías personalizadas
+        const val SECTION_CUSTOM_CATEGORIES = "Categorías personalizadas"
+        const val EMPTY_CUSTOM_CATEGORIES = "Aún no has creado categorías para este grupo"
+        const val A11Y_BUDGET = "Presupuesto"
+        const val A11Y_DELETE_CATEGORY = "Eliminar categoría"
+        const val BUTTON_NEW_CATEGORY = "Nueva categoría"
+
+        /** "Presupuesto: 12,50 EUR/mes" — línea de categoría con presupuesto. */
+        fun categoryBudgetLine(budget: String, currency: String): String =
+            "Presupuesto: $budget $currency/mes"
+
+        // ── Dialogs ──────────────────────────────────────────────────────
+
+        // ConfirmDeleteCategoryDialog
+        const val DELETE_CATEGORY_TITLE = "Eliminar categoría"
+        fun deleteConfirmCategory(name: String): String =
+            "¿Eliminar la categoría \"$name\"?"
+
+        // ConfirmDeleteParticipantDialog
+        const val DELETE_PARTICIPANT_TITLE = "Eliminar participante"
+        fun deleteConfirmParticipant(name: String): String =
+            "¿Eliminar a \"$name\"?"
+
+        // AddCategoryDialog
+        const val ADD_CATEGORY_TITLE = "Nueva categoría"
+        const val ADD_CATEGORY_EXISTING_LABEL = "Categorías de este grupo:"
+        const val ADD_CATEGORY_NAME_LABEL = "Nombre *"
+        const val ADD_CATEGORY_PICK_ICON = "Elige un icono:"
+        const val ADD_CATEGORY_CUSTOM_EMOJI_LABEL = "O escribe tu propio emoji"
+        const val ADD_CATEGORY_CUSTOM_EMOJI_PLACEHOLDER = "Ej: 🌟"
+        const val ADD_CATEGORY_ERROR_BLANK = "El nombre no puede estar vacío"
+        const val ADD_CATEGORY_ERROR_DUPLICATE = "Ya existe una categoría con ese nombre"
+        const val BUTTON_CREATE = "Crear"
+
+        // BudgetEditDialog
+        fun budgetDialogTitle(categoryName: String): String =
+            "Presupuesto — $categoryName"
+        const val BUDGET_INTRO =
+            "Establece un límite mensual para esta categoría. " +
+            "Déjalo vacío para eliminar el presupuesto."
+        fun budgetInputLabel(currency: String): String =
+            "Presupuesto mensual ($currency)"
+        const val BUDGET_INPUT_PLACEHOLDER = "Ej: 200"
+        const val BUDGET_ERROR_INVALID = "Introduce un importe válido"
+
+        // DefaultSplitDialog
+        const val SPLIT_TITLE = "Reparto por defecto"
+        const val SPLIT_INTRO =
+            "Define el porcentaje que corresponde a cada participante por defecto " +
+            "al crear gastos. Deben sumar 100%."
+        const val SPLIT_TOTAL_LABEL = "Total"
+        const val SPLIT_DISTRIBUTE_EQUALLY = "Distribuir equitativamente"
+        const val SPLIT_PERCENT_SUFFIX = "%"
+        fun splitErrorNot100(currentPct: String): String =
+            "Los porcentajes deben sumar 100% (ahora ${currentPct}%)"
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.ActivityEventType
 import com.example.divvyup.domain.model.ActivityLog
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.ErrorContainerLight
 import com.example.divvyup.integration.ui.theme.ErrorOnContainerDark
@@ -47,14 +48,14 @@ internal fun ActivityTab(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("📋", fontSize = 48.sp)
+                Text(Strings.Activity.EMOJI_EMPTY, fontSize = 48.sp)
                 Text(
-                    "Sin actividad registrada aún",
+                    Strings.Activity.EMPTY_HEADLINE,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "Los gastos, liquidaciones y cambios en el grupo aparecerán aquí.",
+                    Strings.Activity.EMPTY_SUBTITLE,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 32.dp)
@@ -76,13 +77,13 @@ internal fun ActivityTab(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Historial de actividad",
+                    Strings.Activity.SECTION_HISTORY,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    "${activityLog.size} eventos",
+                    Strings.Activity.eventCount(activityLog.size),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -103,7 +104,7 @@ internal fun ActivityTab(
                     modifier = Modifier.size(DivvyUpTokens.IconSm)
                 )
                 Text(
-                    "Se muestran los eventos del último mes",
+                    Strings.Activity.MONTH_HINT,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
@@ -174,7 +175,7 @@ private fun ActivityLogItem(entry: ActivityLog) {
                 }
                 if (!entry.actorName.isNullOrBlank()) {
                     Text(
-                        "por ${entry.actorName}",
+                        Strings.Activity.byActor(entry.actorName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

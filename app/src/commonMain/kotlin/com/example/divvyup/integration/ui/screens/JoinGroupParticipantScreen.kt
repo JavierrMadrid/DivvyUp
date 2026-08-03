@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.viewmodel.JoinGroupParticipantViewModel
@@ -73,10 +74,10 @@ fun JoinGroupParticipantScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings.JoinGroup.A11Y_BACK)
                 }
                 Text(
-                    text = "Unirse al grupo",
+                    text = Strings.JoinGroup.TITLE,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -96,7 +97,7 @@ fun JoinGroupParticipantScreen(
                 if (uiState.isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(DivvyUpTokens.IconSm), strokeWidth = 2.dp, color = Color.White)
                 } else {
-                    Text("Continuar", fontWeight = FontWeight.SemiBold)
+                    Text(Strings.JoinGroup.BUTTON_CONTINUE, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -122,13 +123,13 @@ fun JoinGroupParticipantScreen(
         ) {
             item {
                 Text(
-                    text = "Te han invitado a \"${uiState.groupName}\"",
+                    text = Strings.JoinGroup.invitedToGroup(uiState.groupName),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Selecciona qué participante eres para vincular tu usuario a este grupo.",
+                    text = Strings.JoinGroup.INSTRUCTION,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -186,7 +187,7 @@ fun JoinGroupParticipantScreen(
                 modifier = Modifier
                     .padding(DivvyUpTokens.ScreenPaddingHLg)
                     .fillMaxWidth(),
-                action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
             ) {
                 Text(message)
             }

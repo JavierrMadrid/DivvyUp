@@ -8,6 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.rememberImagePickerLauncher
 import com.example.divvyup.integration.ui.screens.isSettlementCategory
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
@@ -186,7 +187,7 @@ private fun SettingsErrorSnackbar(
             modifier = modifier.padding(20.dp),
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            action = { TextButton(onClick = onClearError) { Text("OK") } }
+            action = { TextButton(onClick = onClearError) { Text(Strings.Common.OK) } }
         ) {
             Text(message)
         }

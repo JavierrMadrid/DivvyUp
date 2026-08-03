@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
@@ -102,16 +103,16 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Logo / cabecera
-            Text("💸", fontSize = 56.sp)
+            Text(Strings.Auth.LOGO_EMOJI, fontSize = 56.sp)
             Spacer(Modifier.height(4.dp))
             Text(
-                "DivvyUp",
+                Strings.Auth.APP_NAME,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                "Inicia sesión para continuar",
+                Strings.Login.HEADLINE,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -122,7 +123,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Correo electrónico") },
+                label = { Text(Strings.Login.FIELD_EMAIL) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -137,7 +138,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña") },
+                label = { Text(Strings.Login.FIELD_PASSWORD) },
                 singleLine = true,
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -151,7 +152,7 @@ fun LoginScreen(
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                            contentDescription = if (passwordVisible) Strings.Auth.A11Y_HIDE_PASSWORD else Strings.Auth.A11Y_SHOW_PASSWORD
                         )
                     }
                 },
@@ -182,7 +183,7 @@ fun LoginScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Iniciar sesión", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text(Strings.Login.BUTTON_LOGIN, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 }
             }
 
@@ -193,7 +194,7 @@ fun LoginScreen(
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Text(
-                    "  o  ",
+                    Strings.Auth.OR_SEPARATOR,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -215,17 +216,17 @@ fun LoginScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "Google",
+                    contentDescription = Strings.Login.PROVIDER_GOOGLE,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Continuar con Google", fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                Text(Strings.Login.BUTTON_CONTINUE_GOOGLE, fontWeight = FontWeight.Medium, fontSize = 15.sp)
             }
 
             // Enlace a registro
             TextButton(onClick = onNavigateToRegister) {
                 Text(
-                    "¿No tienes cuenta? Regístrate",
+                    Strings.Login.PROMPT_REGISTER,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -260,7 +261,7 @@ fun LoginScreen(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 action = {
-                    TextButton(onClick = viewModel::clearError) { Text("OK") }
+                    TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) }
                 }
             ) { Text(errorMsg) }
         }

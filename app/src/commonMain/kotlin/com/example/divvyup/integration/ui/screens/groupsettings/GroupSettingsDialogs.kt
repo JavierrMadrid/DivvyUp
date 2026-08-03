@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.theme.*
 
@@ -103,15 +104,15 @@ internal fun ConfirmDeleteCategoryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = { Text("Eliminar categoría", fontWeight = FontWeight.Bold) },
-        text = { Text("¿Eliminar la categoría \"$categoryName\"?") },
+        title = { Text(Strings.GroupSettings.DELETE_CATEGORY_TITLE, fontWeight = FontWeight.Bold) },
+        text = { Text(Strings.GroupSettings.deleteConfirmCategory(categoryName.orEmpty())) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) { Text("Eliminar", fontWeight = FontWeight.SemiBold) }
+            ) { Text(Strings.Common.DELETE, fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
@@ -128,15 +129,15 @@ internal fun ConfirmDeleteParticipantDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = { Text("Eliminar participante", fontWeight = FontWeight.Bold) },
-        text = { Text("¿Eliminar a \"$participantName\"?") },
+        title = { Text(Strings.GroupSettings.DELETE_PARTICIPANT_TITLE, fontWeight = FontWeight.Bold) },
+        text = { Text(Strings.GroupSettings.deleteConfirmParticipant(participantName.orEmpty())) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) { Text("Eliminar", fontWeight = FontWeight.SemiBold) }
+            ) { Text(Strings.Common.DELETE, fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
@@ -158,12 +159,12 @@ internal fun AddCategoryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = { Text("Nueva categoría", fontWeight = FontWeight.Bold) },
+        title = { Text(Strings.GroupSettings.ADD_CATEGORY_TITLE, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (existingCategories.isNotEmpty()) {
                     Text(
-                        "Categorías de este grupo:",
+                        Strings.GroupSettings.ADD_CATEGORY_EXISTING_LABEL,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -195,7 +196,7 @@ internal fun AddCategoryDialog(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it; nameError = null },
-                        label = { Text("Nombre *") },
+                        label = { Text(Strings.GroupSettings.ADD_CATEGORY_NAME_LABEL) },
                         isError = nameError != null,
                         singleLine = true,
                         modifier = Modifier.weight(1f),
@@ -204,7 +205,7 @@ internal fun AddCategoryDialog(
                         colors = appOutlinedTextFieldColors()
                     )
                 }
-                Text("Elige un icono:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Strings.GroupSettings.ADD_CATEGORY_PICK_ICON, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(EMOJI_PICKER) { emoji ->
                         val isSelected = icon == emoji
@@ -238,8 +239,8 @@ internal fun AddCategoryDialog(
                             customIconText = ""
                         }
                     },
-                    label = { Text("O escribe tu propio emoji") },
-                    placeholder = { Text("Ej: 🌟") },
+                    label = { Text(Strings.GroupSettings.ADD_CATEGORY_CUSTOM_EMOJI_LABEL) },
+                    placeholder = { Text(Strings.GroupSettings.ADD_CATEGORY_CUSTOM_EMOJI_PLACEHOLDER) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
@@ -255,16 +256,16 @@ internal fun AddCategoryDialog(
                 onClick = {
                     val trimmed = name.trim()
                     when {
-                        trimmed.isBlank() -> nameError = "El nombre no puede estar vacío"
+                        trimmed.isBlank() -> nameError = Strings.GroupSettings.ADD_CATEGORY_ERROR_BLANK
                         existingCategories.any { it.name.equals(trimmed, ignoreCase = true) } ->
-                            nameError = "Ya existe una categoría con ese nombre"
+                            nameError = Strings.GroupSettings.ADD_CATEGORY_ERROR_DUPLICATE
                         else -> onConfirm(trimmed, icon)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
-            ) { Text("Crear") }
+            ) { Text(Strings.GroupSettings.BUTTON_CREATE) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
@@ -288,21 +289,21 @@ internal fun BudgetEditDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(category.icon, fontSize = 20.sp)
-                Text("Presupuesto — ${category.name}", fontWeight = FontWeight.Bold)
+                Text(Strings.GroupSettings.budgetDialogTitle(category.name), fontWeight = FontWeight.Bold)
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Establece un límite mensual para esta categoría. Déjalo vacío para eliminar el presupuesto.",
+                    Strings.GroupSettings.BUDGET_INTRO,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it; error = null },
-                    label = { Text("Presupuesto mensual ($currency)") },
-                    placeholder = { Text("Ej: 200") },
+                    label = { Text(Strings.GroupSettings.budgetInputLabel(currency)) },
+                    placeholder = { Text(Strings.GroupSettings.BUDGET_INPUT_PLACEHOLDER) },
                     singleLine = true,
                     isError = error != null,
                     supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
@@ -321,14 +322,14 @@ internal fun BudgetEditDialog(
                         onConfirm(null)
                     } else {
                         val value = trimmed.toDoubleOrNull()
-                        if (value == null || value < 0) error = "Introduce un importe válido"
+                        if (value == null || value < 0) error = Strings.GroupSettings.BUDGET_ERROR_INVALID
                         else onConfirm(value)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
-            ) { Text("Guardar", fontWeight = FontWeight.SemiBold) }
+            ) { Text(Strings.Common.SAVE, fontWeight = FontWeight.SemiBold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
 
@@ -364,11 +365,11 @@ internal fun DefaultSplitDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusDialog),
-        title = { Text("Reparto por defecto", fontWeight = FontWeight.Bold) },
+        title = { Text(Strings.GroupSettings.SPLIT_TITLE, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Define el porcentaje que corresponde a cada participante por defecto al crear gastos. Deben sumar 100%.",
+                    Strings.GroupSettings.SPLIT_INTRO,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -382,9 +383,9 @@ internal fun DefaultSplitDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
+                        Text(Strings.GroupSettings.SPLIT_TOTAL_LABEL, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
                             color = if (isValid) JungleGreenDark else MaterialTheme.colorScheme.onErrorContainer)
-                        Text("${totalPct.fmt2s()}%", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold,
+                        Text("${totalPct.fmt2s()}${Strings.GroupSettings.SPLIT_PERCENT_SUFFIX}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold,
                             color = if (isValid) JungleGreenDark else MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
@@ -394,7 +395,7 @@ internal fun DefaultSplitDialog(
                 }) {
                     Icon(Icons.Default.Balance, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Distribuir equitativamente", style = MaterialTheme.typography.labelMedium)
+                    Text(Strings.GroupSettings.SPLIT_DISTRIBUTE_EQUALLY, style = MaterialTheme.typography.labelMedium)
                 }
                 HorizontalDivider()
                 participants.forEach { p ->
@@ -426,7 +427,7 @@ internal fun DefaultSplitDialog(
                                 pctTexts.value = newMap
                                 splitError = null
                             },
-                            label = { Text("%") },
+                            label = { Text(Strings.GroupSettings.SPLIT_PERCENT_SUFFIX) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.width(90.dp),
@@ -444,7 +445,7 @@ internal fun DefaultSplitDialog(
             Button(
                 onClick = {
                     if (kotlin.math.abs(totalPct - 100.0) >= 0.01) {
-                        splitError = "Los porcentajes deben sumar 100% (ahora ${totalPct.fmt2s()}%)"
+                        splitError = Strings.GroupSettings.splitErrorNot100(totalPct.fmt2s())
                         return@Button
                     }
                     val result = participants.associate { p ->
@@ -453,8 +454,8 @@ internal fun DefaultSplitDialog(
                     onConfirm(result)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
-            ) { Text("Guardar") }
+            ) { Text(Strings.Common.SAVE) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) } }
     )
 }
