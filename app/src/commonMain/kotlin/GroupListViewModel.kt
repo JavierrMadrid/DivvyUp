@@ -137,32 +137,64 @@ class GroupListViewModel(
             try {
                 val groups = groupService.getAllGroups()
 
-                // Pintar la lista de inmediato con lo que ya tenemos (sólo 1 query).
-                // El precarga de detalle continúa en background y se aplica después.
-                _uiState.update {
-                    it.copy(
-                        groups = groups.sortedWith(
-                            compareByDescending<Group> { it.createdAt }
-                                .thenByDescending { it.id }
-                        ),
-                        isLoading = false
-                    )
-                }
-
                 if (groups.isEmpty()) {
-                    _uiState.update { it.copy(groups = emptyList(), isLoading = false) }
+                    _uiState.update {
+                        it.copy(
+                            groups = emptyList(),
+                            participantsByGroup = emptyMap(),
+                            categoriesByGroup = emptyMap(),
+                            isLoading = false
+                        )
+                    }
                     return@launch
                 }
                 println("DEBUG GroupListVM: cargados ${groups.size} grupos, precargando detalle en background…")
 
-                // Cargar en paralelo participantes, categorías y última actividad de cada grupo.
                 // Semaphore limita concurrencia para no saturar Ktor/Supabase con muchos grupos.
                 val semaphore = Semaphore(MAX_CONCURRENT_GROUP_LOADS)
-                coroutineScope {
-                    val detailJobs = groups.map { group ->
+
+                // 1) Calcular la última actividad de CADA grupo antes de pintar, para
+                //    aplicar un único orden definitivo. Antes se pintaba primero por
+                //    `createdAt` y luego se reordenaba por actividad al terminar la
+                //    precarga, lo que hacía que las tarjetas saltaran de posición
+                //    (parpadeo/reordenación) al entrar en la pantalla.
+                val groupLastActivity = coroutineScope {
+                    groups.map { group ->
                         async {
                             semaphore.withPermit {
-                                // participants y categories en paralelo dentro del grupo
+                                // Query ligera (1 fila) en lugar de descargar todos los gastos
+                                val lastSpendDate = try {
+                                    spendService.getLastSpendDate(group.id)
+                                } catch (_: Exception) {
+                                    null
+                                }
+                                group.id to if (lastSpendDate != null && lastSpendDate > group.createdAt) {
+                                    lastSpendDate
+                                } else {
+                                    group.createdAt
+                                }
+                            }
+                        }
+                    }.awaitAll().toMap()
+                }
+
+                val sortedGroups = groups.sortedWith(
+                    compareByDescending<Group> { groupLastActivity[it.id] ?: it.createdAt }
+                        .thenByDescending { it.createdAt }
+                        .thenByDescending { it.id }
+                )
+
+                // Único update de `groups`: la lista aparece ya en su orden final,
+                // sin reordenaciones intermedias.
+                _uiState.update { it.copy(groups = sortedGroups, isLoading = false) }
+
+                // 2) Precargar participantes y categorías (no afectan al orden) y
+                //    aplicarlos conforme llegan para que los contadores aparezcan
+                //    sin esperar a toda la precarga.
+                coroutineScope {
+                    sortedGroups.map { group ->
+                        async {
+                            semaphore.withPermit {
                                 val participantsJob = async {
                                     try { participantRepository.getByGroup(group.id) } catch (_: Exception) { emptyList() }
                                 }
@@ -171,39 +203,15 @@ class GroupListViewModel(
                                 }
                                 val participants = participantsJob.await()
                                 val categories   = categoriesJob.await()
-                                // Query ligera (1 fila) en lugar de descargar todos los gastos
-                                val lastSpendDate = try { spendService.getLastSpendDate(group.id) } catch (_: Exception) { null }
-                                Triple(group, participants, categories) to lastSpendDate
+                                _uiState.update { state ->
+                                    state.copy(
+                                        participantsByGroup = state.participantsByGroup + (group.id to participants),
+                                        categoriesByGroup = state.categoriesByGroup + (group.id to categories)
+                                    )
+                                }
                             }
                         }
-                    }
-
-                    // Aplicar cada resultado conforme llega para que contadores/categorías
-                    // aparezcan en las tarjetas sin esperar a toda la precarga.
-                    val groupLastActivity = mutableMapOf<Long, Instant>()
-                    detailJobs.forEach { job ->
-                        val (triple, lastSpendDate) = job.await()
-                        val (group, participants, categories) = triple
-                        groupLastActivity[group.id] = if (lastSpendDate != null && lastSpendDate > group.createdAt) {
-                            lastSpendDate
-                        } else {
-                            group.createdAt
-                        }
-                        _uiState.update { state ->
-                            state.copy(
-                                participantsByGroup = state.participantsByGroup + (group.id to participants),
-                                categoriesByGroup = state.categoriesByGroup + (group.id to categories)
-                            )
-                        }
-                    }
-
-                    // Reordenar por última actividad una vez completa la precarga.
-                    val sortedGroups = groups
-                        .sortedWith(compareByDescending<Group> { groupLastActivity[it.id] ?: it.createdAt }
-                            .thenByDescending { it.createdAt }
-                            .thenByDescending { it.id })
-
-                    _uiState.update { it.copy(groups = sortedGroups) }
+                    }.awaitAll()
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
