@@ -4,6 +4,8 @@ import com.example.divvyup.domain.model.Recurrence
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
+import com.example.divvyup.domain.repository.SpendCursor
+import com.example.divvyup.domain.repository.SpendPage
 import com.example.divvyup.domain.repository.SpendRepository
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
@@ -91,6 +93,69 @@ class SpendServiceTest {
         assertEquals(0, generated)
         assertTrue(repo.created.isEmpty())
     }
+
+    // ── Paginación (getSpendsPage) ──────────────────────────────────────────
+
+    @Test
+    fun getSpendsPage_primera_pagina_sin_repetir_y_con_hasMore() = runTest {
+        // 5 gastos: fechas distintas + ids para desempate
+        val spends = listOf(
+            spend(1, date = "2026-04-01T12:00:00Z"),
+            spend(2, date = "2026-04-01T11:00:00Z"),
+            spend(3, date = "2026-03-15T12:00:00Z"),
+            spend(4, date = "2026-03-10T12:00:00Z"),
+            spend(5, date = "2026-03-01T12:00:00Z")
+        )
+        val repo = RecordingSpendRepository(*spends.toTypedArray())
+        val service = SpendService(repo)
+
+        val page1 = service.getSpendsPage(groupId = 10, pageSize = 2, before = null)
+        assertEquals(listOf(1L, 2L), page1.items.map { it.id })
+        assertTrue(page1.hasMore, "Con 5 gastos y pageSize=2 debe haber más páginas")
+
+        val page2 = service.getSpendsPage(
+            groupId = 10, pageSize = 2,
+            before = SpendCursor(date = page1.items.last().date, id = page1.items.last().id)
+        )
+        assertEquals(listOf(3L, 4L), page2.items.map { it.id })
+        assertTrue(page2.hasMore)
+
+        val page3 = service.getSpendsPage(
+            groupId = 10, pageSize = 2,
+            before = SpendCursor(date = page2.items.last().date, id = page2.items.last().id)
+        )
+        assertEquals(listOf(5L), page3.items.map { it.id })
+        assertTrue(!page3.hasMore, "La última página debe tener hasMore=false")
+
+        val all = page1.items + page2.items + page3.items
+        assertEquals(listOf(1L, 2L, 3L, 4L, 5L), all.map { it.id }, "No debe repetirse ningún gasto entre páginas")
+    }
+
+    @Test
+    fun getSpendsPage_desempata_misma_fecha_por_id_desc() = runTest {
+        val spends = listOf(
+            spend(10, date = "2026-04-01T12:00:00Z"),
+            spend(11, date = "2026-04-01T12:00:00Z"),
+            spend(12, date = "2026-04-01T12:00:00Z")
+        )
+        val repo = RecordingSpendRepository(*spends.toTypedArray())
+        val service = SpendService(repo)
+
+        val page1 = service.getSpendsPage(groupId = 10, pageSize = 2, before = null)
+        assertEquals(listOf(12L, 11L), page1.items.map { it.id }, "Orden esperado: id DESC entre gastos de la misma fecha")
+
+        val page2 = service.getSpendsPage(
+            groupId = 10, pageSize = 2,
+            before = SpendCursor(date = page1.items.last().date, id = page1.items.last().id)
+        )
+        assertEquals(listOf(10L), page2.items.map { it.id }, "El cursor (date, id) debe saltar el último ya leído")
+    }
+
+    private fun spend(id: Long, date: String) = Spend(
+        id = id, groupId = 10, concept = "Gasto $id", amount = 10.0,
+        payerId = 1, splitType = SplitType.EQUAL,
+        date = Instant.parse(date)
+    )
 }
 
 // ── Fakes ────────────────────────────────────────────────────────────────────
@@ -100,7 +165,16 @@ private class RecordingSpendRepository(vararg initialSpends: Spend) : SpendRepos
     var lastUpdatedSpend: Spend? = null
 
     override suspend fun getByGroup(groupId: Long) = spends.values.filter { it.groupId == groupId }
+    override suspend fun getSpendsPage(groupId: Long, pageSize: Int, before: SpendCursor?): SpendPage {
+        val sorted = spends.values.filter { it.groupId == groupId }
+            .sortedWith(compareByDescending<Spend> { it.date }.thenByDescending { it.id })
+        val startIndex = before?.let { b -> sorted.indexOfFirst { it.id == b.id } + 1 } ?: 0
+        val page = sorted.drop(startIndex).take(pageSize)
+        return SpendPage(items = page, hasMore = startIndex + page.size < sorted.size)
+    }
+    override suspend fun getLastSpendDate(groupId: Long) = spends.values.filter { it.groupId == groupId }.maxOfOrNull { it.date }
     override suspend fun getSharesBySpend(spendId: Long) = emptyList<SpendShare>()
+    override suspend fun getSharesBySpendIds(spendIds: List<Long>) = emptyList<SpendShare>()
     override suspend fun getSharesByGroup(groupId: Long) = emptyList<SpendShare>()
     override suspend fun getSharesByParticipant(participantId: Long) = emptyList<SpendShare>()
     override suspend fun create(spend: Spend, shares: List<SpendShare>): Spend = error("No usado")
@@ -119,7 +193,11 @@ private class MaterializeTestRepository(private val root: Spend) : SpendReposito
     val created = mutableListOf<Spend>()
 
     override suspend fun getByGroup(groupId: Long) = listOf(root)
+    override suspend fun getSpendsPage(groupId: Long, pageSize: Int, before: SpendCursor?): SpendPage =
+        SpendPage(items = listOf(root).take(pageSize), hasMore = false)
+    override suspend fun getLastSpendDate(groupId: Long) = root.date
     override suspend fun getSharesBySpend(spendId: Long) = emptyList<SpendShare>()
+    override suspend fun getSharesBySpendIds(spendIds: List<Long>) = emptyList<SpendShare>()
     override suspend fun getSharesByGroup(groupId: Long) = emptyList<SpendShare>()
     override suspend fun getSharesByParticipant(participantId: Long) = emptyList<SpendShare>()
 

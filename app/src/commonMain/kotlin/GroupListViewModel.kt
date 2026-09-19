@@ -61,38 +61,101 @@ class GroupListViewModel(
      */
     private var loadInFlight = false
 
+    /**
+     * Si `true`, significa que el AuthViewModel ya emitió el primer `sessionStatus`
+     * distinto de `Initializing`. Mientras sea `false`, abortamos cualquier carga para
+     * evitar tirar queries HTTP sin JWT (devolverían 401 y contaminarían el caché).
+     * Tras resolverse auth la primera vez, se queda en `true` para el resto del ciclo
+     * del VM (login/logout posteriores usan `reloadAfterAuthChange`).
+     */
+    private var authResolved = false
+
+    /**
+     * Cuando `loadGroups()` se llama antes de que auth esté lista, encolamos la
+     * intención aquí. `onAuthResolved` la consumirá y disparará la carga real.
+     */
+    private var pendingReload = false
+
     init {
-        // Carga inicial automática al crear el VM. Antes se quitó pensando en una
-        // race con el token, pero romper esto dejó la app sin datos en cold start.
-        // El guard `loadInFlight` impide duplicación si AppNavigation también la dispara.
-        loadGroups()
+        // Sin carga inicial aquí. Antes se disparaba en cold start antes de que
+        // supabase-kt terminase de restaurar el token desde SharedPreferences, lo
+        // que provocaba 401 + caché vacío + pantalla en blanco hasta matar el proceso.
+        // La carga la dispara `onAuthResolved()` cuando AuthViewModel emite la
+        // primera transición real de sessionStatus.
+    }
+
+    /**
+     * Llamar cuando el AuthViewModel confirma que el sessionStatus ya no es
+     * `Initializing`. Dispara la primera carga (si nadie la había encolado) o
+     * ejecuta una recarga pendiente que se hubiera solicitado durante el init.
+     */
+    fun onAuthResolved() {
+        if (authResolved) return
+        authResolved = true
+        if (loadInFlight) return
+        if (pendingReload) {
+            pendingReload = false
+            loadGroups()
+        } else {
+            loadGroups()
+        }
     }
 
     /**
      * Dispara la carga de grupos sólo si la sesión de Supabase está lista.
-     * Útil cuando AppNavigation necesita esperar a que auth se resuelva antes de
-     * lanzar una recarga (p.ej. tras login in-app). No-op si ya hay una en vuelo.
+     * Si todavía no lo está, encola una recarga para cuando `onAuthResolved`
+     * se ejecute. Útil cuando AppNavigation necesita esperar a que auth se
+     * resuelva antes de lanzar una recarga (p.ej. tras login in-app).
+     * No-op si ya hay una en vuelo.
      */
     fun loadIfReady(authReady: Boolean) {
-        if (!authReady) return
+        if (!authReady) {
+            pendingReload = true
+            return
+        }
+        if (!authResolved) {
+            // Auth todavía en Initializing: encolar para cuando se resuelva.
+            pendingReload = true
+            return
+        }
         if (loadInFlight) return
         loadGroups()
     }
 
     fun loadGroups() {
+        // Cold start sin auth resuelta: descartar. Si alguien quiere datos, debe
+        // llamar a `loadIfReady(true)` o esperar a `onAuthResolved()`. Esto evita
+        // tirar queries HTTP sin JWT que revientan el caché y dejan la UI vacía.
+        if (!authResolved) {
+            pendingReload = true
+            return
+        }
         if (loadInFlight) return
         loadInFlight = true
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val groups = groupService.getAllGroups()
+
+                // Pintar la lista de inmediato con lo que ya tenemos (sólo 1 query).
+                // El precarga de detalle continúa en background y se aplica después.
+                _uiState.update {
+                    it.copy(
+                        groups = groups.sortedWith(
+                            compareByDescending<Group> { it.createdAt }
+                                .thenByDescending { it.id }
+                        ),
+                        isLoading = false
+                    )
+                }
+
                 if (groups.isEmpty()) {
                     _uiState.update { it.copy(groups = emptyList(), isLoading = false) }
                     return@launch
                 }
-                println("DEBUG GroupListVM: cargados ${groups.size} grupos, preloading detalle…")
+                println("DEBUG GroupListVM: cargados ${groups.size} grupos, precargando detalle en background…")
 
-                // Cargar en paralelo participantes, categorías y último gasto de cada grupo.
+                // Cargar en paralelo participantes, categorías y última actividad de cada grupo.
                 // Semaphore limita concurrencia para no saturar Ktor/Supabase con muchos grupos.
                 val semaphore = Semaphore(MAX_CONCURRENT_GROUP_LOADS)
                 coroutineScope {
@@ -108,41 +171,39 @@ class GroupListViewModel(
                                 }
                                 val participants = participantsJob.await()
                                 val categories   = categoriesJob.await()
-                                val lastSpend    = try { spendService.getSpends(group.id).maxOfOrNull { it.date } } catch (_: Exception) { null }
-                                Triple(group, participants, categories) to lastSpend
+                                // Query ligera (1 fila) en lugar de descargar todos los gastos
+                                val lastSpendDate = try { spendService.getLastSpendDate(group.id) } catch (_: Exception) { null }
+                                Triple(group, participants, categories) to lastSpendDate
                             }
                         }
                     }
-                    val results = detailJobs.awaitAll()
 
-                    val participantsMap   = mutableMapOf<Long, List<Participant>>()
-                    val categoriesMap     = mutableMapOf<Long, List<Category>>()
+                    // Aplicar cada resultado conforme llega para que contadores/categorías
+                    // aparezcan en las tarjetas sin esperar a toda la precarga.
                     val groupLastActivity = mutableMapOf<Long, Instant>()
-
-                    results.forEach { (triple, lastSpendInstant) ->
+                    detailJobs.forEach { job ->
+                        val (triple, lastSpendDate) = job.await()
                         val (group, participants, categories) = triple
-                        participantsMap[group.id] = participants
-                        categoriesMap[group.id]   = categories
-                        groupLastActivity[group.id] = if (lastSpendInstant != null && lastSpendInstant > group.createdAt) {
-                            lastSpendInstant
+                        groupLastActivity[group.id] = if (lastSpendDate != null && lastSpendDate > group.createdAt) {
+                            lastSpendDate
                         } else {
                             group.createdAt
                         }
+                        _uiState.update { state ->
+                            state.copy(
+                                participantsByGroup = state.participantsByGroup + (group.id to participants),
+                                categoriesByGroup = state.categoriesByGroup + (group.id to categories)
+                            )
+                        }
                     }
 
+                    // Reordenar por última actividad una vez completa la precarga.
                     val sortedGroups = groups
                         .sortedWith(compareByDescending<Group> { groupLastActivity[it.id] ?: it.createdAt }
                             .thenByDescending { it.createdAt }
                             .thenByDescending { it.id })
 
-                    _uiState.update {
-                        it.copy(
-                            groups = sortedGroups,
-                            participantsByGroup = participantsMap,
-                            categoriesByGroup = categoriesMap,
-                            isLoading = false
-                        )
-                    }
+                    _uiState.update { it.copy(groups = sortedGroups) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }

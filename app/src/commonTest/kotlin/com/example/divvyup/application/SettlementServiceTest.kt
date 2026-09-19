@@ -9,6 +9,8 @@ import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.domain.repository.CategoryRepository
 import com.example.divvyup.domain.repository.ParticipantRepository
 import com.example.divvyup.domain.repository.SettlementRepository
+import com.example.divvyup.domain.repository.SpendCursor
+import com.example.divvyup.domain.repository.SpendPage
 import com.example.divvyup.domain.repository.SpendRepository
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
@@ -203,8 +205,26 @@ private class FakeSpendRepository(
     override suspend fun getByGroup(groupId: Long): List<Spend> =
         spends.filter { it.groupId == groupId }
 
+    override suspend fun getSpendsPage(
+        groupId: Long,
+        pageSize: Int,
+        before: SpendCursor?
+    ): SpendPage {
+        val sorted = spends.filter { it.groupId == groupId }
+            .sortedWith(compareByDescending<Spend> { it.date }.thenByDescending { it.id })
+        val startIndex = before?.let { b -> sorted.indexOfFirst { it.id == b.id } + 1 } ?: 0
+        val page = sorted.drop(startIndex).take(pageSize)
+        return SpendPage(items = page, hasMore = startIndex + page.size < sorted.size)
+    }
+
+    override suspend fun getLastSpendDate(groupId: Long): Instant? =
+        spends.filter { it.groupId == groupId }.maxOfOrNull { it.date }
+
     override suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         sharesBySpend[spendId].orEmpty()
+
+    override suspend fun getSharesBySpendIds(spendIds: List<Long>): List<SpendShare> =
+        spendIds.flatMap { sharesBySpend[it].orEmpty() }
 
     override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> =
         spends.filter { it.groupId == groupId }.flatMap { sharesBySpend[it.id].orEmpty() }

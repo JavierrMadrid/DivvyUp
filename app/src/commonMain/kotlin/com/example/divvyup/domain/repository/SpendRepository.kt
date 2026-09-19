@@ -6,7 +6,16 @@ import kotlin.time.Instant
 
 interface SpendRepository {
     suspend fun getByGroup(groupId: Long): List<Spend>
+    /**
+     * Devuelve una página de gastos del grupo ordenados por (date DESC, id DESC).
+     * Pasa [before] como cursor para la siguiente página (null = primera página).
+     */
+    suspend fun getSpendsPage(groupId: Long, pageSize: Int, before: SpendCursor? = null): SpendPage
+    /** Devuelve la fecha del gasto más reciente del grupo, o null si no tiene gastos. */
+    suspend fun getLastSpendDate(groupId: Long): Instant?
     suspend fun getSharesBySpend(spendId: Long): List<SpendShare>
+    /** Devuelve las shares de un lote concreto de gastos (para impacto personal por página). */
+    suspend fun getSharesBySpendIds(spendIds: List<Long>): List<SpendShare>
     /** Devuelve todas las shares de todos los gastos de un grupo. */
     suspend fun getSharesByGroup(groupId: Long): List<SpendShare>
     /** Devuelve todas las shares en las que participa [participantId] (para calcular impacto personal). */

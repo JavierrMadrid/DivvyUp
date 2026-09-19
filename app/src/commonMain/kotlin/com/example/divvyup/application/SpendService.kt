@@ -5,6 +5,8 @@ import com.example.divvyup.domain.model.Recurrence
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
+import com.example.divvyup.domain.repository.SpendCursor
+import com.example.divvyup.domain.repository.SpendPage
 import com.example.divvyup.domain.repository.SpendRepository
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDateTime
@@ -28,14 +30,26 @@ class SpendService(
     suspend fun getSpends(groupId: Long): List<Spend> =
         spendRepository.getByGroup(groupId)
 
+    /** Página de gastos del grupo (orden date DESC, id DESC). [before] = cursor keyset. */
+    suspend fun getSpendsPage(groupId: Long, pageSize: Int, before: SpendCursor? = null): SpendPage =
+        spendRepository.getSpendsPage(groupId, pageSize, before)
+
+    suspend fun getLastSpendDate(groupId: Long): Instant? =
+        spendRepository.getLastSpendDate(groupId)
+
     suspend fun getSharesBySpend(spendId: Long): List<SpendShare> =
         spendRepository.getSharesBySpend(spendId)
+
+    /** Shares de un lote concreto de gastos (para el impacto personal de las páginas cargadas). */
+    suspend fun getSharesBySpendIds(spendIds: List<Long>): List<SpendShare> =
+        spendRepository.getSharesBySpendIds(spendIds)
 
     suspend fun getSharesByGroup(groupId: Long): List<SpendShare> =
         spendRepository.getSharesByGroup(groupId)
 
     /**
-     * Devuelve un mapa spendId → impacto neto para el participante dado.
+     * Devuelve un mapa spendId → impacto neto para el participante dado, calculado solo
+     * sobre la lista de gastos y shares recibidos (páginas ya cargadas).
      *
      * Impacto neto = (importe total si es pagador) - (share que le corresponde)
      *   · Valor positivo (+): pagó por otros → le deben
@@ -43,13 +57,16 @@ class SpendService(
      *
      * Si el participante no tiene share en un gasto, su impacto es 0 a menos que sea el pagador.
      */
-    suspend fun getPersonalImpactByGroup(groupId: Long, participantId: Long): Map<Long, Double> {
-        val spends = spendRepository.getByGroup(groupId)
-        val myShares = spendRepository.getSharesByParticipant(participantId)
-            .associateBy { it.spendId }          // spendId → SpendShare
-
+    fun getPersonalImpact(
+        spends: List<Spend>,
+        shares: List<SpendShare>,
+        participantId: Long
+    ): Map<Long, Double> {
+        val sharesBySpend = shares.groupBy { it.spendId }
         return spends.associate { spend ->
-            val myShare = myShares[spend.id]?.amount ?: 0.0
+            val myShare = sharesBySpend[spend.id]
+                ?.firstOrNull { it.participantId == participantId }
+                ?.amount ?: 0.0
             val paid = if (spend.payerId == participantId) spend.amount else 0.0
             spend.id to roundToTwoDecimals(paid - myShare)
         }
@@ -309,6 +326,12 @@ class SpendService(
             return 0
         }
 
+        val sharesByRootId = try {
+            val rootIds = roots.map { it.id }
+            if (rootIds.isEmpty()) emptyMap()
+            else spendRepository.getSharesBySpendIds(rootIds).groupBy { it.spendId }
+        } catch (_: Exception) { emptyMap() }
+
         var created = 0
 
         for (root in roots) {
@@ -318,12 +341,7 @@ class SpendService(
             while (nextDue <= now && iterations < 24) {
                 iterations++
 
-                // Obtener shares del raíz para clonarlas
-                val originalShares = try {
-                    spendRepository.getSharesBySpend(root.id)
-                } catch (_: Exception) {
-                    emptyList()
-                }
+                val originalShares = sharesByRootId[root.id].orEmpty()
 
                 // Construir ocurrencia
                 val occurrence = root.copy(
