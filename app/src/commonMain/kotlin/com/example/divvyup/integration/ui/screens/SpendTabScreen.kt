@@ -1,4 +1,5 @@
 package com.example.divvyup.integration.ui.screens
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -33,6 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +69,7 @@ import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppEmptyState
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppFilterChipRow
 import com.example.divvyup.integration.ui.components.AppFilterLabel
@@ -103,6 +106,9 @@ internal fun SpendTab(
     categories: List<Category>,
     currency: String,
     spendPersonalImpact: Map<Long, Double> = emptyMap(),
+    hasMoreSpends: Boolean = false,
+    isLoadingMoreSpends: Boolean = false,
+    onLoadMore: () -> Unit = {},
     onEditSpend: (Spend) -> Unit,
     onDeleteSpendsByIds: (Set<Long>) -> Unit,
     onDeleteSpendsFiltered: (categoryId: Long?, payerId: Long?, beforeInstant: Instant?) -> Unit,
@@ -268,6 +274,41 @@ internal fun SpendTab(
                         } else null
                     )
             }
+
+            // Botón "Mostrar más" / spinner al final de la lista (paginación por scroll)
+            if (isLoadingMoreSpends || hasMoreSpends) {
+                item(key = "load_more") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoadingMoreSpends) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                color = JungleGreen,
+                                strokeWidth = 3.dp
+                            )
+                        } else {
+                            OutlinedButton(
+                                onClick = onLoadMore,
+                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ),
+                                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
+                                modifier = Modifier.height(DivvyUpTokens.ControlHeight)
+                            ) {
+                                Text(
+                                    text = Strings.SpendTab.LOAD_MORE,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // FAB borrado — BottomStart
@@ -287,7 +328,7 @@ internal fun SpendTab(
                 .navigationBarsPadding()
                 .padding(start = 20.dp, bottom = 16.dp)
                 .shadow(
-                    elevation = 12.dp,
+                    elevation = DivvyUpTokens.ElevationFab,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                     ambientColor = JungleGreen.copy(alpha = 0.25f),
                     spotColor = JungleGreen.copy(alpha = 0.4f)
@@ -373,19 +414,11 @@ internal fun SpendTab(
 @Composable
 internal fun SpendEmptyState(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(40.dp)
-        ) {
-            Text(Strings.SpendTab.EMOJI_EMPTY, fontSize = 48.sp)
-            Text(Strings.SpendTab.EMPTY_HEADLINE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                Strings.SpendTab.EMPTY_SUBTITLE,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        AppEmptyState(
+            emoji = Strings.SpendTab.EMOJI_EMPTY,
+            title = Strings.SpendTab.EMPTY_HEADLINE,
+            body = Strings.SpendTab.EMPTY_SUBTITLE
+        )
     }
 }
 
@@ -427,10 +460,10 @@ internal fun SpendCard(
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusCard)
             )
             .shadow(
-                elevation = 3.dp,
+                elevation = DivvyUpTokens.ElevationCard,
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             ),
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -530,7 +563,7 @@ internal fun SpendCard(
                 // Badge de impacto personal
                 if (impactColor != null && personalImpact != null) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
+                        shape = RoundedCornerShape(DivvyUpTokens.ShapeBadge),
                         color = impactColor.copy(alpha = 0.12f)
                     ) {
                         Text(

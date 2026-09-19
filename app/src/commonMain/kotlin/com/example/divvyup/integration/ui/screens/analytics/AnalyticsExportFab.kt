@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
+import com.example.divvyup.integration.ui.Strings
 
 /**
  * FAB de exportación con menú expandible (PDF, Excel, CSV, Texto).
@@ -45,27 +46,27 @@ internal fun AnalyticsExportFab(
     ) {
         if (expanded) {
             ExportActionRow(
-                label = "PDF",
+                label = Strings.Analytics.EXPORT_PDF,
                 icon = Icons.Default.PictureAsPdf,
-                contentDescription = "Exportar PDF",
+                contentDescription = Strings.Analytics.A11Y_EXPORT_PDF,
                 onClick = { onExportPdf(filtered, periodLabel); onExpandedChange(false) }
             )
             ExportActionRow(
-                label = "Excel",
+                label = Strings.Analytics.EXPORT_EXCEL,
                 icon = Icons.Default.TableChart,
-                contentDescription = "Exportar Excel",
+                contentDescription = Strings.Analytics.A11Y_EXPORT_EXCEL,
                 onClick = { onExportExcel(filtered, periodLabel); onExpandedChange(false) }
             )
             ExportActionRow(
-                label = "CSV",
+                label = Strings.Analytics.EXPORT_CSV,
                 icon = Icons.Default.TableChart,
-                contentDescription = "Exportar CSV",
+                contentDescription = Strings.Analytics.A11Y_EXPORT_CSV,
                 onClick = { onExportCsv(filtered); onExpandedChange(false) }
             )
             ExportActionRow(
-                label = "Texto",
+                label = Strings.Analytics.EXPORT_TEXT,
                 icon = Icons.Default.Description,
-                contentDescription = "Exportar texto",
+                contentDescription = Strings.Analytics.A11Y_EXPORT_TEXT,
                 onClick = { onExportText(filtered); onExpandedChange(false) }
             )
         }
@@ -89,10 +90,10 @@ internal fun AnalyticsExportFab(
             ) {
                 Icon(
                     imageVector = if (expanded) Icons.Default.Close else Icons.Default.Share,
-                    contentDescription = "Exportar",
+                    contentDescription = Strings.Analytics.A11Y_EXPORT,
                     modifier = Modifier.size(DivvyUpTokens.IconMd)
                 )
-                Text(text = "Exportar", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text(text = Strings.Analytics.EXPORT_BUTTON, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             }
         }
     }
@@ -118,7 +119,7 @@ internal fun ExportActionRow(
         Surface(
             shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
             color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 4.dp
+            shadowElevation = DivvyUpTokens.ElevationRaised
         ) {
             Text(
                 text = label,

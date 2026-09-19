@@ -77,10 +77,10 @@ internal fun SettingsSectionCard(
             modifier = modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 3.dp,
+                    elevation = DivvyUpTokens.ElevationCard,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                    ambientColor = Color.Black.copy(alpha = 0.05f),
-                    spotColor = Color.Black.copy(alpha = 0.08f)
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
                 ),
             elevation = CardDefaults.cardElevation(0.dp)
         ) {

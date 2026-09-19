@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
@@ -48,8 +49,17 @@ fun AppCard(
         AppCardLevel.Flat -> MaterialTheme.colorScheme.surface
         AppCardLevel.Elevated -> MaterialTheme.colorScheme.surfaceContainerLow
     }
+    val elevation = if (level == AppCardLevel.Elevated) DivvyUpTokens.ElevationRaised else DivvyUpTokens.ElevationCard
+    // Sombra suave y tintada — nunca gris/negro puro.
+    val shadowTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+    val shadowModifier = Modifier.shadow(
+        elevation = elevation,
+        shape = shape,
+        ambientColor = shadowTint,
+        spotColor = shadowTint
+    )
 
-    // Press-scale micro-interaction — ≤ 2 % scale, ≤ 200 ms (gesture feedback).
+    // Press-scale micro-interaction — ≤ 2 % scale (gesture feedback).
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -70,13 +80,10 @@ fun AppCard(
                 containerColor = containerColor ?: baseContainer,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (level == AppCardLevel.Elevated) 2.dp else 0.dp,
-                pressedElevation = 1.dp
-            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             border = border,
             interactionSource = interactionSource,
-            modifier = modifier.then(pressModifier)
+            modifier = modifier.then(shadowModifier).then(pressModifier)
         ) {
             Box(modifier = Modifier.padding(contentPadding)) {
                 content()
@@ -89,11 +96,9 @@ fun AppCard(
                 containerColor = containerColor ?: baseContainer,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (level == AppCardLevel.Elevated) 2.dp else 0.dp
-            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             border = border,
-            modifier = modifier
+            modifier = modifier.then(shadowModifier)
         ) {
             Box(modifier = Modifier.padding(contentPadding)) {
                 content()

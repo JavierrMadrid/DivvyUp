@@ -1,5 +1,11 @@
 package com.example.divvyup.integration.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +23,7 @@ import androidx.navigation.toRoute
 import com.example.divvyup.application.InvitationService
 import com.example.divvyup.domain.repository.ParticipantRepository
 import com.example.divvyup.domain.repository.ParticipantUserLinkRepository
+import com.example.divvyup.integration.ui.screens.ActivityFeedScreen
 import com.example.divvyup.integration.ui.screens.AddParticipantInGroupScreen
 import com.example.divvyup.integration.ui.screens.ChangePasswordScreen
 import com.example.divvyup.integration.ui.screens.AddParticipantsScreen
@@ -31,6 +38,8 @@ import com.example.divvyup.integration.ui.screens.RegisterScreen
 import com.example.divvyup.integration.ui.screens.SettleUpScreen
 import com.example.divvyup.integration.ui.screens.SpendDetailScreen
 import com.example.divvyup.integration.ui.screens.UserSettingsScreen
+import com.example.divvyup.integration.ui.theme.DivvyUpMotion
+import com.example.divvyup.integration.ui.viewmodel.ActivityFeedViewModel
 import com.example.divvyup.integration.ui.viewmodel.AddParticipantsViewModel
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
@@ -43,6 +52,7 @@ fun AppNavigation(
     navController: NavHostController,
     authViewModel: AuthViewModel,
     groupListViewModel: GroupListViewModel,
+    activityFeedViewModel: ActivityFeedViewModel,
     participantRepository: ParticipantRepository,
     participantUserLinkRepository: ParticipantUserLinkRepository,
     invitationService: InvitationService,
@@ -152,10 +162,35 @@ fun AppNavigation(
         }
     }
 
+    AppShell(navController = navController) { shellPadding ->
     NavHost(
         navController = navController,
         startDestination = Screen.GroupList,
-        modifier = modifier
+        modifier = modifier.padding(shellPadding),
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { it / 5 },
+                animationSpec = tween(DivvyUpMotion.Long, easing = DivvyUpMotion.EmphasizedDecelerate)
+            ) + fadeIn(tween(DivvyUpMotion.Medium))
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -it / 5 },
+                animationSpec = tween(DivvyUpMotion.Long, easing = DivvyUpMotion.EmphasizedAccelerate)
+            ) + fadeOut(tween(DivvyUpMotion.Medium))
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -it / 5 },
+                animationSpec = tween(DivvyUpMotion.Long, easing = DivvyUpMotion.EmphasizedDecelerate)
+            ) + fadeIn(tween(DivvyUpMotion.Medium))
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { it / 5 },
+                animationSpec = tween(DivvyUpMotion.Long, easing = DivvyUpMotion.EmphasizedAccelerate)
+            ) + fadeOut(tween(DivvyUpMotion.Medium))
+        }
     ) {
         // ── Login ──────────────────────────────────────────────────────────
         composable<Screen.Login> { backStackEntry ->
@@ -213,6 +248,18 @@ fun AppNavigation(
             )
         }
 
+        // ── Feed de actividad global ───────────────────────────────────────
+        composable<Screen.Activity> { backStackEntry ->
+            ActivityFeedScreen(
+                viewModel = activityFeedViewModel,
+                onOpenGroup = { groupId ->
+                    if (navController.currentBackStackEntry == backStackEntry) {
+                        navController.navigate(Screen.GroupDetail(groupId))
+                    }
+                }
+            )
+        }
+
         // ── Ajustes de usuario ─────────────────────────────────────────────
         composable<Screen.UserSettings> {
             UserSettingsScreen(
@@ -221,8 +268,7 @@ fun AppNavigation(
                 isAnonymous = authState.isAnonymous,
                 onNavigateToLogin = { navController.navigate(Screen.Login()) },
                 onNavigateToRegister = { navController.navigate(Screen.Register) },
-                onNavigateToChangePassword = { navController.navigate(Screen.ChangePassword) },
-                onBack = { navController.popBackStack() }
+                onNavigateToChangePassword = { navController.navigate(Screen.ChangePassword) }
             )
         }
 
@@ -372,6 +418,8 @@ fun AppNavigation(
 
             LaunchedEffect(uiState.spendSaved) {
                 if (uiState.spendSaved) {
+                    // Mantener visible la celebración de éxito antes de volver.
+                    kotlinx.coroutines.delay(900)
                     // Volver hasta GroupDetail (saltando SpendDetail si venimos de ahí)
                     navController.popBackStack(Screen.GroupDetail(groupId), inclusive = false)
                     detailViewModel.consumeSpendSaved()
@@ -410,5 +458,6 @@ fun AppNavigation(
                 onEdit = { navController.navigate(Screen.AddSpend(groupId)) }
             )
         }
+    }
     }
 }

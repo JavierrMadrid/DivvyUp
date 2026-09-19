@@ -4,74 +4,84 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// ── Tokens verdes ─────────────────────────────────────────────────────────────
-val JungleGreen        = Color(0xFF2D6A4F)
-val JungleGreenDark    = Color(0xFF1B4332)
-val JungleGreenMid     = Color(0xFF40916C)
-val JungleGreenLight   = Color(0xFF74C69D)
-val JungleGreen100     = Color(0xFFD8F3DC)
-val JungleGreen50      = Color(0xFFEFF8F2)
+// ─────────────────────────────────────────────────────────────────────────────
+// Paleta "Soft Jungle" — dirección soft / rounded friendly.
+// Verde como ancla de marca, acentos coral y lavanda, fondos mint suaves.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Tokens marrones ───────────────────────────────────────────────────────────
-val BarkBrown          = Color(0xFF8B5E3C)
-val BarkBrownDark      = Color(0xFF5C3D1E)
+// ── Tokens verdes (marca) ─────────────────────────────────────────────────────
+val JungleGreen        = Color(0xFF188653)   // primary — verde fresco (contraste AA con blanco)
+val JungleGreenDark    = Color(0xFF125C39)   // onPrimaryContainer / degradados
+val JungleGreenMid     = Color(0xFF3FAE79)   // verde medio
+val JungleGreenLight   = Color(0xFF7FD9A6)   // primary en modo oscuro
+val JungleGreen100     = Color(0xFFD6F3E4)   // primaryContainer
+val JungleGreen50      = Color(0xFFEDF9F2)   // fondos muy suaves
+
+// ── Tokens coral (secundario / acento cálido) ─────────────────────────────────
+val Coral              = Color(0xFFFF8A65)
+val CoralDark          = Color(0xFFAD3809)   // onSecondaryContainer (contraste AA)
+val CoralLight         = Color(0xFFFFB59B)
+val CoralContainer     = Color(0xFFFFE0D6)
+val Coral50            = Color(0xFFFFF1EB)
+
+// ── Tokens lavanda (terciario / acento frío) ──────────────────────────────────
+val Lavender           = Color(0xFF7C6BFF)
+val LavenderDark       = Color(0xFF3B2FA8)
+val LavenderLight      = Color(0xFFB3A8FF)
+val LavenderContainer  = Color(0xFFE7E3FF)
+val Lavender50         = Color(0xFFF1EFFF)
+
+// ── Tokens marrones / tierra (paleta de avatares y detalles cálidos) ──────────
+val BarkBrown          = Color(0xFFA9704C)
+val BarkBrownDark      = Color(0xFF6B4226)
 val BarkBrownLight     = Color(0xFFD4A57A)
 val BarkBrown100       = Color(0xFFF5E6D3)
-val Soil               = Color(0xFF6B4423)
+val Soil               = Color(0xFF7C5230)
 val SandBeige          = Color(0xFFF5EFE6)
 
 // ── Tokens dorados / luz solar ────────────────────────────────────────────────
-val MossGold           = Color(0xFFD4A017)
+val MossGold           = Color(0xFFE8A33D)
 val MossGold100        = Color(0xFFFAF0CC)
-val Amber              = Color(0xFFE8B84B)
+val Amber              = Color(0xFFF0B94B)
 
 // ── Rojo unificado ────────────────────────────────────────────────────────────
-// Un único token "AppRed" que se usa en toda la app (errores, deudas, barra menor)
-val AppRed             = Color(0xFFD32F2F)   // rojo Material claro
-val AppRedLight        = Color(0xFFEF5350)   // rojo claro para modo oscuro
-val AppRedContainer    = Color(0xFFFADAD7)   // contenedor rojo pálido (modo claro)
-val AppRedContainerDark= Color(0xFF7A1B10)   // contenedor rojo oscuro (modo oscuro)
+val AppRed             = Color(0xFFE5484D)   // rojo principal (errores, deudas)
+val AppRedLight        = Color(0xFFF27A7E)   // rojo claro para modo oscuro
+val AppRedContainer    = Color(0xFFFCE0E1)   // contenedor rojo pálido (claro)
+val AppRedContainerDark= Color(0xFF7A1F22)   // contenedor rojo oscuro
 
 // ── Texto / neutros ───────────────────────────────────────────────────────────
-val ForestDark         = Color(0xFF1B2E1F)
-val MossGrey           = Color(0xFF6B7C6E)
-val ParchmentWhite     = Color(0xFFFAF8F2)
+val ForestDark         = Color(0xFF17251C)
+val MossGrey           = Color(0xFF6E7F72)
+val ParchmentWhite     = Color(0xFFFAFCFA)
 val White              = Color(0xFFFFFFFF)
 
 // ── Tokens modo oscuro ────────────────────────────────────────────────────────
-val DarkJungleBg       = Color(0xFF0D1F13)
-val DarkJungleSurface  = Color(0xFF264734)
+val DarkJungleBg       = Color(0xFF0F1A13)
+val DarkJungleSurface  = Color(0xFF1B2A20)
 
 // ── Tokens específicos para chips / pills en tema claro ────────────────────────
-// En tema claro el screen background es verde muy claro (#DFEBE1) y la card
-// es casi blanca (#F7FAF7), por lo que `surfaceVariant` (#CCDFCE) es tan
-// parecido que el chip "desaparece". Usamos un verde medio oscuro para que
-// el chip no seleccionado tenga contraste claro y siga en paleta Jungle.
-val FilterChipUnselectedLight = Color(0xFFB7CFB9) // verde grisáceo medio
+val FilterChipUnselectedLight = Color(0xFFCFE0D4)
 val FilterChipUnselectedTextLight = ForestDark
 
-// ── Beige de texto oscuro: de blanco puro (primario) a beige claro (secundario) ──
-// Nunca marrón, nunca verdoso. Escala: White → Beige100 → Beige200
-val DarkTextBeige100   = Color(0xFFF0EBE3)   // beige muy claro — textos secundarios
-val DarkTextBeige200   = Color(0xFFD9D0C4)   // beige suave — textos terciarios / hints
-val DarkSurfaceNeutral = Color(0xFF2E2A26)   // fondo de burbujas/iconos: gris cálido sin verde
-val DarkBorderNeutral  = Color(0xFF544E47)   // borde neutro cálido
+// ── Beige de texto oscuro: de blanco puro a verde-gris muy claro ──────────────
+val DarkTextBeige100   = Color(0xFFE8F0EA)   // textos secundarios
+val DarkTextBeige200   = Color(0xFFBFCEC4)   // textos terciarios / hints
+val DarkSurfaceNeutral = Color(0xFF2A342D)   // fondo de burbujas/iconos
+val DarkBorderNeutral  = Color(0xFF46554A)   // borde neutro
 
 // ── Semánticos: éxito / error / warning — light + dark ────────────────────────
-// Éxito (verde menos saturado que JungleGreen — para badges/amounts positivos)
-val SuccessGreen         = Color(0xFF16A34A)   // light: verde "le deben" — Tailwind green-600
-val SuccessGreenDark     = Color(0xFF22C55E)   // dark: verde brillante para mantener contraste
-val SuccessContainer     = Color(0xFF86EFAC)   // contenedor success pálido (light)
-val SuccessContainerDark = Color(0xFF14532D)   // contenedor success oscuro
+val SuccessGreen         = Color(0xFF22A05E)
+val SuccessGreenDark     = Color(0xFF4CC97F)
+val SuccessContainer     = Color(0xFFB9EFCB)
+val SuccessContainerDark = Color(0xFF14532D)
 
-// Error (además del AppRed ya existente — para diferenciar "errores de sistema" vs "negativo financiero")
-val ErrorRed             = Color(0xFFDC2626)   // light: rojo "debe dinero" — Tailwind red-600
-val ErrorRedDark         = Color(0xFFFCA5A5)   // dark: rojo pálido para contraste
-val ErrorContainerLight       = Color(0xFFFFE0E0)   // contenedor pálido (light)
-val ErrorContainerLightDark   = Color(0xFF7F1D1D)   // contenedor oscuro (dark)
-val ErrorOnContainerDark  = Color(0xFFB71C1C)   // texto sobre contenedor error en dark
+val ErrorRed             = Color(0xFFE5484D)
+val ErrorRedDark         = Color(0xFFFF9DA1)
+val ErrorContainerLight       = Color(0xFFFFE4E5)
+val ErrorContainerLightDark   = Color(0xFF7A1F22)
+val ErrorOnContainerDark      = Color(0xFFB3202A)
 
-// Warning (ámbar)
 val WarningAmber         = Color(0xFFF59E0B)
 val WarningAmberDark     = Color(0xFFFBBF24)
 val WarningContainer     = Color(0xFFFFF3CD)
@@ -89,11 +99,11 @@ val MedalGoldText        = Color(0xFF7A5700)
 val MedalSilverText      = Color(0xFF4A4A4A)
 val MedalBronzeText      = Color(0xFF5C3210)
 
-// Tendencias (semánticas — verde-arriba / rojo-abajo, no literales)
-val TrendUp              = Color(0xFF86EFAC)   // verde claro (light) — para "sube"
-val TrendDown            = Color(0xFFFCA5A5)   // rojo claro (light) — para "baja"
-val TrendUpDark          = Color(0xFF22C55E)
-val TrendDownDark        = Color(0xFFF87171)
+// Tendencias (semánticas — verde-arriba / rojo-abajo)
+val TrendUp              = Color(0xFF8FE0B4)
+val TrendDown            = Color(0xFFFFB0B3)
+val TrendUpDark          = Color(0xFF4CC97F)
+val TrendDownDark        = Color(0xFFFF7B80)
 
 internal val LightColors = lightColorScheme(
     primary                = JungleGreen,
@@ -101,41 +111,41 @@ internal val LightColors = lightColorScheme(
     primaryContainer       = JungleGreen100,
     onPrimaryContainer     = JungleGreenDark,
 
-    secondary              = BarkBrown,
+    secondary              = Coral,
     onSecondary            = White,
-    secondaryContainer     = BarkBrown100,
-    onSecondaryContainer   = BarkBrownDark,
+    secondaryContainer     = CoralContainer,
+    onSecondaryContainer   = CoralDark,
 
-    tertiary               = MossGold,
-    onTertiary             = ForestDark,
-    tertiaryContainer      = MossGold100,
-    onTertiaryContainer    = BarkBrownDark,
+    tertiary               = Lavender,
+    onTertiary             = White,
+    tertiaryContainer      = LavenderContainer,
+    onTertiaryContainer    = LavenderDark,
 
     error                  = AppRed,
     onError                = White,
     errorContainer         = AppRedContainer,
-    onErrorContainer       = Color(0xFF5C0A00),
+    onErrorContainer       = Color(0xFF5C0A0E),
 
-    // Fondo general más saturado para que las cards resalten
-    background             = Color(0xFFDFEBE1),
+    // Fondo mint suave para que las cards blancas resalten
+    background             = Color(0xFFF3F7F2),
     onBackground           = ForestDark,
 
-    // Cards y superficies: blanco nítido sobre fondo verde medio
-    surface                = Color(0xFFF7FAF7),
+    // Cards y superficies: blanco nítido sobre fondo mint
+    surface                = Color(0xFFFFFFFF),
     onSurface              = ForestDark,
 
-    // surfaceVariant: fondo distinguible del background (chips, inputs, etc.)
-    surfaceVariant         = Color(0xFFCCDFCE),
-    onSurfaceVariant       = Color(0xFF3D5440),
+    // surfaceVariant: chips, inputs, etc.
+    surfaceVariant         = Color(0xFFE6EEE7),
+    onSurfaceVariant       = Color(0xFF43564A),
 
     // TopBars y contenedores destacados
-    surfaceContainerHigh   = Color(0xFFCDD9CF),
-    surfaceContainerLow    = Color(0xFFE8F0E9),
-    surfaceContainerHighest= Color(0xFFBDCFC0),
+    surfaceContainerHigh   = Color(0xFFDCE8DE),
+    surfaceContainerLow    = Color(0xFFF0F6F1),
+    surfaceContainerHighest= Color(0xFFCFDFD3),
 
     // Bordes más visibles para chips y campos
-    outline                = Color(0xFF7A9E80),
-    outlineVariant         = Color(0xFFA8C4AB),
+    outline                = Color(0xFFA9C1AF),
+    outlineVariant         = Color(0xFFD2E2D6),
 
     inverseSurface         = JungleGreenDark,
     inverseOnSurface       = JungleGreen50,
@@ -145,21 +155,21 @@ internal val LightColors = lightColorScheme(
 
 internal val DarkColors = darkColorScheme(
     primary                = JungleGreenLight,
-    onPrimary              = White,
-    primaryContainer       = JungleGreenMid,
+    onPrimary              = Color(0xFF06301C),
+    primaryContainer       = Color(0xFF175436),
     onPrimaryContainer     = JungleGreen100,
 
-    secondary              = BarkBrownLight,
-    onSecondary            = White,
-    secondaryContainer     = Soil,
-    onSecondaryContainer   = BarkBrown100,
+    secondary              = CoralLight,
+    onSecondary            = Color(0xFF4A1A0A),
+    secondaryContainer     = Color(0xFF7A3A22),
+    onSecondaryContainer   = Coral50,
 
-    tertiary               = Amber,
-    onTertiary             = ForestDark,
-    tertiaryContainer      = Color(0xFF4A3300),
-    onTertiaryContainer    = MossGold100,
+    tertiary               = LavenderLight,
+    onTertiary             = Color(0xFF241E5C),
+    tertiaryContainer      = LavenderDark,
+    onTertiaryContainer    = Lavender50,
 
-    error                  = AppRedLight,
+    error                  = ErrorRedDark,
     onError                = Color(0xFF4C0000),
     errorContainer         = AppRedContainerDark,
     onErrorContainer       = AppRedContainer,
@@ -170,18 +180,18 @@ internal val DarkColors = darkColorScheme(
     surface                = DarkJungleSurface,
     onSurface              = White,
 
-    // burbujas/iconos: gris cálido neutro — sin verde, sin marrón
+    // burbujas/iconos: verde-gris neutro
     surfaceVariant         = DarkSurfaceNeutral,
-    // texto secundario: beige claro — escala blanco→beige, nunca marrón
+    // texto secundario: verde-gris claro
     onSurfaceVariant       = DarkTextBeige100,
-    // Contenedores de superficie: tonos neutros oscuros (sin marrón)
-    surfaceContainerHigh   = Color(0xFF252525),
-    surfaceContainerLow    = DarkJungleBg,
-    surfaceContainerHighest= Color(0xFF2C2C2C),
+    // Contenedores de superficie
+    surfaceContainerHigh   = Color(0xFF25312A),
+    surfaceContainerLow    = Color(0xFF14201A),
+    surfaceContainerHighest= Color(0xFF2E3A32),
 
     outline                = DarkBorderNeutral,
-    outlineVariant         = Color(0xFF3D3730),
-    inverseSurface         = Color(0xFFF5EFE6),
+    outlineVariant         = Color(0xFF3A4A3E),
+    inverseSurface         = Color(0xFFF0F6F1),
     inverseOnSurface       = ForestDark,
     inversePrimary         = JungleGreen,
     scrim                  = Color(0x52000000),

@@ -66,8 +66,9 @@ fun AmountText(
 
 private fun formatAmount(amount: Double): String {
     val rounded = kotlin.math.round(amount * 100) / 100.0
-    val whole = rounded.toLong()
-    val cents = kotlin.math.abs(((rounded - whole) * 100).toLong())
     val sign = if (rounded < 0) "-" else ""
+    val absRounded = kotlin.math.abs(rounded)
+    val whole = absRounded.toLong()
+    val cents = ((absRounded - whole) * 100).toLong()
     return "$sign$whole.${cents.toString().padStart(2, '0')}"
 }

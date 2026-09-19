@@ -27,6 +27,8 @@ import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -61,6 +63,8 @@ fun SpendDetailScreen(
         }
     }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -75,12 +79,12 @@ fun SpendDetailScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = Strings.SpendDetail.A11Y_BACK,
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 Text(
-                    "Detalle del gasto",
+                    Strings.SpendDetail.TITLE,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -96,7 +100,7 @@ fun SpendDetailScreen(
                 ) {
                     Icon(
                         Icons.Default.Edit,
-                        contentDescription = "Editar gasto",
+                        contentDescription = Strings.SpendDetail.A11Y_EDIT,
                         tint = if (spend != null && !isSettlement)
                             JungleGreen
                         else
@@ -133,9 +137,9 @@ fun SpendDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(
-                        4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                        ambientColor = Color.Black.copy(0.06f),
-                        spotColor = Color.Black.copy(0.1f)
+                        DivvyUpTokens.ElevationRaised, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
                     ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
@@ -150,7 +154,12 @@ fun SpendDetailScreen(
                     Box(
                         modifier = Modifier
                             .size(56.dp)
-                            .shadow(4.dp, CircleShape)
+                            .shadow(
+                                elevation = DivvyUpTokens.ElevationCard,
+                                shape = CircleShape,
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                            )
                             .clip(CircleShape)
                             .background(JungleGreen100),
                         contentAlignment = Alignment.Center
@@ -197,9 +206,9 @@ fun SpendDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(
-                        4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                        ambientColor = Color.Black.copy(0.06f),
-                        spotColor = Color.Black.copy(0.1f)
+                        DivvyUpTokens.ElevationRaised, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
                     ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
@@ -208,34 +217,36 @@ fun SpendDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     Text(
-                        "Información",
+                        Strings.SpendDetail.SECTION_INFO,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    DetailRow(label = "Pagó", value = payer?.name ?: "Desconocido")
+                    DetailRow(label = Strings.SpendDetail.LABEL_PAYER, value = payer?.name ?: Strings.SpendTab.PAYER_UNKNOWN)
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(vertical = 10.dp)
                     )
                     DetailRow(
-                        label = "Fecha",
-                        value = dateTime.day.toString().padStart(2, '0') + "/" +
-                                dateTime.month.number.toString().padStart(2, '0') + "/" +
-                                dateTime.year.toString().padStart(4, '0')
+                        label = Strings.SpendDetail.LABEL_DATE,
+                        value = Strings.SpendDetail.formatDate(
+                            day = dateTime.day,
+                            month = dateTime.month.number,
+                            year = dateTime.year
+                        )
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(vertical = 10.dp)
                     )
                     DetailRow(
-                        label = "Tipo de reparto",
+                        label = Strings.SpendDetail.LABEL_SPLIT_TYPE,
                         value = when (spend.splitType) {
-                            SplitType.EQUAL -> "Equitativo"
-                            SplitType.PERCENTAGE -> "Por porcentaje"
-                            SplitType.CUSTOM -> "Por importe exacto"
+                            SplitType.EQUAL -> Strings.SpendDetail.SPLIT_EQUAL
+                            SplitType.PERCENTAGE -> Strings.SpendDetail.SPLIT_PERCENTAGE
+                            SplitType.CUSTOM -> Strings.SpendDetail.SPLIT_CUSTOM
                         }
                     )
                     if (spend.recurrence != Recurrence.NONE) {
@@ -244,11 +255,11 @@ fun SpendDetailScreen(
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
                         DetailRow(
-                            label = "Repetición",
+                            label = Strings.SpendDetail.LABEL_RECURRENCE,
                             value = when (spend.recurrence) {
-                                Recurrence.DAILY   -> "Diario"
-                                Recurrence.WEEKLY  -> "Semanal"
-                                Recurrence.MONTHLY -> "Mensual"
+                                Recurrence.DAILY   -> Strings.SpendDetail.RECURRENCE_DAILY
+                                Recurrence.WEEKLY  -> Strings.SpendDetail.RECURRENCE_WEEKLY
+                                Recurrence.MONTHLY -> Strings.SpendDetail.RECURRENCE_MONTHLY
                                 Recurrence.NONE    -> ""
                             }
                         )
@@ -260,10 +271,12 @@ fun SpendDetailScreen(
                                 modifier = Modifier.padding(vertical = 10.dp)
                             )
                             DetailRow(
-                                label = "Próxima generación",
-                                value = nextDt.day.toString().padStart(2, '0') + "/" +
-                                        nextDt.month.number.toString().padStart(2, '0') + "/" +
-                                        nextDt.year.toString().padStart(4, '0')
+                                label = Strings.SpendDetail.LABEL_NEXT_OCCURRENCE,
+                                value = Strings.SpendDetail.formatDate(
+                                    day = nextDt.day,
+                                    month = nextDt.month.number,
+                                    year = nextDt.year
+                                )
                             )
                         }
                     }
@@ -274,8 +287,8 @@ fun SpendDetailScreen(
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
                         DetailRow(
-                            label = "Origen",
-                            value = "⚡ Generado automáticamente"
+                            label = Strings.SpendDetail.LABEL_ORIGIN,
+                            value = Strings.SpendDetail.ORIGIN_AUTO_GENERATED
                         )
                     }
                     if (!spend.notes.isBlank() && !spend.notes.startsWith("__settlement_id:")) {
@@ -283,7 +296,7 @@ fun SpendDetailScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
-                        DetailRow(label = "Notas", value = spend.notes)
+                        DetailRow(label = Strings.SpendDetail.LABEL_NOTES, value = spend.notes)
                     }
                 }
             }
@@ -296,15 +309,15 @@ fun SpendDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(
-                            4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                            ambientColor = Color.Black.copy(0.06f),
-                            spotColor = Color.Black.copy(0.1f)
+                            DivvyUpTokens.ElevationRaised, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
                         ),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Participantes",
+                            Strings.SpendDetail.SECTION_PARTICIPANTS,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -350,7 +363,7 @@ fun SpendDetailScreen(
                                         color = JungleGreen
                                     ) {
                                         Text(
-                                            "Pagó",
+                                            Strings.SpendDetail.PAYER_BADGE,
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
@@ -377,9 +390,9 @@ fun SpendDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(
-                            4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                            ambientColor = Color.Black.copy(0.06f),
-                            spotColor = Color.Black.copy(0.1f)
+                            DivvyUpTokens.ElevationRaised, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
                         ),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
@@ -395,7 +408,7 @@ fun SpendDetailScreen(
                             modifier = Modifier.size(DivvyUpTokens.IconLg)
                         )
                         Text(
-                            "Ticket adjunto",
+                            Strings.SpendDetail.RECEIPT_ATTACHED,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface

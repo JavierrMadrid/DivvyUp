@@ -1,13 +1,14 @@
 package com.example.divvyup.integration.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,17 +45,14 @@ fun AppEmptyState(
         verticalArrangement = Arrangement.Center
     ) {
         Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.size(72.dp)
+            shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.size(96.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = emoji,
-                    fontSize = 32.sp
+                    fontSize = 40.sp
                 )
             }
         }

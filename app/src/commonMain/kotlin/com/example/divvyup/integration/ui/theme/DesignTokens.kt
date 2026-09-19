@@ -40,24 +40,36 @@ object DivvyUpTokens {
     /** Tamaño del ícono pequeño dentro de chips/badges. */
     val IconXs = 14.dp
 
-    // ── Radios de esquinas ─────────────────────────────────────────────────────
+    // ── Radios de esquinas (Soft Rounded) ──────────────────────────────────────
     /** Esquinas para pill / chip. */
     val RadiusPill = 50.dp
     /** Esquinas para cards grandes. */
-    val RadiusCard = 20.dp
-    /** Esquinas para cards medianas / dialogs. */
-    val RadiusCardMd = 16.dp
+    val RadiusCard = 28.dp
+    /** Esquinas para cards medianas. */
+    val RadiusCardMd = 22.dp
     /** Esquinas para controles (inputs, dropdowns, botones de filtro). */
-    val RadiusControl = 12.dp
+    val RadiusControl = 16.dp
     /** Esquinas para cards de participante / fila. */
-    val RadiusRow = 14.dp
+    val RadiusRow = 18.dp
     /** Esquinas para dialogs. */
-    val RadiusDialog = 24.dp
+    val RadiusDialog = 32.dp
+    /** Esquinas para héroes y contenedores superiores. */
+    val RadiusHero = 36.dp
     /** Esquinas para badges (chips pequeños inline). */
-    val ShapeBadge = 6.dp
-    val ShapeBadgeMd = 8.dp
+    val ShapeBadge = 8.dp
+    val ShapeBadgeMd = 10.dp
     /** Esquinas para chips mini (estado / trend). */
-    val ShapeChipMini = 10.dp
+    val ShapeChipMini = 12.dp
+
+    // ── Elevación (sombras suaves y tintadas) ──────────────────────────────────
+    /** Elevación base de cards de contenido. */
+    val ElevationCard = 3.dp
+    /** Elevación para cards destacadas / héroes. */
+    val ElevationRaised = 6.dp
+    /** Elevación de FABs. */
+    val ElevationFab = 12.dp
+    /** Elevación de bottom bars. */
+    val ElevationBottomBar = 8.dp
 
     // ── Espaciados frecuentes ──────────────────────────────────────────────────
     /** Gap mínimo (inline icon-text, dots). */

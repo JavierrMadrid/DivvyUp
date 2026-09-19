@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppBrandHeader
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
@@ -80,19 +81,7 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(Strings.Auth.LOGO_EMOJI, fontSize = 56.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                Strings.Auth.APP_NAME,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                Strings.Register.HEADLINE,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            AppBrandHeader(subtitle = Strings.Register.HEADLINE)
 
             Spacer(Modifier.height(8.dp))
 

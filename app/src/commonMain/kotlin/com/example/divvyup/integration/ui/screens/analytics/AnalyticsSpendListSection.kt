@@ -26,10 +26,12 @@ import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.screens.formatLocalDate
 import com.example.divvyup.integration.ui.screens.toLocalDate
+import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.WarningContainer
 import com.example.divvyup.integration.ui.theme.WarningOnContainer
 import com.example.divvyup.integration.ui.viewmodel.AnalyticsPeriod
+import com.example.divvyup.integration.ui.Strings
 
 private const val DEFAULT_UNCATEGORIZED_ICON = "📦"
 private val WarningTextColor = WarningOnContainer
@@ -58,7 +60,7 @@ internal fun AnalyticsSpendList(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Gastos (${visibleSpends.size} de ${filtered.size})",
+            text = Strings.Analytics.listHeader(visibleSpends.size, filtered.size),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
@@ -66,18 +68,18 @@ internal fun AnalyticsSpendList(
 
         visibleSpends.forEach { spend ->
             val category = spend.categoryId?.let { categoryMap[it] }
-            val payerName = participantMap[spend.payerId]?.name ?: "Desconocido"
+            val payerName = participantMap[spend.payerId]?.name ?: Strings.Analytics.PAYER_UNKNOWN_FALLBACK
             val dateFormatted = remember(spend.date) { formatLocalDate(spend.date.toLocalDate()) }
             val isNonEqual = spend.splitType != SplitType.EQUAL
 
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(16.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.05f),
-                        spotColor = Color.Black.copy(alpha = 0.08f))
+                    .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -85,7 +87,7 @@ internal fun AnalyticsSpendList(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(DivvyUpTokens.AvatarMd)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerLow),
                         contentAlignment = Alignment.Center
@@ -107,7 +109,7 @@ internal fun AnalyticsSpendList(
                             )
                             if (isNonEqual) {
                                 Surface(
-                                    shape = RoundedCornerShape(4.dp),
+                                    shape = RoundedCornerShape(DivvyUpTokens.ShapeBadge),
                                     color = WarningContainerColor
                                 ) {
                                     Text(
@@ -125,13 +127,13 @@ internal fun AnalyticsSpendList(
                             }
                         }
                         Text(
-                            text = "$payerName · $dateFormatted",
+                            text = Strings.Analytics.payerAndDate(payerName, dateFormatted),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "${spend.amount.fmt2()} $currency",
+                        text = Strings.Common.amountCurrency(spend.amount.fmt2(), currency),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -143,14 +145,14 @@ internal fun AnalyticsSpendList(
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 OutlinedButton(
                     onClick = { visibleSpendCount += spendPageSize },
-                    shape = RoundedCornerShape(50.dp),
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                     border = BorderStroke(1.dp, JungleGreen.copy(alpha = 0.5f)),
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.ExpandMore, contentDescription = null, tint = JungleGreen, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = Icons.Default.ExpandMore, contentDescription = null, tint = JungleGreen, modifier = Modifier.size(DivvyUpTokens.IconSm))
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "Mostrar más (${filtered.size - visibleSpendCount} restantes)",
+                        text = Strings.Analytics.showMore(filtered.size - visibleSpendCount),
                         color = JungleGreen,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold

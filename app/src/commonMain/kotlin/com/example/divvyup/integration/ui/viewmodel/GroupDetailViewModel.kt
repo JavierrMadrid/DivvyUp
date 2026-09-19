@@ -24,7 +24,10 @@ import com.example.divvyup.domain.model.SpendShare
 import com.example.divvyup.domain.model.SplitType
 import com.example.divvyup.domain.repository.ParticipantRepository
 import com.example.divvyup.domain.repository.ParticipantUserLinkRepository
+import com.example.divvyup.domain.repository.SpendCursor
 import com.example.divvyup.domain.repository.UserProfileRepository
+import com.example.divvyup.integration.cache.SpendStartupCache
+import com.example.divvyup.integration.cache.SpendStartupEntry
 import com.example.divvyup.integration.notification.SpendNotificationEvent
 import com.example.divvyup.integration.notification.SpendNotifier
 import com.example.divvyup.integration.supabase.SupabaseStorageService
@@ -63,6 +66,14 @@ data class GroupDetailUiState(
     val group: Group? = null,
     val participants: List<Participant> = emptyList(),
     val spends: List<Spend> = emptyList(),
+    /** Lista completa de gastos (solo para Analíticas — carga perezosa al abrir esa pestaña). */
+    val allSpends: List<Spend> = emptyList(),
+    /** true cuando la lista completa + shares para Analíticas ya se cargaron. */
+    val analyticsLoaded: Boolean = false,
+    /** true si existen más gastos en el servidor más allá de las páginas cargadas. */
+    val hasMoreSpends: Boolean = false,
+    /** true mientras se carga la siguiente página con "Mostrar más". */
+    val isLoadingMoreSpends: Boolean = false,
     val categories: List<Category> = emptyList(),
     /** spendId → lista de shares (para analíticas y edición). */
     val spendSharesBySpend: Map<Long, List<SpendShare>> = emptyMap(),
@@ -124,8 +135,15 @@ class GroupDetailViewModel(
     private val userProfileRepository: UserProfileRepository? = null,
     private val activityLogService: ActivityLogService? = null,
     private val storageService: SupabaseStorageService? = null,
-    private val spendNotifier: SpendNotifier? = null
+    private val spendNotifier: SpendNotifier? = null,
+    /** Caché persistente de la primera página de gastos (pintado instantáneo al abrir el grupo). */
+    private val spendStartupCache: SpendStartupCache? = null
 ) : ViewModel() {
+
+    companion object {
+        /** Nº de gastos por página en la pestaña Gastos. */
+        const val SPEND_PAGE_SIZE = 20
+    }
 
     private data class ActionActor(
         val participantId: Long?,
@@ -160,6 +178,15 @@ class GroupDetailViewModel(
     }
 
     init {
+        // Pintado instantáneo: si existe una primera página persistida, se muestra al
+        // momento mientras loadAll() refresca la página 1 desde Supabase en background.
+        runCatching { spendStartupCache?.load(groupId) }.getOrNull()?.let { cached ->
+            if (_uiState.value.spends.isEmpty()) {
+                _uiState.update {
+                    it.copy(spends = cached.items, hasMoreSpends = cached.hasMore)
+                }
+            }
+        }
         loadAll(isInitialLoad = true)
     }
 
@@ -186,14 +213,19 @@ class GroupDetailViewModel(
                 coroutineScope {
                     val groupD        = async { groupService.getGroup(groupId) }
                     val participantsD = async { participantRepository.getByGroup(groupId) }
-                    val spendsD       = async { spendService.getSpends(groupId) }
-                    val categoriesD   = async { categoryService.getCategories(groupId) }
-                    val balancesD     = async { settlementService.getBalances(groupId) }
-                    val settlementsD  = async { settlementService.getSettlements(groupId) }
-                    val sharesD       = async {
-                        try { spendService.getSharesByGroup(groupId) }
-                        catch (_: Exception) { emptyList() }
+                    // Solo se carga la primera página de gastos; el resto se pagina con "Mostrar más".
+                    val spendsPageD   = async { spendService.getSpendsPage(groupId, SPEND_PAGE_SIZE, null) }
+                    val pageSharesD   = async {
+                        try {
+                            val ids = spendsPageD.await().items.map { it.id }
+                            if (ids.isEmpty()) emptyList() else spendService.getSharesBySpendIds(ids)
+                        } catch (_: Exception) { emptyList() }
                     }
+                    val categoriesD   = async { categoryService.getCategories(groupId) }
+                    val allSharesD    = async {
+                        try { spendService.getSharesByGroup(groupId) } catch (_: Exception) { emptyList() }
+                    }
+                    val settlementsD  = async { settlementService.getSettlements(groupId) }
                     val myPartIdD     = async { myParticipantIdProvider() }
                     val currentUserD  = async { currentUserIdProvider() }
                     val avatarsD      = async {
@@ -204,32 +236,39 @@ class GroupDetailViewModel(
                         try { activityLogService?.getActivityLog(groupId) ?: emptyList() }
                         catch (_: Exception) { emptyList<ActivityLog>() }
                     }
+                    val allSpendsD    = async {
+                        try { spendService.getSpends(groupId) } catch (_: Exception) { emptyList() }
+                    }
 
                     val group         = groupD.await()
                     val participants  = participantsD.await()
-                    val spends        = spendsD.await()
+                    val spendsPage    = spendsPageD.await()
+                    val pageShares    = pageSharesD.await()
                     val categories    = categoriesD.await()
-                    val balances      = balancesD.await()
+                    val allShares     = allSharesD.await()
                     val settlements   = settlementsD.await()
-                    val groupShares   = sharesD.await()
                     val myParticipantId = myPartIdD.await()
                     val currentUserId = currentUserD.await()
                     val avatarUrls    = avatarsD.await()
                     val activityLog   = activityD.await()
+                    val allSpends     = allSpendsD.await()
 
+                    val balances = settlementService.getBalances(
+                        participants, allSpends, settlements, allShares
+                    )
                     val transfers = settlementService.simplifyDebts(balances)
                     val isOwner = group.ownerUserId == null ||
                         (currentUserId != null && group.ownerUserId == currentUserId)
                     val personalImpact = if (myParticipantId != null) {
-                        spendService.getPersonalImpactByGroup(groupId, myParticipantId)
+                        spendService.getPersonalImpact(spendsPage.items, pageShares, myParticipantId)
                     } else emptyMap()
 
                     _uiState.update {
                         it.copy(
                             group = group,
                             participants = participants,
-                            spends = spends,
-                            spendSharesBySpend = groupShares.groupBy { s -> s.spendId },
+                            spends = spendsPage.items,
+                            hasMoreSpends = spendsPage.hasMore,
                             categories = categories,
                             balances = balances,
                             debtTransfers = transfers,
@@ -244,6 +283,13 @@ class GroupDetailViewModel(
                             spendPersonalImpact = personalImpact,
                             participantAvatarUrls = avatarUrls,
                             isLoading = false
+                        )
+                    }
+                    // Persistir la primera página para el arranque instantáneo de la próxima sesión
+                    runCatching {
+                        spendStartupCache?.save(
+                            groupId,
+                            SpendStartupEntry(spendsPage.items, spendsPage.hasMore, Clock.System.now())
                         )
                     }
                     // Si no se pudo determinar la propiedad (sesión no lista aún), reintenta
@@ -273,6 +319,8 @@ class GroupDetailViewModel(
      * una sola vez más para evitar bucles infinitos.
      */
     private var silentRetryInFlight = false
+
+    private var analyticsLoadInFlight = false
 
     private fun scheduleSilentRetry() {
         if (silentRetryInFlight) return
@@ -309,13 +357,19 @@ class GroupDetailViewModel(
                 coroutineScope {
                     val groupD        = async { groupService.getGroup(groupId) }
                     val participantsD = async { participantRepository.getByGroup(groupId) }
-                    val spendsD       = async { spendService.getSpends(groupId) }
+                    // Solo la primera página de gastos; el resto se pagina con "Mostrar más".
+                    val spendsPageD   = async { spendService.getSpendsPage(groupId, SPEND_PAGE_SIZE, null) }
+                    val pageSharesD   = async {
+                        try {
+                            val ids = spendsPageD.await().items.map { it.id }
+                            if (ids.isEmpty()) emptyList() else spendService.getSharesBySpendIds(ids)
+                        } catch (_: Exception) { emptyList() }
+                    }
                     val categoriesD   = async { categoryService.getCategories(groupId) }
-                    val balancesD     = async { settlementService.getBalances(groupId) }
-                    val settlementsD  = async { settlementService.getSettlements(groupId) }
-                    val sharesD       = async {
+                    val allSharesD    = async {
                         try { spendService.getSharesByGroup(groupId) } catch (_: Exception) { emptyList() }
                     }
+                    val settlementsD  = async { settlementService.getSettlements(groupId) }
                     val myPartIdD     = async { myParticipantIdProvider() }
                     val currentUserD  = async { currentUserIdProvider() }
                     val avatarsD      = async {
@@ -326,32 +380,39 @@ class GroupDetailViewModel(
                         try { activityLogService?.getActivityLog(groupId) ?: emptyList() }
                         catch (_: Exception) { emptyList<ActivityLog>() }
                     }
+                    val allSpendsD    = async {
+                        try { spendService.getSpends(groupId) } catch (_: Exception) { emptyList() }
+                    }
 
                     val group         = groupD.await()
                     val participants  = participantsD.await()
-                    val spends        = spendsD.await()
+                    val spendsPage    = spendsPageD.await()
+                    val pageShares    = pageSharesD.await()
                     val categories    = categoriesD.await()
-                    val balances      = balancesD.await()
+                    val allShares     = allSharesD.await()
                     val settlements   = settlementsD.await()
-                    val groupShares   = sharesD.await()
                     val myParticipantId = myPartIdD.await()
                     val currentUserId = currentUserD.await()
                     val avatarUrls    = avatarsD.await()
                     val activityLog   = activityD.await()
+                    val allSpends     = allSpendsD.await()
 
+                    val balances = settlementService.getBalances(
+                        participants, allSpends, settlements, allShares
+                    )
                     val transfers = settlementService.simplifyDebts(balances)
                     val isOwner = group.ownerUserId == null ||
                         (currentUserId != null && group.ownerUserId == currentUserId)
                     val personalImpact = if (myParticipantId != null) {
-                        spendService.getPersonalImpactByGroup(groupId, myParticipantId)
+                        spendService.getPersonalImpact(spendsPage.items, pageShares, myParticipantId)
                     } else emptyMap()
 
                     _uiState.update {
                         it.copy(
                             group = group,
                             participants = participants,
-                            spends = spends,
-                            spendSharesBySpend = groupShares.groupBy { s -> s.spendId },
+                            spends = spendsPage.items,
+                            hasMoreSpends = spendsPage.hasMore,
                             categories = categories,
                             balances = balances,
                             debtTransfers = transfers,
@@ -367,6 +428,12 @@ class GroupDetailViewModel(
                             participantAvatarUrls = avatarUrls,
                             isLoading = false,
                             error = null
+                        )
+                    }
+                    runCatching {
+                        spendStartupCache?.save(
+                            groupId,
+                            SpendStartupEntry(spendsPage.items, spendsPage.hasMore, Clock.System.now())
                         )
                     }
                     if (currentUserId == null && group.ownerUserId != null) {
@@ -400,7 +467,72 @@ class GroupDetailViewModel(
     }
 
     // --- Tabs ---
-    fun selectTab(tab: GroupDetailTab) = _uiState.update { it.copy(selectedTab = tab) }
+    fun selectTab(tab: GroupDetailTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+        // Analíticas necesita la lista completa + shares → carga perezosa la 1ª vez.
+        if (tab == GroupDetailTab.ANALITICAS) {
+            ensureAnalyticsLoaded()
+        }
+    }
+
+    private fun ensureAnalyticsLoaded() {
+        if (_uiState.value.analyticsLoaded || analyticsLoadInFlight) return
+        analyticsLoadInFlight = true
+        viewModelScope.launch {
+            try {
+                val spends = spendService.getSpends(groupId)
+                val shares = try { spendService.getSharesByGroup(groupId) } catch (_: Exception) { emptyList() }
+                _uiState.update {
+                    it.copy(
+                        allSpends = spends,
+                        spendSharesBySpend = shares.groupBy { s -> s.spendId },
+                        analyticsLoaded = true
+                    )
+                }
+            } catch (e: Exception) {
+                println("DEBUG GroupDetailViewModel: loadAnalyticsData error — ${e.message}")
+            } finally {
+                analyticsLoadInFlight = false
+            }
+        }
+    }
+
+    // --- Paginación de gastos ---
+
+    /** Carga la siguiente página de gastos y la acumula a las ya mostradas. */
+    fun loadMoreSpends() {
+        val current = _uiState.value
+        if (current.isLoadingMoreSpends || !current.hasMoreSpends) return
+        val last = current.spends.lastOrNull() ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMoreSpends = true, error = null) }
+            try {
+                val page = spendService.getSpendsPage(
+                    groupId = groupId,
+                    pageSize = SPEND_PAGE_SIZE,
+                    before = SpendCursor(date = last.date, id = last.id)
+                )
+                val merged = (current.spends + page.items).distinctBy { it.id }
+                val newShares = try {
+                    spendService.getSharesBySpendIds(page.items.map { it.id })
+                } catch (_: Exception) { emptyList() }
+                val newImpact = current.myParticipantId?.let { pid ->
+                    spendService.getPersonalImpact(page.items, newShares, pid)
+                } ?: emptyMap()
+
+                _uiState.update {
+                    it.copy(
+                        spends = merged,
+                        hasMoreSpends = page.hasMore,
+                        isLoadingMoreSpends = false,
+                        spendPersonalImpact = it.spendPersonalImpact + newImpact
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoadingMoreSpends = false, error = e.message) }
+            }
+        }
+    }
 
     // --- Participantes ---
     fun showAddParticipantDialog() = _uiState.update { it.copy(showAddParticipantDialog = true) }
@@ -450,8 +582,10 @@ class GroupDetailViewModel(
                 // Crear el nuevo vínculo
                 linkRepo.assignUserToParticipant(groupId, participantId, userId)
 
-                // Recalcular impacto personal con el nuevo participante
-                val personalImpact = spendService.getPersonalImpactByGroup(groupId, participantId)
+                // Recalcular impacto personal con el nuevo participante (solo sobre los gastos cargados)
+                val loadedSpends = _uiState.value.spends
+                val shares = spendService.getSharesBySpendIds(loadedSpends.map { it.id })
+                val personalImpact = spendService.getPersonalImpact(loadedSpends, shares, participantId)
                 _uiState.update {
                     it.copy(
                         isLoading = false,

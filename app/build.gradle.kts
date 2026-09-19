@@ -48,6 +48,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.multiplatform.settings)
 
                 // Compose Multiplatform
                 implementation(compose.runtime)
@@ -55,6 +56,9 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
                 implementation(compose.components.uiToolingPreview)
+
+                // Compose Resources — fuentes de marca (Plus Jakarta Sans) e ilustraciones
+                implementation(compose.components.resources)
 
                 // Navigation KMP — via Compose Multiplatform plugin accessor (KMP-compatible)
                 implementation(libs.androidx.navigation.compose)
@@ -74,6 +78,7 @@ kotlin {
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation(libs.multiplatform.settings.test)
             }
         }
         val androidMain by getting {
@@ -85,6 +90,9 @@ kotlin {
 
                 // Custom Tabs — para el flujo OAuth fallback (Google, etc.)
                 implementation(libs.androidx.browser)
+
+                // Splash screen con marca (compat Android 12+)
+                implementation(libs.androidx.core.splashscreen)
 
                 // Ktor engine para Android (requerido por Supabase)
                 implementation(libs.ktor.client.android)
@@ -115,6 +123,11 @@ kotlin {
     }
 }
 
+
+compose.resources {
+    // Clase `Res` generada para las fuentes/ilustraciones de marca en commonMain.
+    packageOfResClass = "com.example.divvyup.resources"
+}
 
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "com.example.divvyup"

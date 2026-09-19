@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
@@ -80,6 +81,8 @@ fun ChangePasswordScreen(
         snackbarHostState.showSnackbar(err)
         authViewModel.clearError()
     }
+
+    ThemedSystemBarAppearance()
 
     Scaffold(
         modifier = modifier,
@@ -226,9 +229,9 @@ fun ChangePasswordScreen(
                     )
                 },
                 enabled = canSubmit,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
-                colors = ButtonDefaults.buttonColors(containerColor = JungleGreen)
+                modifier = Modifier.fillMaxWidth().height(DivvyUpTokens.PrimaryButtonHeight),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = androidx.compose.ui.graphics.Color.White)
             ) {
                 if (authState.isSavingProfile) {
                     CircularProgressIndicator(

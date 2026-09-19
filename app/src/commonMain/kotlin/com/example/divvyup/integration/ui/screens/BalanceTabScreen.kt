@@ -33,6 +33,7 @@ import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppAvatar
 import com.example.divvyup.integration.ui.components.AppCard
 import com.example.divvyup.integration.ui.components.AppCardLevel
+import com.example.divvyup.integration.ui.components.AppEmptyState
 import com.example.divvyup.integration.ui.components.AmountWithSign
 import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.JungleGreen
@@ -53,15 +54,11 @@ internal fun BalanceTab(
 ) {
     if (balances.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(40.dp)
-            ) {
-                Text(Strings.BalanceTab.EMOJI_EMPTY, fontSize = 48.sp)
-                Text(Strings.BalanceTab.EMPTY_HEADLINE, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
-                Text(Strings.BalanceTab.EMPTY_SUBTITLE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            AppEmptyState(
+                emoji = Strings.BalanceTab.EMOJI_EMPTY,
+                title = Strings.BalanceTab.EMPTY_HEADLINE,
+                body = Strings.BalanceTab.EMPTY_SUBTITLE
+            )
         }
         return
     }
@@ -76,7 +73,7 @@ internal fun BalanceTab(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(Strings.BalanceTab.SECTION_BALANCES, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(Strings.BalanceTab.SECTION_BALANCES, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
         }
         items(balances, key = { it.participantId }) { balance ->
             BalanceCard(
@@ -93,7 +90,7 @@ internal fun BalanceTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(Strings.BalanceTab.SECTION_TRANSFERS, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(Strings.BalanceTab.SECTION_TRANSFERS, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                     Button(
                         onClick = onLiquidar,
                         shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
@@ -210,7 +207,7 @@ internal fun TransferCard(
     Card(
         onClick = { if (isSelectable) onToggle() },
         modifier = modifier.fillMaxWidth()
-            .shadow(3.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.08f))
+            .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCard), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
             .then(if (isSelectable) Modifier.border(width = if (isSelected) 2.dp else 0.dp, color = borderColor, shape = RoundedCornerShape(DivvyUpTokens.RadiusCard)) else Modifier),
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(containerColor = if (isSelected) JungleGreen.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface),

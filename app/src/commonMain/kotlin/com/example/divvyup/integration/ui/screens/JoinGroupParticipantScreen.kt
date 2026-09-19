@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.viewmodel.JoinGroupParticipantViewModel
@@ -62,6 +63,8 @@ fun JoinGroupParticipantScreen(
             onJoinedGroup(uiState.groupId)
         }
     }
+
+    ThemedSystemBarAppearance()
 
     Scaffold(
         modifier = modifier,
@@ -151,7 +154,12 @@ fun JoinGroupParticipantScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .shadow(2.dp, CircleShape)
+                            .shadow(
+                                DivvyUpTokens.ElevationCard,
+                                CircleShape,
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                            )
                             .size(DivvyUpTokens.IconLg + 12.dp)
                             .clip(CircleShape)
                             .background(JungleGreen),

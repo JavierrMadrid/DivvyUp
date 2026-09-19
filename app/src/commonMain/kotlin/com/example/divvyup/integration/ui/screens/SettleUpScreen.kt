@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +47,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppTopBar
+import com.example.divvyup.integration.ui.components.SuccessCelebration
 import com.example.divvyup.integration.ui.components.TopBarVariant
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
@@ -89,6 +91,14 @@ internal fun SettleUpScreen(
         mutableStateOf(transferKeys.toSet())
     }
 
+    var celebrating by remember { mutableStateOf(false) }
+    LaunchedEffect(celebrating) {
+        if (celebrating) {
+            kotlinx.coroutines.delay(900)
+            onBack()
+        }
+    }
+
     val selectedTransfers = remember(transfers, selectedKeys) {
         transfers.filter { "${it.fromParticipantId}-${it.toParticipantId}" in selectedKeys }
     }
@@ -107,10 +117,10 @@ internal fun SettleUpScreen(
         },
         bottomBar = {
             Surface(
-                shape = RoundedCornerShape(topStart = DivvyUpTokens.RadiusCard, topEnd = DivvyUpTokens.RadiusCard),
+                shape = RoundedCornerShape(topStart = DivvyUpTokens.RadiusHero, topEnd = DivvyUpTokens.RadiusHero),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 2.dp,
-                shadowElevation = 8.dp
+                shadowElevation = DivvyUpTokens.ElevationBottomBar
             ) {
                 Column(
                     modifier = Modifier
@@ -134,15 +144,15 @@ internal fun SettleUpScreen(
                     Button(
                         onClick = {
                             viewModel.createSettlementsForTransfers(selectedTransfers)
-                            onBack()
+                            celebrating = true
                         },
                         enabled = selectedTransfers.isNotEmpty() && transfers.isNotEmpty() && !uiState.isLoading,
                         colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White),
                         shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                        modifier = Modifier.fillMaxWidth().height(DivvyUpTokens.PrimaryButtonHeight)
                     ) {
-                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.size(8.dp))
+                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconSm))
+                        Spacer(Modifier.size(DivvyUpTokens.GapSm))
                         Text(Strings.SettleUp.CONFIRM_BUTTON, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -238,6 +248,11 @@ internal fun SettleUpScreen(
             }
         }
     }
+
+    SuccessCelebration(
+        visible = celebrating,
+        message = Strings.SettleUp.CELEBRATION
+    )
 }
 
 

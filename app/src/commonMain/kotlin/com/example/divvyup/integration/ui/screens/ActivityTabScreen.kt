@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.ActivityEventType
 import com.example.divvyup.domain.model.ActivityLog
 import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppEmptyState
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.ErrorContainerLight
 import com.example.divvyup.integration.ui.theme.ErrorOnContainerDark
@@ -44,23 +45,11 @@ internal fun ActivityTab(
             modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(Strings.Activity.EMOJI_EMPTY, fontSize = 48.sp)
-                Text(
-                    Strings.Activity.EMPTY_HEADLINE,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    Strings.Activity.EMPTY_SUBTITLE,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
-            }
+            AppEmptyState(
+                emoji = Strings.Activity.EMOJI_EMPTY,
+                title = Strings.Activity.EMPTY_HEADLINE,
+                body = Strings.Activity.EMPTY_SUBTITLE
+            )
         }
         return
     }
@@ -136,8 +125,8 @@ private fun ActivityLogItem(entry: ActivityLog) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(0.05f), spotColor = Color.Black.copy(0.08f))
+            .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), spotColor = Color.Black.copy(0.08f))
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -145,7 +134,7 @@ private fun ActivityLogItem(entry: ActivityLog) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(iconBg),
+                modifier = Modifier.size(DivvyUpTokens.AvatarMd).clip(CircleShape).background(iconBg),
                 contentAlignment = Alignment.Center
             ) {
                 val iconTint = when (entry.eventType) {
@@ -190,7 +179,7 @@ private fun ActivityLogItem(entry: ActivityLog) {
     }
 }
 
-private fun ActivityEventType.iconAndColor(): Pair<ImageVector, Color> = when (this) {
+internal fun ActivityEventType.iconAndColor(): Pair<ImageVector, Color> = when (this) {
     ActivityEventType.GASTO_CREADO              -> Icons.Default.AddCircle    to JungleGreen100
     ActivityEventType.GASTO_EDITADO             -> Icons.Default.Edit          to JungleGreen100
     ActivityEventType.GASTO_ELIMINADO           -> Icons.Default.Delete        to ErrorContainerLight

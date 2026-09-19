@@ -20,12 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.divvyup.integration.ui.SetSystemBarAppearance
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
 
@@ -89,6 +91,7 @@ private fun GradientTopBar(
     actions: @Composable RowScope.() -> Unit,
     modifier: Modifier
 ) {
+    SetSystemBarAppearance(useDarkIcons = false)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -145,6 +148,7 @@ private fun FlatTopBar(
     actions: @Composable RowScope.() -> Unit,
     modifier: Modifier
 ) {
+    SetSystemBarAppearance(useDarkIcons = MaterialTheme.colorScheme.surface.luminance() >= 0.5f)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -195,6 +199,7 @@ private fun CenteredTopBar(
     actions: @Composable RowScope.() -> Unit,
     modifier: Modifier
 ) {
+    SetSystemBarAppearance(useDarkIcons = MaterialTheme.colorScheme.surface.luminance() >= 0.5f)
     Row(
         modifier = modifier
             .fillMaxWidth()

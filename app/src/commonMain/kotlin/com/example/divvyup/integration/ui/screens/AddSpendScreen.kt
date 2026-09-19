@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +46,9 @@ import com.example.divvyup.integration.ui.theme.JungleGreenDark
 import com.example.divvyup.integration.ui.theme.JungleGreenMid
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
+import com.example.divvyup.integration.ui.SetSystemBarAppearance
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.SuccessCelebration
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -236,7 +240,7 @@ fun AddSpendScreen(
             SplitType.EQUAL -> {
                 val ids = selectedParticipants.value.toList()
                 if (ids.isEmpty()) {
-                    splitError = "Selecciona al menos un participante"; return
+                    splitError = Strings.AddSpend.errorNoParticipants(); return
                 }
                 if (isEditMode) viewModel.updateEqualSpend(
                     concept.trim(), parsed, selectedPayer, ids, selectedCatId,
@@ -252,7 +256,7 @@ fun AddSpendScreen(
                 val totalPct = pctTexts.value.values.mapNotNull { it.toDoubleDotOrNull() }.sum()
                 if (abs(totalPct - 100.0) >= 0.01) {
                     splitError =
-                        "Los porcentajes deben sumar 100% (ahora ${totalPct.fmt()}%)"; return
+                        Strings.AddSpend.errorPercentNot100(totalPct.fmt()); return
                 }
                 val pcts = pctTexts.value.mapValues { (_, v) -> v.toDoubleDotOrNull() ?: 0.0 }
                     .filter { it.value > 0 }
@@ -271,7 +275,7 @@ fun AddSpendScreen(
                     customTexts.value.values.mapNotNull { it.toDoubleDotOrNull() }.sum()
                 if (abs(totalCustom - parsed) >= 0.01) {
                     splitError =
-                        "La suma (${totalCustom.fmt()}) no coincide con el total (${parsed.fmt()})"; return
+                        Strings.AddSpend.errorCustomSumMismatch(totalCustom.fmt(), parsed.fmt()); return
                 }
                 val amounts = customTexts.value.mapValues { (_, v) -> v.toDoubleDotOrNull() ?: 0.0 }
                     .filter { it.value > 0 }
@@ -286,6 +290,16 @@ fun AddSpendScreen(
             }
         }
     }
+
+    SuccessCelebration(
+        visible = uiState.spendSaved,
+        message = if (isEditMode) Strings.AddSpend.CELEBRATION_EDITED
+                  else Strings.AddSpend.CELEBRATION_ADDED
+    )
+
+    SetSystemBarAppearance(
+        useDarkIcons = MaterialTheme.colorScheme.background.luminance() >= 0.5f
+    )
 
     Scaffold(
         modifier = modifier,
@@ -309,12 +323,12 @@ fun AddSpendScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        "Volver",
+                        Strings.AddSpend.A11Y_BACK,
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 Text(
-                    if (isEditMode) "Editar gasto" else "Añadir gasto",
+                    if (isEditMode) Strings.AddSpend.TITLE_EDIT else Strings.AddSpend.TITLE_ADD,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -324,7 +338,7 @@ fun AddSpendScreen(
             }
         },
         bottomBar = {
-            Surface(shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface) {
+            Surface(shadowElevation = DivvyUpTokens.ElevationBottomBar, color = MaterialTheme.colorScheme.surface) {
                 Box(
                     Modifier.fillMaxWidth().navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 14.dp)
@@ -339,7 +353,7 @@ fun AddSpendScreen(
                         enabled = !uiState.isLoading,
                         modifier = Modifier.fillMaxWidth().height(DivvyUpTokens.PrimaryButtonHeight)
                             .shadow(
-                                8.dp, RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                                DivvyUpTokens.ElevationRaised, RoundedCornerShape(DivvyUpTokens.RadiusPill),
                                 ambientColor = JungleGreen.copy(alpha = 0.2f),
                                 spotColor = JungleGreen.copy(alpha = 0.35f)
                             ),
@@ -357,7 +371,7 @@ fun AddSpendScreen(
                             )
                         else
                             Text(
-                                if (isEditMode) "Guardar cambios" else "Añadir gasto",
+                                if (isEditMode) Strings.AddSpend.SAVE_BUTTON_EDIT else Strings.AddSpend.SAVE_BUTTON_ADD,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp
                             )
@@ -373,16 +387,16 @@ fun AddSpendScreen(
         ) {
             Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)) {
                 Text(
-                    if (isEditMode) "Editar gasto" else "Nuevo gasto",
+                    if (isEditMode) Strings.AddSpend.HEADER_EDIT else Strings.AddSpend.HEADER_NEW,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     when (splitMode) {
-                        SplitType.EQUAL -> "Reparto equitativo"
-                        SplitType.PERCENTAGE -> "Reparto por porcentaje"
-                        SplitType.CUSTOM -> "Reparto por importe exacto"
+                        SplitType.EQUAL -> Strings.AddSpend.SUBTITLE_EQUAL
+                        SplitType.PERCENTAGE -> Strings.AddSpend.SUBTITLE_PERCENTAGE
+                        SplitType.CUSTOM -> Strings.AddSpend.SUBTITLE_CUSTOM
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -398,16 +412,21 @@ fun AddSpendScreen(
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     FinTextField(
-                        label = "Concepto", value = concept, placeholder = "Ej: Cena en La Tagliatella",
+                        label = Strings.AddSpend.FIELD_CONCEPT, value = concept, placeholder = Strings.AddSpend.CONCEPT_PLACEHOLDER,
                         onValueChange = { concept = it; conceptError = false },
-                        isError = conceptError, errorText = "El concepto es obligatorio"
+                        isError = conceptError, errorText = Strings.AddSpend.ERROR_CONCEPT_REQUIRED
                     )
                 }
                 // Botón cámara — abre la galería para adjuntar un ticket/recibo
                 Box(
                     modifier = Modifier
                         .size(DivvyUpTokens.PrimaryButtonHeight)
-                        .shadow(2.dp, RoundedCornerShape(DivvyUpTokens.RadiusControl))
+                        .shadow(
+                            DivvyUpTokens.ElevationCard,
+                            RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                        )
                         .clip(RoundedCornerShape(DivvyUpTokens.RadiusControl))
                         .background(
                             if (receiptImageAttached) JungleGreen
@@ -424,7 +443,7 @@ fun AddSpendScreen(
                         receiptImageAttached -> IconButton(onClick = pickImage) {
                             Icon(
                                 Icons.Default.CheckCircle,
-                                contentDescription = "Imagen adjunta",
+                                contentDescription = Strings.AddSpend.A11Y_IMAGE_ATTACHED,
                                 tint = Color.White,
                                 modifier = Modifier.size(DivvyUpTokens.IconLg)
                             )
@@ -432,7 +451,7 @@ fun AddSpendScreen(
                         else -> IconButton(onClick = pickImage) {
                             Icon(
                                 Icons.Default.CameraAlt,
-                                contentDescription = "Adjuntar imagen",
+                                contentDescription = Strings.AddSpend.A11Y_ATTACH_IMAGE,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(DivvyUpTokens.IconLg)
                             )
@@ -442,9 +461,9 @@ fun AddSpendScreen(
             }
 
             FinTextField(
-                label = "Importe", value = amountText, placeholder = "0.00",
+                label = Strings.AddSpend.FIELD_AMOUNT, value = amountText, placeholder = Strings.AddSpend.AMOUNT_PLACEHOLDER,
                 onValueChange = { amountText = it; amountError = false; splitError = null },
-                isError = amountError, errorText = "Introduce un importe válido",
+                isError = amountError, errorText = Strings.AddSpend.ERROR_AMOUNT_INVALID,
                 keyboardType = KeyboardType.Decimal,
                 trailingContent = {
                     Text(
@@ -457,7 +476,7 @@ fun AddSpendScreen(
             )
 
             if (participants.isNotEmpty()) {
-                SpendSectionLabel("¿Quién pagó?")
+                SpendSectionLabel(Strings.AddSpend.SECTION_WHO_PAID)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapSm)
@@ -491,7 +510,7 @@ fun AddSpendScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapSm)
                 ) {
-                    SpendSectionLabel("Categoría")
+                    SpendSectionLabel(Strings.AddSpend.SECTION_CATEGORY)
                     if (suggestedCatName != null && !userPickedCategory && !isEditMode) {
                         val catName = suggestedCatName!!
                         SuggestionChip(
@@ -502,7 +521,7 @@ fun AddSpendScreen(
                                     suggestedCatName = null
                                 }
                             },
-                            label = { Text("💡 $catName", style = MaterialTheme.typography.labelSmall) }
+                            label = { Text("${Strings.AddSpend.SUGGESTED_PREFIX}$catName", style = MaterialTheme.typography.labelSmall) }
                         )
                     }
                 }
@@ -522,14 +541,14 @@ fun AddSpendScreen(
                         Arrangement.SpaceBetween,
                         Alignment.CenterVertically
                     ) {
-                        SpendSectionLabel("Reparto entre")
+                        SpendSectionLabel(Strings.AddSpend.SECTION_SPLIT_BETWEEN)
                         TextButton(onClick = {
                             selectedParticipants.value =
                                 if (selectedParticipants.value.size == participants.size) emptySet()
                                 else participants.map { it.id }.toSet()
                         }) {
                             Text(
-                                if (selectedParticipants.value.size == participants.size) "Desmarcar todos" else "Seleccionar todos",
+                                if (selectedParticipants.value.size == participants.size) Strings.AddSpend.ACTION_DESELECT_ALL else Strings.AddSpend.ACTION_SELECT_ALL,
                                 style = MaterialTheme.typography.labelMedium, color = JungleGreenMid
                             )
                         }
@@ -540,7 +559,7 @@ fun AddSpendScreen(
                         AddSpendParticipantCheckRow(
                             participant = p,
                             checked = p.id in selectedParticipants.value,
-                            shareLabel = if (p.id in selectedParticipants.value && amount > 0) "${equalShare.fmt()} $currency" else null,
+                            shareLabel = if (p.id in selectedParticipants.value && amount > 0) Strings.AddSpend.shareLabel(equalShare.fmt(), currency) else null,
                             onCheck = { checked ->
                                 selectedParticipants.value =
                                     if (checked) selectedParticipants.value + p.id else selectedParticipants.value - p.id
@@ -554,16 +573,16 @@ fun AddSpendScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val totalPct = pctTexts.value.values.mapNotNull { it.toDoubleDotOrNull() }.sum()
                     SplitTotalsBadge(
-                        "Porcentaje por persona",
+                        Strings.AddSpend.PERCENTAGE_SECTION,
                         abs(totalPct - 100.0) < 0.01,
-                        "Total: ${totalPct.fmt()}%"
+                        Strings.AddSpend.totalPctLabel(totalPct.fmt())
                     )
                     participants.forEach { p ->
                         val pct = pctTexts.value[p.id]?.toDoubleDotOrNull() ?: 0.0
                         AddSpendParticipantPctRow(
                             participant = p,
                             pctText = pctTexts.value[p.id] ?: "",
-                            shareLabel = if (amount > 0 && pct > 0) "${(amount * pct / 100.0).fmt()} $currency" else null,
+                            shareLabel = if (amount > 0 && pct > 0) Strings.AddSpend.shareLabel((amount * pct / 100.0).fmt(), currency) else null,
                             onPctChange = { v ->
                                 val edited = v.toDoubleDotOrNull()
                                 val others = participants.filter { it.id != p.id }
@@ -583,9 +602,9 @@ fun AddSpendScreen(
                     val totalCustom =
                         customTexts.value.values.mapNotNull { it.toDoubleDotOrNull() }.sum()
                     SplitTotalsBadge(
-                        "Importe por persona",
+                        Strings.AddSpend.CUSTOM_SECTION,
                         amount > 0 && abs(totalCustom - amount) < 0.01,
-                        "${totalCustom.fmt()} / ${amount.fmt()} $currency"
+                        Strings.AddSpend.shareLabel("${totalCustom.fmt()} / ${amount.fmt()}", currency)
                     )
                     participants.forEach { p ->
                         AddSpendParticipantCustomRow(
@@ -611,7 +630,7 @@ fun AddSpendScreen(
 
             splitError?.let { msg ->
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
@@ -634,18 +653,23 @@ fun AddSpendScreen(
 /** Etiqueta de sección reutilizable dentro del formulario. */
 @Composable
 private fun SpendSectionLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary
+    )
 }
 
 @Composable
 private fun SplitModeSelector(splitMode: SplitType, onSelect: (SplitType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SpendSectionLabel("Tipo de reparto")
+        SpendSectionLabel(Strings.AddSpend.SECTION_SPLIT_TYPE)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
-                SplitType.EQUAL to "Equitativo",
-                SplitType.PERCENTAGE to "Porcentaje",
-                SplitType.CUSTOM to "Exacto"
+                SplitType.EQUAL to Strings.AddSpend.SPLIT_TYPE_EQUAL,
+                SplitType.PERCENTAGE to Strings.AddSpend.SPLIT_TYPE_PERCENTAGE,
+                SplitType.CUSTOM to Strings.AddSpend.SPLIT_TYPE_CUSTOM
             )
                 .forEach { (type, label) ->
                     val selected = splitMode == type
@@ -673,7 +697,7 @@ private fun SplitTotalsBadge(title: String, isValid: Boolean, text: String) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         SpendSectionLabel(title)
         Surface(
-            shape = RoundedCornerShape(50.dp),
+            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
             color = if (isValid) JungleGreen100 else MaterialTheme.colorScheme.errorContainer
         ) {
             Text(
@@ -751,7 +775,7 @@ private fun AddSpendCategoryPills(
             CategoryPillSurface(isSelected = selected == null, onClick = { onSelect(null) }) {
                 Text(DEFAULT_UNCATEGORIZED_ICON, fontSize = 14.sp)
                 Text(
-                    "Sin categoría", style = MaterialTheme.typography.labelMedium,
+                    Strings.AddSpend.NO_CATEGORY_PILL, style = MaterialTheme.typography.labelMedium,
                     color = if (selected == null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (selected == null) FontWeight.SemiBold else FontWeight.Normal
                 )
@@ -945,7 +969,11 @@ private fun AddSpendParticipantCustomRow(
 @Composable
 private fun SpendDateButton(date: Instant, onClick: () -> Unit) {
     val localDt = date.toLocalDateTime(TimeZone.currentSystemDefault())
-    val label = "${localDt.date.day.toString().padStart(2, '0')}/${localDt.date.month.number.toString().padStart(2, '0')}/${localDt.date.year}"
+    val label = Strings.AddSpend.formatDate(
+        day = localDt.date.day,
+        month = localDt.date.month.number,
+        year = localDt.date.year
+    )
     OutlinedButton(
         onClick = onClick,
         shape = RoundedCornerShape(DivvyUpTokens.RadiusRow),
@@ -955,7 +983,7 @@ private fun SpendDateButton(date: Instant, onClick: () -> Unit) {
     ) {
         Icon(
             Icons.Default.CalendarMonth,
-            contentDescription = "Seleccionar fecha",
+            contentDescription = Strings.AddSpend.A11Y_PICK_DATE,
             modifier = Modifier.size(DivvyUpTokens.IconSm),
             tint = JungleGreenMid
         )
@@ -984,10 +1012,10 @@ private fun SpendDatePickerDialog(
                     onDateSelected(Instant.fromEpochMilliseconds(millis + 12 * 3600 * 1000L))
                 }
                 onDismiss()
-            }) { Text("Aceptar", color = JungleGreen) }
+            }) { Text(Strings.AddSpend.DATE_PICKER_ACCEPT, color = JungleGreen) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(Strings.Common.CANCEL) }
         }
     ) {
         DatePicker(state = datePickerState)
@@ -997,12 +1025,12 @@ private fun SpendDatePickerDialog(
 @Composable
 private fun RecurrenceSelector(recurrence: Recurrence, onSelect: (Recurrence) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SpendSectionLabel("Repetición")
+        SpendSectionLabel(Strings.AddSpend.SECTION_RECURRENCE)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
-                Recurrence.NONE    to "Una vez",
-                Recurrence.WEEKLY  to "Semanal",
-                Recurrence.MONTHLY to "Mensual"
+                Recurrence.NONE    to Strings.AddSpend.RECURRENCE_ONCE,
+                Recurrence.WEEKLY  to Strings.AddSpend.RECURRENCE_WEEKLY_LABEL,
+                Recurrence.MONTHLY to Strings.AddSpend.RECURRENCE_MONTHLY_LABEL
             ).forEach { (type, label) ->
                 val selected = recurrence == type
                 Surface(
@@ -1026,8 +1054,8 @@ private fun RecurrenceSelector(recurrence: Recurrence, onSelect: (Recurrence) ->
         if (recurrence != Recurrence.NONE) {
             Text(
                 when (recurrence) {
-                    Recurrence.WEEKLY  -> "💡 Este gasto se repetirá cada semana"
-                    Recurrence.MONTHLY -> "💡 Este gasto se repetirá cada mes"
+                    Recurrence.WEEKLY  -> Strings.AddSpend.RECURRENCE_WEEKLY_HINT
+                    Recurrence.MONTHLY -> Strings.AddSpend.RECURRENCE_MONTHLY_HINT
                     else -> ""
                 },
                 style = MaterialTheme.typography.labelSmall,

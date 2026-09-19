@@ -62,6 +62,8 @@ import com.example.divvyup.integration.ui.theme.JungleGreenDark
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 
 /**
  * Pantalla "Añadir participante" desde GroupDetailScreen — reemplaza AlertDialog.
@@ -90,6 +92,8 @@ fun AddParticipantInGroupScreen(
         }
     }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -104,12 +108,12 @@ fun AddParticipantInGroupScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = Strings.AddParticipantInGroup.A11Y_BACK,
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 Text(
-                    text = "Añadir participante",
+                    text = Strings.AddParticipantInGroup.TITLE,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -119,7 +123,7 @@ fun AddParticipantInGroupScreen(
             }
         },
         bottomBar = {
-            Surface(shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface) {
+            Surface(shadowElevation = DivvyUpTokens.ElevationBottomBar, color = MaterialTheme.colorScheme.surface) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -141,9 +145,9 @@ fun AddParticipantInGroupScreen(
                         enabled = !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp)
+                            .height(DivvyUpTokens.PrimaryButtonHeight)
                             .shadow(
-                                elevation = 8.dp,
+                                elevation = DivvyUpTokens.ElevationRaised,
                                 shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                                 ambientColor = JungleGreen.copy(alpha = 0.2f),
                                 spotColor = JungleGreen.copy(alpha = 0.35f)
@@ -161,7 +165,7 @@ fun AddParticipantInGroupScreen(
                                 color = Color.White
                             )
                         } else {
-                            Text("Añadir participante", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Text(Strings.AddParticipantInGroup.SUBMIT_BUTTON, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                         }
                     }
                 }
@@ -183,19 +187,19 @@ fun AddParticipantInGroupScreen(
                     .height(90.dp)
                     .background(
                         brush = Brush.horizontalGradient(listOf(JungleGreen, JungleGreenDark)),
-                        shape = RoundedCornerShape(DivvyUpTokens.RadiusCard)
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusHero)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        uiState.group?.name ?: "Grupo",
+                        uiState.group?.name ?: Strings.AddParticipantInGroup.HERO_GROUP_FALLBACK,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        "Añadir nuevo miembro",
+                        Strings.AddParticipantInGroup.HERO_SUBTITLE,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )
@@ -205,16 +209,16 @@ fun AddParticipantInGroupScreen(
             // ── Nombre ────────────────────────────────────────────────────────
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Nombre *",
+                    Strings.AddParticipantInGroup.FIELD_NAME,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it; nameError = false },
-                    placeholder = { Text("Ej: Ana García", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text(Strings.AddParticipantInGroup.FIELD_NAME_PLACEHOLDER, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     isError = nameError,
-                    supportingText = if (nameError) { { Text("El nombre es obligatorio") } } else null,
+                    supportingText = if (nameError) { { Text(Strings.AddParticipantInGroup.ERROR_NAME_REQUIRED) } } else null,
                     singleLine = true,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                     modifier = Modifier.fillMaxWidth(),
@@ -233,14 +237,14 @@ fun AddParticipantInGroupScreen(
             // ── Email ─────────────────────────────────────────────────────────
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Email (opcional)",
+                    Strings.AddParticipantInGroup.FIELD_EMAIL,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text("ana@ejemplo.com", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text(Strings.AddParticipantInGroup.FIELD_EMAIL_PLACEHOLDER, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     singleLine = true,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                     modifier = Modifier
@@ -263,7 +267,7 @@ fun AddParticipantInGroupScreen(
                 Snackbar(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
                 ) { Text(msg) }
             }
 

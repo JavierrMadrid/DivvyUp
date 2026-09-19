@@ -1,5 +1,7 @@
 package com.example.divvyup.integration.ui.screens.analytics
 
+import com.example.divvyup.integration.ui.Strings
+
 /** Entrada para el gráfico de dona (por categoría). */
 internal data class DonutEntry(
     val label: String,
@@ -28,9 +30,9 @@ internal enum class AnalyticsCardType {
 }
 
 internal enum class AnalyticsExpandedTab(val title: String) {
-    ROSQUILLA("Rosquilla"),
-    BARRAS("Barras"),
-    RANKING("Ranking")
+    ROSQUILLA(Strings.Analytics.TAB_ROSQUILLA),
+    BARRAS(Strings.Analytics.TAB_BARRAS),
+    RANKING(Strings.Analytics.TAB_RANKING)
 }
 
 internal data class AnalyticsBreakdownEntry(

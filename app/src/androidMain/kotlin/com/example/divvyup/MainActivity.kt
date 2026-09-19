@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.ContextCompat
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import com.example.divvyup.integration.cache.CachedGroupRepository
 import com.example.divvyup.integration.cache.CachedParticipantRepository
 import com.example.divvyup.integration.cache.CachedSettlementRepository
 import com.example.divvyup.integration.cache.CachedSpendRepository
+import com.example.divvyup.integration.cache.SettingsSpendStartupCache
 import com.example.divvyup.domain.model.ActivityEventType
 import com.example.divvyup.integration.notification.SpendNotificationEvent
 import com.example.divvyup.integration.notification.SpendNotificationService
@@ -47,6 +49,7 @@ import com.example.divvyup.integration.supabase.SupabaseParticipantUserLinkRepos
 import com.example.divvyup.integration.supabase.SupabaseSettlementRepository
 import com.example.divvyup.integration.supabase.SupabaseSpendRepository
 import com.example.divvyup.integration.supabase.SupabaseStorageService
+import com.russhwolf.settings.SharedPreferencesSettings
 import com.example.divvyup.integration.supabase.SupabaseUserProfileRepository
 import com.example.divvyup.integration.ui.auth.AndroidGoogleSignInHandler
 import com.example.divvyup.integration.ui.auth.AndroidSessionManager
@@ -55,6 +58,7 @@ import com.example.divvyup.integration.ui.theme.DivvyUpTheme
 import com.example.divvyup.integration.ui.theme.ThemeMode
 import com.example.divvyup.integration.ui.theme.ThemePreferenceHolder
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
+import com.example.divvyup.integration.ui.viewmodel.ActivityFeedViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -75,6 +79,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -91,6 +96,7 @@ class MainActivity : ComponentActivity() {
     ) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -139,7 +145,8 @@ class MainActivity : ComponentActivity() {
         val groupRepository = CachedGroupRepository(SupabaseGroupRepository(postgrest))
         val participantRepository = CachedParticipantRepository(SupabaseParticipantRepository(postgrest))
         val categoryRepository = CachedCategoryRepository(SupabaseCategoryRepository(postgrest))
-        val spendRepository = CachedSpendRepository(SupabaseSpendRepository(postgrest))
+        val spendStartupCache = SettingsSpendStartupCache(SharedPreferencesSettings(prefs))
+        val spendRepository = CachedSpendRepository(SupabaseSpendRepository(postgrest), spendStartupCache)
         val settlementRepository = CachedSettlementRepository(SupabaseSettlementRepository(postgrest))
         val participantUserLinkRepo  = SupabaseParticipantUserLinkRepository(postgrest)
         val inviteTokenRepository    = SupabaseInviteTokenRepository(postgrest)
@@ -210,10 +217,28 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                val activityFeedViewModel = remember {
+                    ActivityFeedViewModel(
+                        groupService = groupService,
+                        activityLogService = activityLogService
+                    )
+                }
+
+                // Cold start: la primera carga de grupos NO se dispara desde el init del
+                // VM (porque ahí el token JWT aún se está restaurando desde SharedPreferences).
+                // Esperamos a que AuthViewModel emita su primera transición real de
+                // sessionStatus y entonces notificamos al GroupListVM. A partir de ahí el
+                // VM queda "auth-resolved" y las recargas siguientes son inmediatas.
+                val authResolved by vm.isAuthResolved.collectAsState()
+                LaunchedEffect(authResolved) {
+                    if (authResolved) groupListViewModel.onAuthResolved()
+                }
+
                 AppNavigation(
                     navController        = navController,
                     authViewModel        = vm,
                     groupListViewModel   = groupListViewModel,
+                    activityFeedViewModel = activityFeedViewModel,
                     participantRepository = participantRepository,
                     participantUserLinkRepository = participantUserLinkRepo,
                     invitationService    = invitationService,
@@ -237,7 +262,8 @@ class MainActivity : ComponentActivity() {
                             activityLogService = activityLogService,
                             userProfileRepository = userProfileRepository,
                             storageService = storageService,
-                            spendNotifier = spendNotifier
+                            spendNotifier = spendNotifier,
+                            spendStartupCache = spendStartupCache
                         )
                     },
                     currentUserIdProvider = {

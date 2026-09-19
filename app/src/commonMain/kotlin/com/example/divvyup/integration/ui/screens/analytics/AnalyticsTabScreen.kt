@@ -1,4 +1,4 @@
-﻿package com.example.divvyup.integration.ui.screens
+package com.example.divvyup.integration.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +37,7 @@ import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalett
 import com.example.divvyup.integration.ui.screens.analytics.*
 import com.example.divvyup.integration.ui.theme.*
 import com.example.divvyup.integration.ui.viewmodel.AnalyticsPeriod
+import com.example.divvyup.integration.ui.Strings
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -168,7 +169,7 @@ internal fun AnalyticsTab(
                     CategoryBucket(
                         id = categoryId,
                         icon = category?.icon ?: DEFAULT_UNCATEGORIZED_ICON,
-                        name = category?.name ?: "Sin categoría",
+                        name = category?.name ?: Strings.Analytics.UNCATEGORIZED_NAME,
                         total = spendsForCategory.sumOf { it.amount },
                         count = spendsForCategory.size
                     )
@@ -261,7 +262,7 @@ internal fun AnalyticsTab(
                         spend.amount - payerShare
                     }
                     AnalyticsBreakdownEntry(
-                        label = participantMap[payerId]?.name.orEmpty().ifBlank { "Desconocido" },
+                        label = participantMap[payerId]?.name.orEmpty().ifBlank { Strings.Analytics.PAYER_UNKNOWN_FALLBACK },
                         icon = "👤",
                         total = netPaid.coerceAtLeast(0.0),
                         spendCount = payerSpends.size
@@ -307,24 +308,24 @@ internal fun AnalyticsTab(
     val periodLabel by remember(period) {
         derivedStateOf {
             when (period) {
-                is AnalyticsPeriod.Todo -> "Todos los periodos"
+                is AnalyticsPeriod.Todo -> Strings.Analytics.PERIOD_ALL
                 is AnalyticsPeriod.PorMes -> {
                     if (period.month == now.month && period.year == now.year) {
-                        "Mes actual"
+                        Strings.Analytics.PERIOD_CURRENT_MONTH
                     } else {
-                        "${MES_NOMBRES[period.month.number - 1]} ${period.year}"
+                        Strings.Analytics.periodMonth(MES_NOMBRES[period.month.number - 1], period.year)
                     }
                 }
-                is AnalyticsPeriod.PorAnyo -> "Año ${period.year}"
-                is AnalyticsPeriod.PorRango -> "${formatLocalDate(period.desde)} - ${formatLocalDate(period.hasta)}"
+                is AnalyticsPeriod.PorAnyo -> Strings.Analytics.periodYear(period.year)
+                is AnalyticsPeriod.PorRango -> Strings.Analytics.periodRange(formatLocalDate(period.desde), formatLocalDate(period.hasta))
             }
         }
     }
 
     when (expandedCard) {
         AnalyticsCardType.MENSUAL -> AnalyticsCardFullscreenDialog(
-            cardTitle = "Evolución mensual",
-            tablePrimaryHeader = "Mes",
+            cardTitle = Strings.Analytics.CARD_MONTHLY,
+            tablePrimaryHeader = Strings.Analytics.TABLE_HEADER_MONTH,
             breakdownEntries = monthlyBreakdown,
             barEntries = monthlyBreakdown,
             showCategoryIconLabelsInBars = false,
@@ -334,8 +335,8 @@ internal fun AnalyticsTab(
         )
 
         AnalyticsCardType.CATEGORIA -> AnalyticsCardFullscreenDialog(
-            cardTitle = "Por categoría",
-            tablePrimaryHeader = "Categoría",
+            cardTitle = Strings.Analytics.CARD_BY_CATEGORY,
+            tablePrimaryHeader = Strings.Analytics.TABLE_HEADER_CATEGORY,
             breakdownEntries = categoryBreakdown,
             barEntries = categoryBreakdownForBars,
             showCategoryIconLabelsInBars = true,
@@ -345,8 +346,8 @@ internal fun AnalyticsTab(
         )
 
         AnalyticsCardType.PAGADOR -> AnalyticsCardFullscreenDialog(
-            cardTitle = "Por pagador",
-            tablePrimaryHeader = "Pagador",
+            cardTitle = Strings.Analytics.CARD_BY_PAYER,
+            tablePrimaryHeader = Strings.Analytics.TABLE_HEADER_PAYER,
             breakdownEntries = payerBreakdown,
             barEntries = payerBreakdownForBars,
             showCategoryIconLabelsInBars = false,
@@ -374,7 +375,7 @@ internal fun AnalyticsTab(
                     AppSearchField(
                         value = searchQuery,
                         onValueChange = onSearchQueryChange,
-                        placeholder = "Buscar concepto",
+                        placeholder = Strings.Analytics.SEARCH_PLACEHOLDER,
                         onClear = { onSearchQueryChange("") },
                         modifier = Modifier.weight(1f).heightIn(min = DivvyUpTokens.ControlHeight)
                     )
@@ -391,7 +392,7 @@ internal fun AnalyticsTab(
                     ) {
                         Icon(
                             imageVector = Icons.Default.FilterAltOff,
-                            contentDescription = "Limpiar filtros",
+                            contentDescription = Strings.Analytics.A11Y_CLEAR_FILTERS,
                             tint = if (hasActiveFilters) MaterialTheme.colorScheme.onErrorContainer
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(DivvyUpTokens.IconSm)
@@ -413,7 +414,7 @@ internal fun AnalyticsTab(
             // ── Chips de categoría ────────────────────────────────────────────────
             if (categories.isNotEmpty()) {
                 item {
-                    Text("Categoría", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(Strings.Analytics.SECTION_CATEGORY, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(categories, key = { it.id }) { category ->
@@ -435,7 +436,7 @@ internal fun AnalyticsTab(
             if (participants.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(2.dp))
-                    Text("Persona", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(Strings.Analytics.SECTION_PERSON, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(participants, key = { it.id }) { participant ->
@@ -443,9 +444,9 @@ internal fun AnalyticsTab(
                             val avatarColor = participantAvatarPalette[participant.name.length % participantAvatarPalette.size]
                             Surface(
                                 onClick = { onParticipantToggle(participant.id) },
-                                shape = RoundedCornerShape(50.dp),
+                                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                                 color = if (isSelected) avatarColor else chipPalette.unselectedColor,
-                                modifier = Modifier.height(36.dp)
+                                modifier = Modifier.height(DivvyUpTokens.ChipHeight)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp),
@@ -504,7 +505,7 @@ internal fun AnalyticsTab(
                     MonthlyBarChartCard(
                         entries = monthlyEntries,
                         currency = currency,
-                        title = "Evolución mensual",
+                        title = Strings.Analytics.CARD_MONTHLY,
                         onFullscreen = { expandedCard = AnalyticsCardType.MENSUAL }
                     )
                 }
@@ -525,7 +526,7 @@ internal fun AnalyticsTab(
                             )
                         },
                         currency = currency,
-                        title = "Por categoría",
+                        title = Strings.Analytics.CARD_BY_CATEGORY,
                         onFullscreen = { expandedCard = AnalyticsCardType.CATEGORIA }
                     )
                 }
@@ -553,7 +554,7 @@ internal fun AnalyticsTab(
                         participantMap = participantMap,
                         currency = currency,
                         total = totalNetPaid,
-                        title = "Por pagador",
+                        title = Strings.Analytics.CARD_BY_PAYER,
                         onFullscreen = { expandedCard = AnalyticsCardType.PAGADOR }
                     )
                 }
@@ -564,7 +565,7 @@ internal fun AnalyticsTab(
                 item {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Resumen de liquidaciones",
+                        text = Strings.Analytics.SETTLE_SECTION_TITLE,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
@@ -573,7 +574,7 @@ internal fun AnalyticsTab(
                 if (netSettlements.isEmpty()) {
                     item {
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                             color = MaterialTheme.colorScheme.tertiaryContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -584,7 +585,7 @@ internal fun AnalyticsTab(
                             ) {
                                 Text(text = "✅", fontSize = 22.sp)
                                 Text(
-                                    text = "Todas las cuentas están saldadas",
+                                    text = Strings.Analytics.SETTLE_ALL_CLEAR,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -595,8 +596,8 @@ internal fun AnalyticsTab(
                 } else {
                     items(netSettlements, key = { "net_${it.first}_${it.second}" }) { (fromId, toId, netAmount) ->
                         SettlementNetRow(
-                            fromName = participantMap[fromId]?.name ?: "Desconocido",
-                            toName = participantMap[toId]?.name ?: "Desconocido",
+                            fromName = participantMap[fromId]?.name ?: Strings.Analytics.PAYER_UNKNOWN_FALLBACK,
+                            toName = participantMap[toId]?.name ?: Strings.Analytics.PAYER_UNKNOWN_FALLBACK,
                             netAmount = netAmount,
                             currency = currency
                         )
@@ -630,7 +631,7 @@ internal fun AnalyticsTab(
                         ) {
                             Text(text = "🔍", fontSize = 36.sp)
                             Text(
-                                text = "Sin resultados para los filtros aplicados",
+                                text = Strings.Analytics.EMPTY_FILTER_HEADLINE,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -685,9 +686,20 @@ private fun AnalyticsSummaryCard(
 ) {
     val avg = if (spendCount > 0) totalFiltered / spendCount else 0.0
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = JungleGreen),
-        modifier = modifier.fillMaxWidth()
+        shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+        colors = CardDefaults.cardColors(
+            containerColor = JungleGreen,
+            contentColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = DivvyUpTokens.ElevationRaised,
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                ambientColor = JungleGreen.copy(alpha = 0.30f),
+                spotColor = JungleGreen.copy(alpha = 0.40f)
+            )
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             // Fila superior: total + tendencia
@@ -697,20 +709,23 @@ private fun AnalyticsSummaryCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("Total gastado", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+                    Text(Strings.Analytics.TOTAL_LABEL, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
                     Text(
-                        text = "${totalFiltered.fmt2()} $currency",
+                        text = Strings.Analytics.totalValue(totalFiltered.fmt2(), currency),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("$spendCount gastos", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+                    Text(Strings.Analytics.spendCountLabel(spendCount), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.7f))
                     // A1 — Indicador de tendencia
                     if (monthTrend != null) {
                         val isUp = monthTrend >= 0
-                        val trendText = "${if (isUp) "▲" else "▼"} ${kotlin.math.abs(monthTrend).fmt2().dropLastWhile { it == '0' }.trimEnd('.')}% vs. mes ant."
+                        val trendText = Strings.Analytics.trendVsPrevMonth(
+                            arrow = if (isUp) "▲" else "▼",
+                            pct = kotlin.math.abs(monthTrend).fmt2().dropLastWhile { it == '0' }.trimEnd('.')
+                        )
                         Surface(
                             shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                             color = if (isUp) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.12f)
@@ -733,12 +748,12 @@ private fun AnalyticsSummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapMd)
             ) {
-                StatMiniCard(label = "Promedio", value = "${avg.fmt2()} $currency", modifier = Modifier.weight(1f))
-                StatMiniCard(label = "Mediana", value = "${medianAmount.fmt2()} $currency", modifier = Modifier.weight(1f))
+                StatMiniCard(label = Strings.Analytics.STAT_AVG, value = Strings.Analytics.totalValue(avg.fmt2(), currency), modifier = Modifier.weight(1f))
+                StatMiniCard(label = Strings.Analytics.STAT_MEDIAN, value = Strings.Analytics.totalValue(medianAmount.fmt2(), currency), modifier = Modifier.weight(1f))
                 if (maxSpend != null) {
                     StatMiniCard(
-                        label = "Mayor gasto",
-                        value = "${maxSpend.amount.fmt2()} $currency",
+                        label = Strings.Analytics.STAT_MAX,
+                        value = Strings.Analytics.totalValue(maxSpend.amount.fmt2(), currency),
                         subtitle = maxSpend.concept,
                         modifier = Modifier.weight(1f)
                     )
@@ -782,12 +797,12 @@ private fun BudgetProgressCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = modifier
             .fillMaxWidth()
-            .shadow(3.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f))
+            .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("Presupuesto mensual", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text(Strings.Analytics.BUDGET_TITLE, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             budgetProgress.forEach { (category, spent, budget) ->
                 val fraction = (spent / budget).coerceIn(0.0, 1.0).toFloat()
@@ -802,16 +817,16 @@ private fun BudgetProgressCard(
                         Text(text = category.icon, fontSize = 16.sp, modifier = Modifier.width(24.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(text = category.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Text(text = "${spent.fmt2()} / ${budget.fmt2()} $currency", style = MaterialTheme.typography.labelSmall, color = progressColor, fontWeight = FontWeight.SemiBold)
+                        Text(text = Strings.Analytics.budgetSpent(spent.fmt2(), budget.fmt2(), currency), style = MaterialTheme.typography.labelSmall, color = progressColor, fontWeight = FontWeight.SemiBold)
                     }
                     LinearProgressIndicator(
                         progress = { fraction },
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50.dp)),
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(DivvyUpTokens.RadiusPill)),
                         color = progressColor,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                     if (overBudget) {
-                        Text(text = "⚠️ Superado en ${(spent - budget).fmt2()} $currency", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        Text(text = Strings.Analytics.budgetOverrun((spent - budget).fmt2(), currency), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -831,7 +846,7 @@ private fun NonEqualWarningRow(nonEqualSpendCount: Int, modifier: Modifier = Mod
                 .clip(CircleShape)
                 .clickable(
                     onClick = { showWarningPopup = true },
-                    onClickLabel = "Mostrar aviso de gastos no equilibrados",
+                    onClickLabel = Strings.Analytics.A11Y_SHOW_NON_EQUAL_WARNING,
                     role = Role.Button
                 )
                 .padding(8.dp),
@@ -844,23 +859,23 @@ private fun NonEqualWarningRow(nonEqualSpendCount: Int, modifier: Modifier = Mod
                 Surface(
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
                     color = Color(WARNING_CONTAINER_COLOR_HEX),
-                    shadowElevation = 8.dp,
+                    shadowElevation = DivvyUpTokens.ElevationRaised,
                     modifier = Modifier.padding(horizontal = 16.dp).widthIn(max = 320.dp)
                 ) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "$nonEqualSpendCount gasto${if (nonEqualSpendCount > 1) "s" else ""} con reparto personalizado",
+                            text = Strings.Analytics.nonEqualWarningCount(nonEqualSpendCount),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(WARNING_TEXT_COLOR_HEX)
                         )
                         Text(
-                            text = "Las cifras de «Por pagador» muestran lo abonado, no la deuda real de cada persona. Consulta la pestaña Balances para ver los saldos exactos.",
+                            text = Strings.Analytics.NON_EQUAL_WARNING_BODY,
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(WARNING_TEXT_COLOR_HEX)
                         )
                         TextButton(onClick = { showWarningPopup = false }, modifier = Modifier.align(Alignment.End)) {
-                            Text(text = "Entendido", color = Color(WARNING_TEXT_COLOR_HEX), fontWeight = FontWeight.SemiBold)
+                            Text(text = Strings.Analytics.NON_EQUAL_WARNING_ACK, color = Color(WARNING_TEXT_COLOR_HEX), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -878,11 +893,11 @@ private fun SettlementNetRow(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = modifier
             .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.08f))
+            .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCardMd), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -890,21 +905,21 @@ private fun SettlementNetRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.size(DivvyUpTokens.AvatarMd).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(DivvyUpTokens.IconMd))
             }
             Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = RoundedCornerShape(50.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.errorContainer) {
                     Text(fromName, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer)
                 }
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Surface(shape = RoundedCornerShape(50.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconXs), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(shape = RoundedCornerShape(DivvyUpTokens.RadiusPill), color = MaterialTheme.colorScheme.primaryContainer) {
                     Text(toName, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
-            Text(text = "${netAmount.fmt2()} $currency", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(text = Strings.Analytics.totalValue(netAmount.fmt2(), currency), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

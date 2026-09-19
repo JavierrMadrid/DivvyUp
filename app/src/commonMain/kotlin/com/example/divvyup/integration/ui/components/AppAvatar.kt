@@ -19,21 +19,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.integration.ui.theme.Amber
-import com.example.divvyup.integration.ui.theme.BarkBrown
-import com.example.divvyup.integration.ui.theme.BarkBrownDark
+import com.example.divvyup.integration.ui.theme.Coral
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
 import com.example.divvyup.integration.ui.theme.JungleGreenMid
+import com.example.divvyup.integration.ui.theme.Lavender
 import com.example.divvyup.integration.ui.theme.MossGold
 import com.example.divvyup.integration.ui.theme.Soil
 
 /**
- * Paleta unificada de avatares — 8 colores jungle-aligned para iniciales.
+ * Paleta unificada de avatares — 8 colores soft-jungle para iniciales.
  */
 val participantAvatarPalette = listOf(
-    JungleGreen, JungleGreenDark, BarkBrown,
-    MossGold, Soil, JungleGreenMid,
-    BarkBrownDark, Amber
+    JungleGreen, JungleGreenDark, JungleGreenMid,
+    Coral, Lavender, MossGold,
+    Soil, Amber
 )
 
 /**

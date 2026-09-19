@@ -162,6 +162,9 @@ object Strings {
         const val SEARCH_PLACEHOLDER = "Buscar gasto"
         const val FILTERED_EMPTY = "No hay gastos que coincidan"
 
+        // Paginación
+        const val LOAD_MORE = "Mostrar más"
+
         // Empty state
         const val EMOJI_EMPTY = "💸"
         const val EMPTY_HEADLINE = "Sin gastos todavía"
@@ -405,18 +408,32 @@ object Strings {
             "Los gastos, liquidaciones y cambios en el grupo aparecerán aquí."
         const val SECTION_HISTORY = "Historial de actividad"
         const val MONTH_HINT = "Se muestran los eventos del último mes"
+        const val TITLE = "Actividad"
+        const val SUBTITLE = "Movimientos recientes en tus grupos"
 
         /** "$count eventos" — cabecera de sección. */
         fun eventCount(count: Int): String = "$count eventos"
 
         /** "por $actor" — atribución de evento. */
         fun byActor(actorName: String): String = "por $actorName"
+
+        /** "en $groupName" — grupo al que pertenece el evento. */
+        fun inGroup(groupName: String): String = "en $groupName"
+    }
+
+    // ── Navegación inferior (shell) ──────────────────────────────────────────
+
+    object Nav {
+        const val GROUPS = "Grupos"
+        const val ACTIVITY = "Actividad"
+        const val PROFILE = "Perfil"
     }
 
     // ── SettleUpScreen ───────────────────────────────────────────────────────
 
     object SettleUp {
         const val TITLE = "Liquidar cuentas"
+        const val CELEBRATION = "¡Cuentas liquidadas!"
         const val TOTAL_LABEL = "Total a liquidar"
         const val CONFIRM_BUTTON = "Confirmar liquidación"
         const val SNACKBAR_ACTION = "Cerrar"
@@ -523,5 +540,373 @@ object Strings {
         const val SPLIT_PERCENT_SUFFIX = "%"
         fun splitErrorNot100(currentPct: String): String =
             "Los porcentajes deben sumar 100% (ahora ${currentPct}%)"
+    }
+
+    // ── CreateGroupScreen ────────────────────────────────────────────────────
+
+    object CreateGroup {
+        // TopBar
+        const val A11Y_BACK = "Volver"
+        const val TITLE = "Nuevo grupo"
+
+        // Hero / header
+        const val HERO_HEADLINE = "Crea tu grupo"
+        const val HERO_SUBTITLE = "Paso 1 de 2"
+        const val NEXT_BUTTON = "Siguiente"
+
+        // Form labels
+        const val FIELD_NAME = "Nombre del grupo"
+        const val FIELD_NAME_PLACEHOLDER = "Ej: Vacaciones Ibiza"
+        const val ERROR_NAME_REQUIRED = "El nombre es obligatorio"
+
+        const val FIELD_DESCRIPTION = "Descripción"
+        const val FIELD_DESCRIPTION_PLACEHOLDER = "Opcional — describe el propósito del grupo"
+
+        const val FIELD_CURRENCY = "Divisa"
+
+        // Currency pill labels (código → etiqueta con emoji).
+        const val CURRENCY_EUR = "🇪🇺 Euro"
+        const val CURRENCY_USD = "🇺🇸 Dólar"
+        const val CURRENCY_GBP = "🇬🇧 Libra"
+        const val CURRENCY_MXN = "🇲🇽 Peso MX"
+        const val CURRENCY_ARS = "🇦🇷 Peso AR"
+        const val CURRENCY_COP = "🇨🇴 Peso CO"
+    }
+
+    // ── SpendDetailScreen ────────────────────────────────────────────────────
+
+    object SpendDetail {
+        // TopBar
+        const val A11Y_BACK = "Volver"
+        const val TITLE = "Detalle del gasto"
+        const val A11Y_EDIT = "Editar gasto"
+
+        // Sections
+        const val SECTION_INFO = "Información"
+        const val SECTION_PARTICIPANTS = "Participantes"
+
+        // DetailRow labels
+        const val LABEL_PAYER = "Pagó"
+        const val LABEL_DATE = "Fecha"
+        const val LABEL_SPLIT_TYPE = "Tipo de reparto"
+        const val LABEL_RECURRENCE = "Repetición"
+        const val LABEL_NEXT_OCCURRENCE = "Próxima generación"
+        const val LABEL_ORIGIN = "Origen"
+        const val ORIGIN_AUTO_GENERATED = "⚡ Generado automáticamente"
+        const val LABEL_NOTES = "Notas"
+
+        // SplitType labels (matches original byte-for-byte)
+        const val SPLIT_EQUAL = "Equitativo"
+        const val SPLIT_PERCENTAGE = "Por porcentaje"
+        const val SPLIT_CUSTOM = "Por importe exacto"
+
+        // Recurrence labels
+        const val RECURRENCE_DAILY = "Diario"
+        const val RECURRENCE_WEEKLY = "Semanal"
+        const val RECURRENCE_MONTHLY = "Mensual"
+
+        // Payer badge inside participants list
+        const val PAYER_BADGE = "Pagó"
+
+        // Receipt row
+        const val RECEIPT_ATTACHED = "Ticket adjunto"
+
+        /** "dd/MM/yyyy" — formato corto español. */
+        fun formatDate(day: Int, month: Int, year: Int): String =
+            "${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/$year"
+    }
+
+    // ── AddSpendScreen ───────────────────────────────────────────────────────
+
+    object AddSpend {
+        // TopBar
+        const val A11Y_BACK = "Volver"
+        const val TITLE_ADD = "Añadir gasto"
+        const val TITLE_EDIT = "Editar gasto"
+        const val CELEBRATION_ADDED = "¡Gasto añadido!"
+        const val CELEBRATION_EDITED = "¡Gasto actualizado!"
+
+        // Header / form
+        const val HEADER_NEW = "Nuevo gasto"
+        const val HEADER_EDIT = "Editar gasto"
+        const val SAVE_BUTTON_ADD = "Añadir gasto"
+        const val SAVE_BUTTON_EDIT = "Guardar cambios"
+
+        // Fields
+        const val FIELD_CONCEPT = "Concepto"
+        const val CONCEPT_PLACEHOLDER = "Ej: Cena en La Tagliatella"
+        const val ERROR_CONCEPT_REQUIRED = "El concepto es obligatorio"
+
+        const val FIELD_AMOUNT = "Importe"
+        const val AMOUNT_PLACEHOLDER = "0.00"
+        const val ERROR_AMOUNT_INVALID = "Introduce un importe válido"
+
+        // A11y camera button
+        const val A11Y_IMAGE_ATTACHED = "Imagen adjunta"
+        const val A11Y_ATTACH_IMAGE = "Adjuntar imagen"
+
+        // "¿Quién pagó?"
+        const val SECTION_WHO_PAID = "¿Quién pagó?"
+
+        // Categoría
+        const val SECTION_CATEGORY = "Categoría"
+        const val SUGGESTED_PREFIX = "💡 "
+        const val NO_CATEGORY_PILL = "Sin categoría"
+
+        // Reparto entre (EQUAL)
+        const val SECTION_SPLIT_BETWEEN = "Reparto entre"
+        const val ACTION_SELECT_ALL = "Seleccionar todos"
+        const val ACTION_DESELECT_ALL = "Desmarcar todos"
+
+        // Tipo de reparto (selector pills)
+        const val SECTION_SPLIT_TYPE = "Tipo de reparto"
+        const val SPLIT_TYPE_EQUAL = "Equitativo"
+        const val SPLIT_TYPE_PERCENTAGE = "Porcentaje"
+        const val SPLIT_TYPE_CUSTOM = "Exacto"
+
+        // Split mode subtitles (bajo "Nuevo gasto")
+        const val SUBTITLE_EQUAL = "Reparto equitativo"
+        const val SUBTITLE_PERCENTAGE = "Reparto por porcentaje"
+        const val SUBTITLE_CUSTOM = "Reparto por importe exacto"
+
+        // SplitTotalsBadge
+        const val PERCENTAGE_SECTION = "Porcentaje por persona"
+        const val CUSTOM_SECTION = "Importe por persona"
+
+        // Errors
+        fun errorNoParticipants(): String = "Selecciona al menos un participante"
+        fun errorPercentNot100(currentPct: String): String =
+            "Los porcentajes deben sumar 100% (ahora ${currentPct}%)"
+        fun errorCustomSumMismatch(sum: String, total: String): String =
+            "La suma ($sum) no coincide con el total ($total)"
+
+        /** "$share $currency" — share individual al lado del check. */
+        fun shareLabel(share: String, currency: String): String = "$share $currency"
+
+        /** "Total: $pct%" — texto de badge de porcentaje en el selector. */
+        fun totalPctLabel(pct: String): String = "Total: $pct%"
+
+        // Fecha
+        const val A11Y_PICK_DATE = "Seleccionar fecha"
+        const val DATE_PICKER_ACCEPT = "Aceptar"
+        const val DATE_PICKER_CANCEL = "Cancelar"
+
+        // Recurrencia
+        const val SECTION_RECURRENCE = "Repetición"
+        const val RECURRENCE_ONCE = "Una vez"
+        const val RECURRENCE_WEEKLY_LABEL = "Semanal"
+        const val RECURRENCE_MONTHLY_LABEL = "Mensual"
+        const val RECURRENCE_WEEKLY_HINT = "💡 Este gasto se repetirá cada semana"
+        const val RECURRENCE_MONTHLY_HINT = "💡 Este gasto se repetirá cada mes"
+
+        /** "dd/MM/yyyy" — etiqueta del botón de fecha (igual que SpendDetail). */
+        fun formatDate(day: Int, month: Int, year: Int): String =
+            "${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year.toString().padStart(4, '0')}"
+    }
+
+    // ── AddParticipantsScreen (Paso 2 de creación de grupo) ──────────────────
+
+    object AddParticipants {
+        // TopBar
+        const val TITLE = "Añadir participantes"
+        const val STEP_LABEL = "Paso 2 de 2"
+
+        // Form header
+        const val FORM_HEADING = "Nuevo participante"
+        const val FIELD_NAME = "Nombre *"
+        const val FIELD_NAME_PLACEHOLDER = "Ej: Ana García"
+        const val ERROR_NAME_REQUIRED = "El nombre es obligatorio"
+        const val FIELD_EMAIL = "Email (opcional)"
+        const val FIELD_EMAIL_PLACEHOLDER = "ana@ejemplo.com"
+        const val BUTTON_ADD = "Añadir participante"
+
+        // Counter header — "$n participante(s) añadido(s)" con plurales manuales
+        // para preservar el comportamiento previo (Phase 7 había un patrón
+        // similar en GroupList.participantsCount).
+        fun participantsAddedCount(n: Int): String =
+            "$n participante${if (n != 1) "s" else ""} añadido${if (n != 1) "s" else ""}"
+
+        // Self toggle chip
+        const val SELF_BADGE = "Soy yo"
+
+        // Remove chip a11y
+        const val A11Y_REMOVE = "Quitar participante"
+        const val A11Y_REMOVE_LABEL = "Quitar participante"
+
+        // Empty state
+        const val EMPTY_HEADLINE = "Sin participantes todavía"
+        const val EMPTY_SUBTITLE = "Añade al menos uno para continuar"
+        const val EMPTY_EMOJI = "👥"
+
+        // BottomBar
+        const val CONTINUE_EMPTY = "Continuar sin participantes"
+        fun continueWithCount(n: Int): String =
+            "Abrir grupo ($n participante${if (n != 1) "s" else ""})"
+    }
+
+    // ── AddParticipantInGroupScreen ───────────────────────────────────────────
+
+    object AddParticipantInGroup {
+        // TopBar
+        const val A11Y_BACK = "Volver"
+        const val TITLE = "Añadir participante"
+        const val SUBMIT_BUTTON = "Añadir participante"
+
+        // Hero
+        const val HERO_GROUP_FALLBACK = "Grupo"
+        const val HERO_SUBTITLE = "Añadir nuevo miembro"
+
+        // Fields
+        const val FIELD_NAME = "Nombre *"
+        const val FIELD_NAME_PLACEHOLDER = "Ej: Ana García"
+        const val ERROR_NAME_REQUIRED = "El nombre es obligatorio"
+        const val FIELD_EMAIL = "Email (opcional)"
+        const val FIELD_EMAIL_PLACEHOLDER = "ana@ejemplo.com"
+    }
+
+    // ── Analytics (pantalla + secciones) ─────────────────────────────────────
+
+    object Analytics {
+        // ── Tab / cabecera general ────────────────────────────────────────
+        const val SEARCH_PLACEHOLDER = "Buscar concepto"
+        const val A11Y_CLEAR_FILTERS = "Limpiar filtros"
+        const val SECTION_CATEGORY = "Categoría"
+        const val SECTION_PERSON = "Persona"
+
+        // Card titles
+        const val CARD_MONTHLY = "Evolución mensual"
+        const val CARD_BY_CATEGORY = "Por categoría"
+        const val CARD_BY_PAYER = "Por pagador"
+        const val TABLE_HEADER_MONTH = "Mes"
+        const val TABLE_HEADER_CATEGORY = "Categoría"
+        const val TABLE_HEADER_PAYER = "Pagador"
+
+        // DonutChart
+        const val DONUT_COUNT_SUFFIX = "categorías"
+        const val DONUT_TOTAL_COUNT = "gastos"
+        const val A11Y_EXPAND = "Ampliar"
+        const val A11Y_CLOSE = "Cerrar"
+
+        /** "+$n más" — sufijo cuando hay más entradas de las que se muestran en leyenda. */
+        fun moreEntries(n: Int): String = "+$n más"
+
+        /** "$amount $currency · $pct%" — fila de leyenda en donut. */
+        fun legendLine(amount: String, currency: String, pct: String): String =
+            "$amount $currency · $pct%"
+
+        // ── PeriodFilterSelector ─────────────────────────────────────────
+        const val PERIOD_LABEL = "Período"
+        const val PERIOD_CHIP_CURRENT_MONTH = "Mes"
+        const val PERIOD_CHIP_YEAR = "Año"
+        const val PERIOD_CHIP_ALL = "Todo"
+        const val PERIOD_CHIP_RANGE = "Rango"
+        const val PERIOD_RANGE_FROM = "Desde"
+        const val PERIOD_RANGE_TO = "Hasta"
+        const val PERIOD_ACCEPT = "Aceptar"
+        const val PERIOD_CANCEL = "Cancelar"
+
+        // Period labels (AnalyticsPeriod → etiqueta)
+        const val PERIOD_ALL = "Todos los periodos"
+        const val PERIOD_CURRENT_MONTH = "Mes actual"
+        fun periodMonth(monthName: String, year: Int): String = "$monthName $year"
+        fun periodYear(year: Int): String = "Año $year"
+        fun periodRange(from: String, to: String): String = "$from - $to"
+
+        // ── AnalyticsSummaryCard ─────────────────────────────────────────
+        const val TOTAL_LABEL = "Total gastado"
+        fun totalValue(amount: String, currency: String): String = "$amount $currency"
+        fun spendCountLabel(n: Int): String = "$n gastos"
+        const val STAT_AVG = "Promedio"
+        const val STAT_MEDIAN = "Mediana"
+        const val STAT_MAX = "Mayor gasto"
+
+        /** "$arrow $pct% vs. mes ant." — con flecha ▲/▼. */
+        fun trendVsPrevMonth(arrow: String, pct: String): String =
+            "$arrow $pct% vs. mes ant."
+
+        // ── BudgetProgressCard ───────────────────────────────────────────
+        const val BUDGET_TITLE = "Presupuesto mensual"
+        fun budgetSpent(spent: String, budget: String, currency: String): String =
+            "$spent / $budget $currency"
+        fun budgetOverrun(over: String, currency: String): String =
+            "⚠️ Superado en $over $currency"
+
+        // ── NonEqualWarningRow ────────────────────────────────────────────
+        const val A11Y_SHOW_NON_EQUAL_WARNING = "Mostrar aviso de gastos no equilibrados"
+        fun nonEqualWarningCount(n: Int): String =
+            "$n gasto${if (n > 1) "s" else ""} con reparto personalizado"
+        const val NON_EQUAL_WARNING_BODY =
+            "Las cifras de «Por pagador» muestran lo abonado, no la deuda real de cada persona. " +
+            "Consulta la pestaña Balances para ver los saldos exactos."
+        const val NON_EQUAL_WARNING_ACK = "Entendido"
+
+        // ── SettlementNetRow / sección liquidación ───────────────────────
+        const val SETTLE_SECTION_TITLE = "Resumen de liquidaciones"
+        const val SETTLE_ALL_CLEAR = "✅ Todas las cuentas están saldadas"
+
+        // ── Filtros vacíos ────────────────────────────────────────────────
+        const val EMOJI_EMPTY_FILTER = "🔍"
+        const val EMPTY_FILTER_HEADLINE = "Sin resultados para los filtros aplicados"
+
+        // ── Fullscreen dialog ─────────────────────────────────────────────
+        const val FULLSCREEN_EMPTY_DONUT_BARS = "No hay datos para mostrar en este gráfico"
+        const val FULLSCREEN_EMPTY_RANKING = "No hay datos para mostrar en el ranking"
+
+        /** "$icon $label" — fila de tabla con icono + nombre. */
+        fun tableRowLabel(icon: String, label: String): String = "$icon $label"
+
+        // ── BreakdownTable / Categoría sin nombre ─────────────────────────
+        const val UNCATEGORIZED_NAME = "Sin categoría"
+
+        /** "$n gasto(s) · $pct%" — subtítulo de cada entry en ranking. */
+        fun rankingSubtitle(spendCount: Int, pct: String): String =
+            "$spendCount gasto${if (spendCount == 1) "" else "s"} · $pct%"
+
+        /** "$amount $currency" — columna final de cada entry en ranking. */
+        fun rankingAmount(amount: String, currency: String): String = "$amount $currency"
+
+        /** "$amount $currency · $pct%" — fila horizontal de barras. */
+        fun barRowAmount(amount: String, currency: String): String = "$amount $currency"
+        fun barRowPct(pct: String): String = "$pct%"
+        const val BARS_LEGEND_SUFFIX_TEMPLATE = "Importes en "
+        /** "Importes en $currency" — línea bajo las barras. */
+        fun barsAmountsIn(currency: String): String = "$BARS_LEGEND_SUFFIX_TEMPLATE$currency"
+
+        // Tabla: headers
+        const val TABLE_HEADER_GASTOS = "Gastos"
+        const val TABLE_HEADER_RANK_NUMBER = "#"
+        const val TABLE_HEADER_RANK_AMOUNT = "Cantidad"
+        const val TABLE_HEADER_PCT = "%"
+
+        // Fila de pagador desconocido
+        const val PAYER_UNKNOWN_FALLBACK = "Desconocido"
+
+        // ── AnalyticsSpendList ────────────────────────────────────────────
+        fun listHeader(visible: Int, total: Int): String =
+            "Gastos ($visible de $total)"
+        fun showMore(remaining: Int): String =
+            "Mostrar más ($remaining restantes)"
+        const val PAYER_DATE_SEPARATOR = " · "
+
+        /** "$payerName · $dateFormatted" — segunda línea de la fila. */
+        fun payerAndDate(payerName: String, dateFormatted: String): String =
+            "$payerName$PAYER_DATE_SEPARATOR$dateFormatted"
+
+        // ── ExportFab ─────────────────────────────────────────────────────
+        const val EXPORT_BUTTON = "Exportar"
+        const val A11Y_EXPORT = "Exportar"
+        const val EXPORT_PDF = "PDF"
+        const val EXPORT_EXCEL = "Excel"
+        const val EXPORT_CSV = "CSV"
+        const val EXPORT_TEXT = "Texto"
+        const val A11Y_EXPORT_PDF = "Exportar PDF"
+        const val A11Y_EXPORT_EXCEL = "Exportar Excel"
+        const val A11Y_EXPORT_CSV = "Exportar CSV"
+        const val A11Y_EXPORT_TEXT = "Exportar texto"
+
+        // ── ExpandedTab titles (los valores del enum) ─────────────────────
+        const val TAB_ROSQUILLA = "Rosquilla"
+        const val TAB_BARRAS = "Barras"
+        const val TAB_RANKING = "Ranking"
     }
 }

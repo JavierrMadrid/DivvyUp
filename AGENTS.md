@@ -158,6 +158,8 @@ The SQL source of truth lives in `docs/sql/V001__initial_schema.sql`, `docs/sql/
 ## UI Patterns
 
 - **Navigation**: `NavHost` with type-safe `@Serializable` sealed routes in `Screen.kt`. Main flow: `GroupList` → `CreateGroup` → `AddParticipants` → `GroupDetail`, with additional routes `AddSpend`, `AddParticipantInGroup`, and `GroupSettings`.
+- **App shell**: `AppShell.kt` wraps the `NavHost` with a floating pill bottom bar (Grupos / Actividad / Perfil) shown only on top-level destinations. The top-level Activity feed lives in `ActivityFeedScreen.kt` + `ActivityFeedViewModel`. `NavHost` uses shared-axis + fade transitions (`DivvyUpMotion`).
+- **System bars**: use `SetSystemBarAppearance(useDarkIcons)` per screen (gradient headers → `false`) and `ThemedSystemBarAppearance()` for light top bars. Navigation bar follows the resolved theme via `DivvyUpTheme`. See `integration/ui/SystemBars.kt`.
 - **State management**: `GroupListViewModel`, `GroupDetailViewModel`, and `AddParticipantsViewModel` expose `StateFlow<*UiState>` from `commonMain`. Navigation side effects are modeled with flags such as `createdGroupId`, `navigateToSpendScreen`, and `spendSaved`.
 - **Composable guidelines**:
   - Accept `Modifier` as first optional parameter.
@@ -170,14 +172,24 @@ The SQL source of truth lives in `docs/sql/V001__initial_schema.sql`, `docs/sql/
 - **Group detail composition**: `GroupDetailScreen` switches tabs via `GroupDetailTab` and delegates content to `SpendTabScreen`, `BalanceTabScreen`, and `AnalyticsTabScreen`.
 - **Material 3**: Access colors via `MaterialTheme.colorScheme`, support dynamic color on Android 12+.
 
+### Design System — "Soft Jungle" (soft / rounded friendly)
+
+The visual language is warm, rounded and friendly. Its single source of truth is `integration/ui/theme/`:
+
+- **Colors** (`Color.kt`): green brand anchor (`JungleGreen`), coral secondary (`Coral*`), lavender tertiary (`Lavender*`), soft mint background. Light/dark schemes only.
+- **Typography** (`Type.kt`): **Plus Jakarta Sans** (bundle in `commonMain/composeResources/font/`). Never set `fontFamily` inline — always inherit from `MaterialTheme.typography`. Use `AmountText` for tabular figures.
+- **Shapes** (`Theme.kt`): soft-rounded — controls 16 dp, cards 28 dp, dialogs 32 dp, pills 50 dp. Use `DivvyUpTokens.Radius*`.
+- **Motion** (`Motion.kt`): use `DivvyUpMotion.Short/Medium/Long/ExtraLong` and `Standard/Emphasized*` easings. Never hardcode `tween(300)`.
+- **Elevation**: use `DivvyUpTokens.Elevation*`; shadows must be soft and tinted, never pure grey/black.
+
 ### Centralized UI Style — Rules (enforce always)
 
 All screens **must** follow the centralized style. Never hardcode raw color values or sizes; always use design tokens and theme color roles:
 
 | Element | Rule |
 |---|---|
-| **Colors** | Always use `MaterialTheme.colorScheme.*` roles. Direct token constants (`JungleGreen`, `JungleGreenDark`, etc.) are only allowed for the primary CTA fill (`containerColor = JungleGreen, contentColor = Color.White`) and avatar backgrounds. Never use `.copy(alpha = …)` on brand colors as Surface backgrounds — it breaks contrast in dark mode. |
-| **Card / Surface** | Use `Card` with `CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)` + `CardDefaults.cardElevation(defaultElevation = 2.dp)` + `.shadow(4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard), …)`. **Never use bare `Surface` without elevation for content cards** — they blend into the background. |
+| **Colors** | Always use `MaterialTheme.colorScheme.*` roles. Direct token constants (`JungleGreen`, `Coral`, `Lavender`, etc.) are only allowed for the primary CTA fill (`containerColor = JungleGreen, contentColor = Color.White`) and avatar backgrounds. Never use `.copy(alpha = …)` on brand colors as Surface backgrounds — it breaks contrast in dark mode. |
+| **Card / Surface** | Use `Card` with `CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)` + `CardDefaults.cardElevation(defaultElevation = DivvyUpTokens.ElevationCard)` + `.shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCard), …)`. **Never use bare `Surface` without elevation for content cards** — they blend into the background. |
 | **Button shapes** | Primary CTA: `RoundedCornerShape(DivvyUpTokens.RadiusPill)` + `height = DivvyUpTokens.PrimaryButtonHeight`. Secondary/cancel inline buttons: `RoundedCornerShape(DivvyUpTokens.RadiusPill)` + `height = DivvyUpTokens.ControlHeight`. Never mix `RadiusControl` for CTA buttons. |
 | **Button colors** | Primary fill: `containerColor = JungleGreen, contentColor = Color.White`. Secondary tonal: `containerColor = primaryContainer, contentColor = onPrimaryContainer`. Destructive outlined: `border = 1.5.dp error.copy(0.7f), contentColor = error`. Neutral outlined: `border = outline, contentColor = onSurface`. |
 | **Section headers inside cards** | `style = labelLarge, fontWeight = SemiBold, color = primary` (green). Never `onSurfaceVariant` for section labels — too low contrast against card background. |

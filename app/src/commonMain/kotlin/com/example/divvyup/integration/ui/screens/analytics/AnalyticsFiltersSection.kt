@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
+import com.example.divvyup.integration.ui.screens.MES_NOMBRES
 import com.example.divvyup.integration.ui.screens.appDatePickerColors
 import com.example.divvyup.integration.ui.screens.formatLocalDate
 import com.example.divvyup.integration.ui.screens.localDateToMillis
@@ -23,8 +24,10 @@ import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AnalyticsPeriod
+import com.example.divvyup.integration.ui.Strings
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock.System
 
@@ -50,7 +53,7 @@ internal fun PeriodFilterSelector(
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = "Período",
+            text = Strings.Analytics.PERIOD_LABEL,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -58,7 +61,7 @@ internal fun PeriodFilterSelector(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 PeriodChip(
-                    label = "Mes actual",
+                    label = Strings.Analytics.PERIOD_CHIP_CURRENT_MONTH,
                     isSelected = period is AnalyticsPeriod.PorMes,
                     selectedColor = chipPalette.selectedColor,
                     unselectedColor = chipPalette.unselectedColor,
@@ -73,7 +76,7 @@ internal fun PeriodFilterSelector(
             item {
                 val isSelected = period is AnalyticsPeriod.PorAnyo
                 PeriodChip(
-                    label = "Año",
+                    label = Strings.Analytics.PERIOD_CHIP_YEAR,
                     isSelected = isSelected,
                     selectedColor = chipPalette.selectedColor,
                     unselectedColor = chipPalette.unselectedColor,
@@ -86,7 +89,7 @@ internal fun PeriodFilterSelector(
             item {
                 val isSelected = period is AnalyticsPeriod.Todo
                 PeriodChip(
-                    label = "Todo",
+                    label = Strings.Analytics.PERIOD_CHIP_ALL,
                     isSelected = isSelected,
                     selectedColor = chipPalette.selectedColor,
                     unselectedColor = chipPalette.unselectedColor,
@@ -97,7 +100,7 @@ internal fun PeriodFilterSelector(
             item {
                 val isSelected = period is AnalyticsPeriod.PorRango
                 PeriodChip(
-                    label = "Rango",
+                    label = Strings.Analytics.PERIOD_CHIP_RANGE,
                     isSelected = isSelected,
                     selectedColor = chipPalette.selectedColor,
                     unselectedColor = chipPalette.unselectedColor,
@@ -128,29 +131,39 @@ internal fun PeriodFilterSelector(
                     OutlinedButton(
                         onClick = { showDatePickerDesde = true },
                         modifier = Modifier.weight(1f).height(44.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                         border = BorderStroke(1.dp, periodControlBorderColor)
                     ) {
                         Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(text = rangeDesde?.let(::formatLocalDate) ?: "Desde", style = MaterialTheme.typography.labelMedium)
+                        Text(text = rangeDesde?.let(::formatLocalDate) ?: Strings.Analytics.PERIOD_RANGE_FROM, style = MaterialTheme.typography.labelMedium)
                     }
                     OutlinedButton(
                         onClick = { showDatePickerHasta = true },
                         modifier = Modifier.weight(1f).height(44.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                         border = BorderStroke(1.dp, periodControlBorderColor)
                     ) {
                         Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(text = rangeHasta?.let(::formatLocalDate) ?: "Hasta", style = MaterialTheme.typography.labelMedium)
+                        Text(text = rangeHasta?.let(::formatLocalDate) ?: Strings.Analytics.PERIOD_RANGE_TO, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
-            AnalyticsPeriod.Todo,
-            is AnalyticsPeriod.PorMes -> Unit
+            AnalyticsPeriod.Todo -> Unit
+            is AnalyticsPeriod.PorMes -> {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PeriodDropdown(
+                        options = (1..12).map { it to MES_NOMBRES[it - 1] },
+                        selected = period.month.number,
+                        onSelect = { onPeriodChange(AnalyticsPeriod.PorMes(Month.entries[it - 1], period.year)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
     if (showDatePickerDesde) {
@@ -170,9 +183,9 @@ internal fun PeriodFilterSelector(
                         )
                     }
                     showDatePickerDesde = false
-                }) { Text("Aceptar") }
+                }) { Text(Strings.Analytics.PERIOD_ACCEPT) }
             },
-            dismissButton = { TextButton(onClick = { showDatePickerDesde = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showDatePickerDesde = false }) { Text(Strings.Common.CANCEL) } }
         ) { DatePicker(state = state, colors = appDatePickerColors()) }
     }
 
@@ -193,9 +206,9 @@ internal fun PeriodFilterSelector(
                         )
                     }
                     showDatePickerHasta = false
-                }) { Text("Aceptar") }
+                }) { Text(Strings.Analytics.PERIOD_ACCEPT) }
             },
-            dismissButton = { TextButton(onClick = { showDatePickerHasta = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showDatePickerHasta = false }) { Text(Strings.Common.CANCEL) } }
         ) { DatePicker(state = state, colors = appDatePickerColors()) }
     }
 }
@@ -247,7 +260,7 @@ internal fun PeriodDropdown(
             onValueChange = {},
             readOnly = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)

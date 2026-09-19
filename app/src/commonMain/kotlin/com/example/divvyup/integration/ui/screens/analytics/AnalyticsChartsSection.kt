@@ -36,6 +36,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.*
+import com.example.divvyup.integration.ui.Strings
 import kotlin.math.abs
 import kotlin.math.round
 
@@ -71,10 +72,10 @@ internal fun DonutChartCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                3.dp,
+                DivvyUpTokens.ElevationCard,
                 RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -101,7 +102,7 @@ internal fun DonutChartCard(
                             modifier = Modifier.size(DivvyUpTokens.IconSm)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Ampliar")
+                        Text(Strings.Analytics.A11Y_EXPAND)
                     }
                 }
             }
@@ -141,7 +142,7 @@ internal fun DonutChartCard(
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = "categorías",
+                            text = Strings.Analytics.DONUT_COUNT_SUFFIX,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -180,7 +181,11 @@ internal fun DonutChartCard(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "${entry.value.toDouble().fmt2()} $currency · ${percentage.toDouble().fmt2()}%",
+                                    text = Strings.Analytics.legendLine(
+                                        amount = entry.value.toDouble().fmt2(),
+                                        currency = currency,
+                                        pct = percentage.toDouble().fmt2()
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -189,7 +194,7 @@ internal fun DonutChartCard(
                     }
                     if (entries.size > 5) {
                         Text(
-                            text = "+${entries.size - 5} más",
+                            text = Strings.Analytics.moreEntries(entries.size - 5),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -244,7 +249,7 @@ internal fun DonutChart(
                 fontWeight = FontWeight.ExtraBold
             )
             Text(
-                text = "gastos",
+                text = Strings.Analytics.DONUT_TOTAL_COUNT,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -298,7 +303,7 @@ internal fun AnalyticsCardFullscreenDialog(
                         color = MaterialTheme.colorScheme.primary
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar")
+                        Icon(imageVector = Icons.Default.Close, contentDescription = Strings.Analytics.A11Y_CLOSE)
                     }
                 }
                 // Tabs integrados sin fondo destacado — se funden con la card
@@ -347,7 +352,7 @@ internal fun AnalyticsCardFullscreenDialog(
                                 currency = currency
                             )
                         } else {
-                            EmptyFullscreenState("No hay datos para mostrar en este gráfico")
+                            EmptyFullscreenState(Strings.Analytics.FULLSCREEN_EMPTY_DONUT_BARS)
                         }
                     }
 
@@ -360,7 +365,7 @@ internal fun AnalyticsCardFullscreenDialog(
                                 currency = currency
                             )
                         } else {
-                            EmptyFullscreenState("No hay datos para mostrar en este gráfico")
+                            EmptyFullscreenState(Strings.Analytics.FULLSCREEN_EMPTY_DONUT_BARS)
                         }
                     }
 
@@ -372,7 +377,7 @@ internal fun AnalyticsCardFullscreenDialog(
                                 currency = currency
                             )
                         } else {
-                            EmptyFullscreenState("No hay datos para mostrar en el ranking")
+                            EmptyFullscreenState(Strings.Analytics.FULLSCREEN_EMPTY_RANKING)
                         }
                     }
                 }
@@ -468,7 +473,7 @@ private fun AnalyticsRankingTabContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "#",
+                    text = Strings.Analytics.TABLE_HEADER_RANK_NUMBER,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.width(24.dp)
@@ -480,7 +485,7 @@ private fun AnalyticsRankingTabContent(
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Cantidad",
+                    text = Strings.Analytics.TABLE_HEADER_RANK_AMOUNT,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -538,13 +543,13 @@ private fun AnalyticsRankingTabContent(
                             )
                         }
                         Text(
-                            text = "${entry.spendCount} gasto${if (entry.spendCount == 1) "" else "s"} · ${percentage.fmt2()}%",
+                            text = Strings.Analytics.rankingSubtitle(entry.spendCount, percentage.fmt2()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "${entry.total.fmt2()} $currency",
+                        text = Strings.Analytics.rankingAmount(entry.total.fmt2(), currency),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         color = barColor
@@ -554,14 +559,14 @@ private fun AnalyticsRankingTabContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
-                        .clip(RoundedCornerShape(50.dp))
+                        .clip(RoundedCornerShape(DivvyUpTokens.RadiusPill))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(fraction)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(50.dp))
+                            .clip(RoundedCornerShape(DivvyUpTokens.RadiusPill))
                             .background(barColor)
                     )
                 }
@@ -601,7 +606,7 @@ private fun AnalyticsBreakdownTable(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = "Gastos",
+                text = Strings.Analytics.TABLE_HEADER_GASTOS,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -619,7 +624,7 @@ private fun AnalyticsBreakdownTable(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "%",
+                text = Strings.Analytics.TABLE_HEADER_PCT,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -644,7 +649,7 @@ private fun AnalyticsBreakdownTable(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "${entry.icon} ${entry.label}",
+                    text = Strings.Analytics.tableRowLabel(entry.icon, entry.label),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
@@ -666,7 +671,7 @@ private fun AnalyticsBreakdownTable(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "${percentage.fmt2()}%",
+                    text = Strings.Analytics.barRowPct(percentage.fmt2()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(colPct),
@@ -760,7 +765,7 @@ private fun AnalyticsVerticalBarsPreview(
             }
         }
         Text(
-            text = "Importes en $currency",
+            text = Strings.Analytics.barsAmountsIn(currency),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 6.dp)
@@ -804,10 +809,10 @@ internal fun MonthlyBarChartCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                3.dp,
+                DivvyUpTokens.ElevationCard,
                 RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -834,7 +839,7 @@ internal fun MonthlyBarChartCard(
                             modifier = Modifier.size(DivvyUpTokens.IconSm)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Ampliar")
+                        Text(Strings.Analytics.A11Y_EXPAND)
                     }
                 }
             }
@@ -898,7 +903,7 @@ internal fun MonthlyBarChartCard(
                 }
             }
             Text(
-                text = "Importes en $currency",
+                text = Strings.Analytics.barsAmountsIn(currency),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -932,10 +937,10 @@ internal fun HorizontalBarChartCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                3.dp,
+                DivvyUpTokens.ElevationCard,
                 RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -962,7 +967,7 @@ internal fun HorizontalBarChartCard(
                             modifier = Modifier.size(DivvyUpTokens.IconSm)
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text("Ampliar")
+                        Text(Strings.Analytics.A11Y_EXPAND)
                     }
                 }
             }
@@ -1017,13 +1022,13 @@ internal fun HorizontalBarChartCard(
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "${entry.value.toDouble().fmtBarAmount()} $currency",
+                            text = Strings.Analytics.barRowAmount(entry.value.toDouble().fmtBarAmount(), currency),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = barColor
                         )
                         Text(
-                            text = "${percentage.toDouble().fmt2()}%",
+                            text = Strings.Analytics.barRowPct(percentage.toDouble().fmt2()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1032,14 +1037,14 @@ internal fun HorizontalBarChartCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(10.dp)
-                            .clip(RoundedCornerShape(50.dp))
+                            .clip(RoundedCornerShape(DivvyUpTokens.RadiusPill))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(fraction)
                                 .fillMaxHeight()
-                                .clip(RoundedCornerShape(50.dp))
+                                .clip(RoundedCornerShape(DivvyUpTokens.RadiusPill))
                                 .background(
                                     Brush.horizontalGradient(
                                         listOf(barColor, barColor.copy(alpha = 0.7f))

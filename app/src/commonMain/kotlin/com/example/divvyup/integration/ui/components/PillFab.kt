@@ -43,7 +43,7 @@ fun PillFab(
         containerColor = JungleGreen,
         contentColor = Color.White,
         modifier = modifier.shadow(
-            elevation = 12.dp,
+            elevation = DivvyUpTokens.ElevationFab,
             shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
             ambientColor = JungleGreen.copy(alpha = 0.25f),
             spotColor = JungleGreen.copy(alpha = 0.4f)
@@ -77,7 +77,7 @@ fun IconFab(
         containerColor = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary,
         modifier = modifier.shadow(
-            elevation = 8.dp,
+            elevation = DivvyUpTokens.ElevationFab,
             shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
             ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
             spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)

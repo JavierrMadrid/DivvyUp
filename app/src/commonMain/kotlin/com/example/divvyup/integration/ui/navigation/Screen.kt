@@ -7,6 +7,7 @@ sealed interface Screen {
     @Serializable data class Login(val confirmationMessage: String? = null) : Screen
     @Serializable data object Register : Screen
     @Serializable data object GroupList : Screen
+    @Serializable data object Activity : Screen
     @Serializable data object CreateGroup : Screen
     @Serializable data class AddParticipants(val groupId: Long) : Screen
     @Serializable data class GroupDetail(val groupId: Long) : Screen

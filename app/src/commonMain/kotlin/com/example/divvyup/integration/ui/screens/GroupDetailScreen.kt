@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -141,9 +142,11 @@ fun GroupDetailScreen(
     val analyticsCategories by remember(uiState.categories) {
         derivedStateOf { uiState.categories.filterNot { it.isSettlementCategory() } }
     }
-    val analyticsSpends by remember(uiState.spends, settlementCategoryIds) {
+    // Analíticas usa la lista completa (allSpends, carga perezosa al abrir esa pestaña),
+    // no la lista paginada de la pestaña Gastos.
+    val analyticsSpends by remember(uiState.allSpends, settlementCategoryIds) {
         derivedStateOf {
-            uiState.spends.filterNot { it.isSettlementSpend(settlementCategoryIds) }
+            uiState.allSpends.filterNot { it.isSettlementSpend(settlementCategoryIds) }
         }
     }
 
@@ -151,7 +154,14 @@ fun GroupDetailScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column {
+            Column(
+                modifier = Modifier.clip(
+                    RoundedCornerShape(
+                        bottomStart = DivvyUpTokens.RadiusHero,
+                        bottomEnd = DivvyUpTokens.RadiusHero
+                    )
+                )
+            ) {
                 AppTopBar(
                     title = uiState.group?.name ?: Strings.GroupDetail.LOADING_FALLBACK,
                     subtitle = uiState.group?.let {
@@ -213,6 +223,9 @@ fun GroupDetailScreen(
                             categories = uiState.categories,
                             currency = uiState.group?.currency ?: "EUR",
                             spendPersonalImpact = uiState.spendPersonalImpact,
+                            hasMoreSpends = uiState.hasMoreSpends,
+                            isLoadingMoreSpends = uiState.isLoadingMoreSpends,
+                            onLoadMore = viewModel::loadMoreSpends,
                             onEditSpend = { spend -> onOpenSpend(spend.id) },
                             onDeleteSpendsByIds = viewModel::deleteSpendsByIds,
                             onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered,

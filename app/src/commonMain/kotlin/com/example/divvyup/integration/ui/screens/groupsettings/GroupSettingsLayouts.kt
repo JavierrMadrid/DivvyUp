@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.SetSystemBarAppearance
 import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.screens.fmt2
 import com.example.divvyup.integration.ui.screens.isSettlementCategory
@@ -76,6 +77,7 @@ internal fun GroupSettingsTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    SetSystemBarAppearance(useDarkIcons = false)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -122,7 +124,7 @@ internal fun OwnerSaveBar(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.background,
-        shadowElevation = 8.dp
+            shadowElevation = DivvyUpTokens.ElevationBottomBar
     ) {
         Button(
             onClick = onSave,
@@ -389,7 +391,12 @@ private fun OwnerGroupInfoSection(
                     Box(
                         modifier = Modifier
                             .size(88.dp)
-                            .shadow(4.dp, CircleShape)
+                            .shadow(
+                                elevation = DivvyUpTokens.ElevationRaised,
+                                shape = CircleShape,
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                            )
                             .clip(CircleShape)
                             .background(JungleGreen)
                             .border(
@@ -409,7 +416,12 @@ private fun OwnerGroupInfoSection(
                     Box(
                         modifier = Modifier
                             .size(30.dp)
-                            .shadow(2.dp, CircleShape)
+                            .shadow(
+                                elevation = DivvyUpTokens.ElevationCard,
+                                shape = CircleShape,
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                            )
                             .clip(CircleShape)
                             .background(JungleGreenDark)
                             .border(

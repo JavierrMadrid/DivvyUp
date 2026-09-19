@@ -49,6 +49,15 @@ class AuthViewModel(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     /**
+     * Pasa a `true` la primera vez que `sessionStatus` emite algo distinto a
+     * `Initializing`. Sirve para que otros ViewModels (p.ej. GroupListViewModel)
+     * esperen a tener un JWT listo antes de lanzar queries — sin esto, en cold
+     * start la primera request HTTP sale sin token válido y Supabase devuelve 401.
+     */
+    private val _isAuthResolved = MutableStateFlow(false)
+    val isAuthResolved: StateFlow<Boolean> = _isAuthResolved.asStateFlow()
+
+    /**
      * Evita bucles de reintento cuando `signInAnonymously()` falla por red.
      * Se resetea tras login/logout o un nuevo ciclo del VM.
      */
@@ -68,6 +77,7 @@ class AuthViewModel(
                         // Todavía estamos cargando la sesión persistida — no tocar UI.
                     }
                     is SessionStatus.Authenticated -> {
+                        _isAuthResolved.value = true
                         val session = status.session
                         val isAnon = session.user?.isAnonymous == true
                         val displayName = session.user?.userMetadata?.get("display_name")
@@ -86,6 +96,12 @@ class AuthViewModel(
                         println("DEBUG AuthViewModel: sesión lista uid=${session.user?.id} isAnon=$isAnon")
                     }
                     is SessionStatus.NotAuthenticated -> {
+                        // También marcamos auth como resuelta: ya sabemos que no hay
+                        // sesión. Supabase rechazaría cualquier query sin token, pero
+                        // el RLS permite a anónimos sólo lo público (típicamente nada).
+                        // En cualquier caso, mejor lanzar la query y dejar que Supabase
+                        // decida que devolver (o []) que quedarnos colgados en loading.
+                        _isAuthResolved.value = true
                         // No hay sesión activa. Intentar signup anónimo una sola vez por ciclo
                         // del VM para no spammear supabase si falla por red.
                         if (!anonymousSignInAttempted &&

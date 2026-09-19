@@ -19,6 +19,8 @@ ktor = "3.4.2"
 androidxBrowser = "1.10.0"
 credentialsManager = "1.6.0"
 googleid = "1.2.0"
+multiplatformSettings = "1.3.0"
+coreSplashscreen = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -50,10 +52,15 @@ ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version
 ktor-client-darwin = { group = "io.ktor", name = "ktor-client-darwin", version.ref = "ktor" }
 # Custom Tabs (OAuth redirect en Android)
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidxBrowser" }
+# SplashScreen compat (Android 12+ y anteriores)
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 # Google Sign-In nativo (Credential Manager)
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentialsManager" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsManager" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+# Almacenamiento clave-valor KMP (SharedPreferences en Android, NSUserDefaults en iOS)
+multiplatform-settings = { group = "com.russhwolf", name = "multiplatform-settings", version.ref = "multiplatformSettings" }
+multiplatform-settings-test = { group = "com.russhwolf", name = "multiplatform-settings-test", version.ref = "multiplatformSettings" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

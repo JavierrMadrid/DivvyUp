@@ -1,6 +1,7 @@
 package com.example.divvyup.integration.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.divvyup.integration.ui.theme.DivvyUpMotion
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.theme.JungleGreenDark
 
 /**
  * Tabs pill unificados para barras superiores (GroupDetail, GroupSettings, etc.).
@@ -40,7 +43,7 @@ fun AppTabsRow(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     tabLabels: List<String>,
-    containerColor: Color = Color(0xFF1B4332) // JungleGreenDark — encaja con TopBarVariant.Gradient
+    containerColor: Color = JungleGreenDark // encaja con TopBarVariant.Gradient
 ) {
     Row(
         modifier = modifier
@@ -69,10 +72,12 @@ private fun AppTab(
 ) {
     val containerColor = animateColorAsState(
         targetValue = if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
+        animationSpec = tween(DivvyUpMotion.Medium, easing = DivvyUpMotion.Standard),
         label = "tab-bg"
     ).value
     val contentColor = animateColorAsState(
         targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+        animationSpec = tween(DivvyUpMotion.Medium, easing = DivvyUpMotion.Standard),
         label = "tab-content"
     ).value
     Surface(
@@ -119,6 +124,7 @@ fun AppTabsRowFlat(
                     MaterialTheme.colorScheme.primary
                 else
                     MaterialTheme.colorScheme.surfaceContainerHigh,
+                animationSpec = tween(DivvyUpMotion.Medium, easing = DivvyUpMotion.Standard),
                 label = "flat-tab-bg"
             ).value
             val contentColor = animateColorAsState(
@@ -126,6 +132,7 @@ fun AppTabsRowFlat(
                     MaterialTheme.colorScheme.onPrimary
                 else
                     MaterialTheme.colorScheme.onSurfaceVariant,
+                animationSpec = tween(DivvyUpMotion.Medium, easing = DivvyUpMotion.Standard),
                 label = "flat-tab-content"
             ).value
             Surface(

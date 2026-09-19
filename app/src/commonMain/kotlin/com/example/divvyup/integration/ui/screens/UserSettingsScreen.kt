@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 import com.example.divvyup.integration.ui.rememberImagePickerLauncher
 import com.example.divvyup.integration.ui.components.AppIconButton
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
@@ -87,7 +88,6 @@ fun UserSettingsScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val authState by authViewModel.uiState.collectAsState()
@@ -99,6 +99,8 @@ fun UserSettingsScreen(
         authViewModel.consumeProfileSavedMessage()
     }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -108,21 +110,18 @@ fun UserSettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(
+                        start = DivvyUpTokens.ScreenPaddingHLg,
+                        end = DivvyUpTokens.ScreenPaddingHLg,
+                        top = 12.dp,
+                        bottom = 8.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = Strings.UserSettings.A11Y_BACK,
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
                 Text(
                     text = Strings.UserSettings.TITLE,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -214,7 +213,7 @@ private fun AuthenticatedContent(
             Box(
                 modifier = Modifier
                     .size(96.dp)
-                    .shadow(4.dp, CircleShape)
+                    .shadow(DivvyUpTokens.ElevationCard, CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f))
                     .clip(CircleShape)
                     .background(JungleGreen)
                     .border(3.dp, MaterialTheme.colorScheme.background, CircleShape),
@@ -240,7 +239,7 @@ private fun AuthenticatedContent(
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .shadow(2.dp, CircleShape)
+                    .shadow(DivvyUpTokens.ElevationCard, CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
                     .clip(CircleShape)
                     .background(JungleGreenDark)
                     .border(2.dp, MaterialTheme.colorScheme.background, CircleShape),
@@ -432,14 +431,14 @@ private fun ProfileSectionCard(
     Card(
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 4.dp,
+                elevation = DivvyUpTokens.ElevationCard,
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -522,7 +521,7 @@ private fun UnauthenticatedContent(
             Box(
                 modifier = Modifier
                     .size(96.dp)
-                    .shadow(4.dp, CircleShape)
+                    .shadow(DivvyUpTokens.ElevationCard, CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f))
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
@@ -570,14 +569,14 @@ private fun UnauthenticatedContent(
             Card(
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(
-                        elevation = 4.dp,
+                        elevation = DivvyUpTokens.ElevationCard,
                         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                        ambientColor = Color.Black.copy(alpha = 0.05f),
-                        spotColor = Color.Black.copy(alpha = 0.08f)
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
                     )
             ) {
                 Column(

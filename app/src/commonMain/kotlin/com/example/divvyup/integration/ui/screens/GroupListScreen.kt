@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -79,10 +80,12 @@ import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Group
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.SetSystemBarAppearance
 import com.example.divvyup.integration.ui.Strings
 import com.example.divvyup.integration.ui.components.AppFilterChip
 import com.example.divvyup.integration.ui.components.AppSearchField
 import com.example.divvyup.integration.ui.components.SkeletonCard
+import com.example.divvyup.integration.ui.components.StaggeredAppear
 import com.example.divvyup.integration.ui.components.rememberAppFilterChipPalette
 import com.example.divvyup.integration.ui.theme.Amber
 import com.example.divvyup.integration.ui.theme.BarkBrown
@@ -133,14 +136,11 @@ fun GroupListScreen(
     // Estado del dialog de confirmar borrado de seleccionados
     var showDeleteSelectedConfirm by rememberSaveable { mutableStateOf(false) }
 
-    // Refrescar SIEMPRE al re-entrar a la pantalla (desde GroupDetail, desde
-    // Settings, etc.). El guard `loadInFlight` del VM evita duplicar si ya hay
-    // una carga en vuelo. Antes la guard era `if (uiState.groups.isNotEmpty())…`
-    // lo que dejaba atrapada la UI en el empty state si la primera carga falló
-    // — por eso el usuario veía "no hay grupos" cuando sí los había.
-    LaunchedEffect(Unit) {
-        viewModel.loadGroups()
-    }
+    // Sin LaunchedEffect que llame a loadGroups() aquí: la carga inicial la gestiona
+    // el `onAuthResolved()` desde MainActivity (espera al JWT restaurado en cold
+    // start). Antes había un `LaunchedEffect(Unit) { viewModel.loadGroups() }` que
+    // duplicaba el disparo y, combinado con auth sin resolver, provocaba 401 que
+    // dejaban la UI en empty state hasta matar el proceso.
 
     // Refresh on app resume — si la app vuelve de background y la pantalla está
     // activa, los datos cacheados pueden estar stale (TTL expirado, cambios en
@@ -150,7 +150,7 @@ fun GroupListScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadGroups()
+                viewModel.loadIfReady(authReady = true)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -166,6 +166,8 @@ fun GroupListScreen(
         }
     }
 
+    SetSystemBarAppearance(useDarkIcons = false)
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -173,6 +175,12 @@ fun GroupListScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(
+                        RoundedCornerShape(
+                            bottomStart = DivvyUpTokens.RadiusHero,
+                            bottomEnd = DivvyUpTokens.RadiusHero
+                        )
+                    )
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(JungleGreen, JungleGreenDark)
@@ -241,7 +249,7 @@ fun GroupListScreen(
                 containerColor = if (isSelectionMode) MaterialTheme.colorScheme.surfaceVariant else JungleGreen,
                 contentColor = if (isSelectionMode) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
                 modifier = Modifier.shadow(
-                    elevation = 12.dp, shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                    elevation = DivvyUpTokens.ElevationFab, shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                     ambientColor = JungleGreen.copy(alpha = 0.25f),
                     spotColor = JungleGreen.copy(alpha = 0.4f)
                 )
@@ -280,7 +288,10 @@ fun GroupListScreen(
                     }
                 }
                 uiState.groups.isEmpty() -> {
-                    EmptyGroupsPlaceholder(modifier = Modifier.align(Alignment.Center))
+                    EmptyGroupsPlaceholder(
+                        onCreateGroup = onCreateGroup,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
                 else -> {
                     @OptIn(ExperimentalMaterial3Api::class)
@@ -453,18 +464,20 @@ private fun GroupList(
             return@LazyColumn
         }
 
-        items(groups, key = { it.id }) { group ->
+        itemsIndexed(groups, key = { _, group -> group.id }) { index, group ->
             val isSelected = group.id in selectedGroupIds
-            GroupCard(
-                group = group,
-                isSelected = isSelected,
-                onClick = { onGroupClick(group.id) },
-                onLongClick = { onGroupLongClick(group.id) },
-                onDelete = { onDeleteGroup(group.id) },
-                onOpenAdvancedDelete = { onOpenAdvancedDelete(group.id) },
-                participants = getParticipants(group.id),
-                categories = getCategories(group.id)
-            )
+            StaggeredAppear(index = index) {
+                GroupCard(
+                    group = group,
+                    isSelected = isSelected,
+                    onClick = { onGroupClick(group.id) },
+                    onLongClick = { onGroupLongClick(group.id) },
+                    onDelete = { onDeleteGroup(group.id) },
+                    onOpenAdvancedDelete = { onOpenAdvancedDelete(group.id) },
+                    participants = getParticipants(group.id),
+                    categories = getCategories(group.id)
+                )
+            }
         }
     }
 }
@@ -491,9 +504,9 @@ private fun GroupCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(0.06f),
-                spotColor = Color.Black.copy(0.10f))
+            .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                ambientColor = MaterialTheme.colorScheme.primary.copy(0.18f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(0.24f))
             .border(
                 width = if (isSelected) 2.dp else 0.dp,
                 color = borderColor,
@@ -512,8 +525,8 @@ private fun GroupCard(
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
-                MaterialTheme.colorScheme.surfaceContainerHighest
-            else MaterialTheme.colorScheme.surfaceContainerHigh
+                MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -771,20 +784,28 @@ private fun AdvancedDeleteDialog(
 
 
 @Composable
-private fun EmptyGroupsPlaceholder(modifier: Modifier = Modifier) {
+private fun EmptyGroupsPlaceholder(
+    onCreateGroup: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier.padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(
-            modifier = Modifier.size(96.dp).clip(CircleShape)
-                .background(brush = Brush.linearGradient(
-                    colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer))),
+            modifier = Modifier
+                .size(112.dp)
+                .clip(RoundedCornerShape(DivvyUpTokens.RadiusHero))
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Groups, contentDescription = null,
-                modifier = Modifier.size(48.dp), tint = Color.White)
+            Icon(
+                Icons.Default.Groups,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
         }
         Text(Strings.GroupList.EMPTY_HEADLINE, style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
@@ -793,5 +814,18 @@ private fun EmptyGroupsPlaceholder(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center
         )
+        Button(
+            onClick = onCreateGroup,
+            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = JungleGreen,
+                contentColor = Color.White
+            ),
+            modifier = Modifier.height(DivvyUpTokens.PrimaryButtonHeight)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconMd))
+            Spacer(Modifier.width(DivvyUpTokens.GapSm))
+            Text(Strings.GroupList.FAB_NEW_GROUP, fontWeight = FontWeight.SemiBold)
+        }
     }
 }

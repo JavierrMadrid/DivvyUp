@@ -10,6 +10,12 @@ import com.example.divvyup.application.InvitationService
 import com.example.divvyup.application.SettlementService
 import com.example.divvyup.application.SpendService
 import com.example.divvyup.integration.cache.CachedActivityLogRepository
+import com.example.divvyup.integration.cache.CachedCategoryRepository
+import com.example.divvyup.integration.cache.CachedGroupRepository
+import com.example.divvyup.integration.cache.CachedParticipantRepository
+import com.example.divvyup.integration.cache.CachedSettlementRepository
+import com.example.divvyup.integration.cache.CachedSpendRepository
+import com.example.divvyup.integration.cache.SettingsSpendStartupCache
 import com.example.divvyup.integration.supabase.SupabaseActivityLogRepository
 import com.example.divvyup.integration.supabase.SupabaseCategoryRepository
 import com.example.divvyup.integration.supabase.SupabaseGroupRepository
@@ -22,8 +28,10 @@ import com.example.divvyup.integration.supabase.SupabaseUserProfileRepository
 import com.example.divvyup.integration.ui.navigation.AppNavigation
 import com.example.divvyup.integration.ui.theme.DivvyUpTheme
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
+import com.example.divvyup.integration.ui.viewmodel.ActivityFeedViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
+import com.russhwolf.settings.NSUserDefaultsSettings
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
@@ -54,11 +62,12 @@ fun MainViewController(
     val postgrest = supabaseClient.postgrest
     val auth      = supabaseClient.auth
 
-    val groupRepository           = remember { SupabaseGroupRepository(postgrest) }
-    val participantRepository     = remember { SupabaseParticipantRepository(postgrest) }
-    val categoryRepository        = remember { SupabaseCategoryRepository(postgrest) }
-    val spendRepository           = remember { SupabaseSpendRepository(postgrest) }
-    val settlementRepository      = remember { SupabaseSettlementRepository(postgrest) }
+    val groupRepository           = remember { CachedGroupRepository(SupabaseGroupRepository(postgrest)) }
+    val participantRepository     = remember { CachedParticipantRepository(SupabaseParticipantRepository(postgrest)) }
+    val categoryRepository        = remember { CachedCategoryRepository(SupabaseCategoryRepository(postgrest)) }
+    val spendStartupCache         = remember { SettingsSpendStartupCache(NSUserDefaultsSettings()) }
+    val spendRepository           = remember { CachedSpendRepository(SupabaseSpendRepository(postgrest), spendStartupCache) }
+    val settlementRepository      = remember { CachedSettlementRepository(SupabaseSettlementRepository(postgrest)) }
     val participantUserLinkRepo   = remember { SupabaseParticipantUserLinkRepository(postgrest) }
     val inviteTokenRepository     = remember { SupabaseInviteTokenRepository(postgrest) }
 
@@ -99,10 +108,18 @@ fun MainViewController(
             )
         }
 
+        val activityFeedViewModel = remember {
+            ActivityFeedViewModel(
+                groupService = groupService,
+                activityLogService = activityLogService
+            )
+        }
+
         AppNavigation(
             navController         = navController,
             authViewModel         = authViewModel,
             groupListViewModel    = groupListViewModel,
+            activityFeedViewModel = activityFeedViewModel,
             participantRepository = participantRepository,
             participantUserLinkRepository = participantUserLinkRepo,
             invitationService     = invitationService,
@@ -120,7 +137,8 @@ fun MainViewController(
                         participantUserLinkRepo.findParticipantIdByGroupAndUser(groupId, userId)
                     },
                     activityLogService = activityLogService,
-                    userProfileRepository = userProfileRepository
+                    userProfileRepository = userProfileRepository,
+                    spendStartupCache = spendStartupCache
                 )
             },
             currentUserIdProvider    = { supabaseClient.auth.currentSessionOrNull()?.user?.id },
