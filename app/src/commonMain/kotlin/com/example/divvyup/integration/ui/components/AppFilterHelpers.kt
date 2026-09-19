@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.divvyup.integration.ui.theme.FilterChipUnselectedLight
+import com.example.divvyup.integration.ui.theme.FilterChipUnselectedTextLight
 import com.example.divvyup.integration.ui.theme.JungleGreen
 
 data class AppFilterChipPalette(
@@ -26,12 +28,24 @@ fun rememberAppFilterChipPalette(
     val isDark = isSystemInDarkTheme()
     val colorScheme = MaterialTheme.colorScheme
     return remember(isDark, colorScheme, selectedColor) {
-        AppFilterChipPalette(
-            selectedColor = selectedColor,
-            unselectedColor = if (isDark) colorScheme.surfaceContainerHigh else colorScheme.surfaceVariant,
-            unselectedTextColor = colorScheme.onSurface,
-            summaryContainerColor = if (isDark) colorScheme.surfaceContainerHighest else colorScheme.surfaceVariant
-        )
+        // En modo claro `surfaceVariant` cae muy cerca del background (#DFEBE1)
+        // y de la card (#F7FAF7), por lo que el chip no seleccionado se perdía.
+        // Usamos un token dedicado con contraste claro en paleta Jungle.
+        if (isDark) {
+            AppFilterChipPalette(
+                selectedColor = selectedColor,
+                unselectedColor = colorScheme.surfaceContainerHigh,
+                unselectedTextColor = colorScheme.onSurface,
+                summaryContainerColor = colorScheme.surfaceContainerHighest
+            )
+        } else {
+            AppFilterChipPalette(
+                selectedColor = selectedColor,
+                unselectedColor = FilterChipUnselectedLight,
+                unselectedTextColor = FilterChipUnselectedTextLight,
+                summaryContainerColor = FilterChipUnselectedLight
+            )
+        }
     }
 }
 

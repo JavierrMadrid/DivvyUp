@@ -3,11 +3,20 @@ package com.example.divvyup
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.navigation.compose.rememberNavController
+import com.example.divvyup.application.ActivityLogService
 import com.example.divvyup.application.CategoryService
 import com.example.divvyup.application.GroupService
 import com.example.divvyup.application.InvitationService
 import com.example.divvyup.application.SettlementService
 import com.example.divvyup.application.SpendService
+import com.example.divvyup.integration.cache.CachedActivityLogRepository
+import com.example.divvyup.integration.cache.CachedCategoryRepository
+import com.example.divvyup.integration.cache.CachedGroupRepository
+import com.example.divvyup.integration.cache.CachedParticipantRepository
+import com.example.divvyup.integration.cache.CachedSettlementRepository
+import com.example.divvyup.integration.cache.CachedSpendRepository
+import com.example.divvyup.integration.cache.SettingsSpendStartupCache
+import com.example.divvyup.integration.supabase.SupabaseActivityLogRepository
 import com.example.divvyup.integration.supabase.SupabaseCategoryRepository
 import com.example.divvyup.integration.supabase.SupabaseGroupRepository
 import com.example.divvyup.integration.supabase.SupabaseInviteTokenRepository
@@ -15,16 +24,21 @@ import com.example.divvyup.integration.supabase.SupabaseParticipantRepository
 import com.example.divvyup.integration.supabase.SupabaseParticipantUserLinkRepository
 import com.example.divvyup.integration.supabase.SupabaseSettlementRepository
 import com.example.divvyup.integration.supabase.SupabaseSpendRepository
+import com.example.divvyup.integration.supabase.SupabaseUserProfileRepository
 import com.example.divvyup.integration.ui.navigation.AppNavigation
 import com.example.divvyup.integration.ui.theme.DivvyUpTheme
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
+import com.example.divvyup.integration.ui.viewmodel.ActivityFeedViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
+import com.russhwolf.settings.NSUserDefaultsSettings
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.postgrest
+import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
 
 // Punto de entrada iOS — equivalente a MainActivity para Android
@@ -48,16 +62,17 @@ fun MainViewController(
     val postgrest = supabaseClient.postgrest
     val auth      = supabaseClient.auth
 
-    val groupRepository           = remember { SupabaseGroupRepository(postgrest) }
-    val participantRepository     = remember { SupabaseParticipantRepository(postgrest) }
-    val categoryRepository        = remember { SupabaseCategoryRepository(postgrest) }
-    val spendRepository           = remember { SupabaseSpendRepository(postgrest) }
-    val settlementRepository      = remember { SupabaseSettlementRepository(postgrest) }
+    val groupRepository           = remember { CachedGroupRepository(SupabaseGroupRepository(postgrest)) }
+    val participantRepository     = remember { CachedParticipantRepository(SupabaseParticipantRepository(postgrest)) }
+    val categoryRepository        = remember { CachedCategoryRepository(SupabaseCategoryRepository(postgrest)) }
+    val spendStartupCache         = remember { SettingsSpendStartupCache(NSUserDefaultsSettings()) }
+    val spendRepository           = remember { CachedSpendRepository(SupabaseSpendRepository(postgrest), spendStartupCache) }
+    val settlementRepository      = remember { CachedSettlementRepository(SupabaseSettlementRepository(postgrest)) }
     val participantUserLinkRepo   = remember { SupabaseParticipantUserLinkRepository(postgrest) }
     val inviteTokenRepository     = remember { SupabaseInviteTokenRepository(postgrest) }
 
     val groupService      = remember { GroupService(groupRepository) }
-    val spendService      = remember { SpendService(spendRepository, participantRepository) }
+    val spendService      = remember { SpendService(spendRepository) }
     val settlementService = remember {
         SettlementService(
             settlementRepository  = settlementRepository,
@@ -67,6 +82,8 @@ fun MainViewController(
         )
     }
     val categoryService   = remember { CategoryService(categoryRepository) }
+    val activityLogService = remember { ActivityLogService(CachedActivityLogRepository(SupabaseActivityLogRepository(postgrest))) }
+    val userProfileRepository = remember { SupabaseUserProfileRepository(postgrest) }
     val invitationService = remember {
         InvitationService(
             groupRepository               = groupRepository,
@@ -80,7 +97,7 @@ fun MainViewController(
     DivvyUpTheme {
         val navController  = rememberNavController()
 
-        val authViewModel  = remember { AuthViewModel(auth) }
+        val authViewModel  = remember { AuthViewModel(auth, userProfileRepository = userProfileRepository) }
 
         val groupListViewModel = remember {
             GroupListViewModel(
@@ -91,10 +108,18 @@ fun MainViewController(
             )
         }
 
+        val activityFeedViewModel = remember {
+            ActivityFeedViewModel(
+                groupService = groupService,
+                activityLogService = activityLogService
+            )
+        }
+
         AppNavigation(
             navController         = navController,
             authViewModel         = authViewModel,
             groupListViewModel    = groupListViewModel,
+            activityFeedViewModel = activityFeedViewModel,
             participantRepository = participantRepository,
             participantUserLinkRepository = participantUserLinkRepo,
             invitationService     = invitationService,
@@ -110,13 +135,24 @@ fun MainViewController(
                         val userId = supabaseClient.auth.currentSessionOrNull()?.user?.id
                             ?: return@GroupDetailViewModel null
                         participantUserLinkRepo.findParticipantIdByGroupAndUser(groupId, userId)
-                    }
+                    },
+                    activityLogService = activityLogService,
+                    userProfileRepository = userProfileRepository,
+                    spendStartupCache = spendStartupCache
                 )
             },
             currentUserIdProvider    = { supabaseClient.auth.currentSessionOrNull()?.user?.id },
             pendingInviteToken       = null,   // iOS: gestionar con Universal Links en el futuro
             consumePendingInviteToken = {},
-            onShareGroupInvite       = { _, _ -> }      // iOS: implementar con UIActivityViewController si es necesario
+            onShareGroupInvite       = { _, _ -> },
+            onShareText = { text ->
+                val activityVC = UIActivityViewController(
+                    activityItems = listOf(text),
+                    applicationActivities = null
+                )
+                UIApplication.sharedApplication.keyWindow?.rootViewController
+                    ?.presentViewController(activityVC, animated = true, completion = null)
+            }
         )
     }
 }

@@ -107,6 +107,7 @@ Todos los FK tienen índice creado explícitamente. Índices adicionales:
 | Índice | Columnas | Propósito |
 |--------|----------|-----------|
 | `spends_date_idx` | `(group_id, date)` | Filtrado por rango de fechas dentro de un grupo |
+| `spends_group_date_id_idx` | `(group_id, date desc, id desc)` | Paginación keyset de la lista de gastos (V020) |
 | `settlements_date_idx` | `(group_id, date)` | Filtrado de liquidaciones por fecha |
 | `participant_user_links_group_id_idx` | `(group_id)` | Búsqueda de vínculos por grupo |
 | `participant_user_links_user_id_idx` | `(user_id)` | Resolver participante de un usuario |

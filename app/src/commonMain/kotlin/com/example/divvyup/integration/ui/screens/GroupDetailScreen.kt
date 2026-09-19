@@ -1,24 +1,28 @@
 package com.example.divvyup.integration.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.divvyup.application.AnalyticsExportData
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.Spend
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppTabsRow
+import com.example.divvyup.integration.ui.components.AppTopBar
+import com.example.divvyup.integration.ui.components.PillFab
+import com.example.divvyup.integration.ui.components.TopBarVariant
 import com.example.divvyup.integration.ui.theme.*
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailTab
 import com.example.divvyup.integration.ui.viewmodel.GroupDetailViewModel
@@ -29,16 +33,14 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 
-internal val participantAvatarPalette = listOf(
-    JungleGreen, JungleGreenDark, BarkBrown,
-    MossGold, Soil, JungleGreenMid,
-    BarkBrownDark, Amber
-)
-
-internal val MES_CORTO = listOf("", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+internal val MES_CORTO =
+    listOf("", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+// MES_NOMBRES: nombres de mes para formatLocalDate. Mantener inline (es un
+// array pequeño de constantes, no texto suelto en pantalla) — candidato
+// natural para un DateFormatter service fuera de Phase 6.
 internal val MES_NOMBRES = listOf(
-    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 )
 
 internal const val SETTLEMENT_CATEGORY_NAME = "Liquidación"
@@ -52,7 +54,7 @@ internal fun Category.isSettlementCategory(): Boolean =
 
 internal fun Spend.isSettlementSpend(settlementCategoryIds: Set<Long>): Boolean =
     (categoryId != null && categoryId in settlementCategoryIds) ||
-        notes.startsWith(SETTLEMENT_SPEND_NOTE_PREFIX)
+            notes.startsWith(SETTLEMENT_SPEND_NOTE_PREFIX)
 
 /** Formatea un Double con 2 decimales sin usar String.format (KMP-compatible). */
 internal fun Double.fmt2(): String {
@@ -82,45 +84,53 @@ internal fun appDatePickerColors() = DatePickerDefaults.colors(
 )
 
 @Composable
-internal fun FintechFab(
-    onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    modifier: Modifier = Modifier
-) {
-    FloatingActionButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-        containerColor = JungleGreen,
-        contentColor = Color.White,
-        modifier = modifier.shadow(
-            elevation = 12.dp,
-            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-            ambientColor = JungleGreen.copy(alpha = 0.25f),
-            spotColor = JungleGreen.copy(alpha = 0.4f)
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text(label, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-        }
-    }
-}
-
-@Composable
 fun GroupDetailScreen(
     viewModel: GroupDetailViewModel,
     onBack: () -> Unit,
     onAddSpend: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSettleUp: () -> Unit,
+    onOpenSpend: (spendId: Long) -> Unit = {},
+    onShareText: (String) -> Unit = {},
+    onSharePdf: (AnalyticsExportData) -> Unit = {},
+    onShareExcel: (AnalyticsExportData) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Refresh on app resume — si la app vuelve de background y esta pantalla
+    // está activa, los datos cacheados (gastos, balances, actividad) pueden estar
+    // stale. Sin este observer, la UI seguía mostrando "no hay gastos" cuando
+    // sí los había (cache TTL 1 min de CachedSpendRepository expirado).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadAll()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Consumir texto de exportación pendiente → disparar share del sistema
+    LaunchedEffect(uiState.pendingExportText) {
+        val text = uiState.pendingExportText ?: return@LaunchedEffect
+        viewModel.consumeExportText()
+        onShareText(text)
+    }
+    LaunchedEffect(uiState.pendingExportPdf) {
+        val data = uiState.pendingExportPdf ?: return@LaunchedEffect
+        viewModel.consumeExportPdf()
+        onSharePdf(data)
+    }
+    LaunchedEffect(uiState.pendingExportExcel) {
+        val data = uiState.pendingExportExcel ?: return@LaunchedEffect
+        viewModel.consumeExportExcel()
+        onShareExcel(data)
+    }
     val settlementCategoryIds by remember(uiState.categories) {
         derivedStateOf {
             uiState.categories
@@ -132,9 +142,11 @@ fun GroupDetailScreen(
     val analyticsCategories by remember(uiState.categories) {
         derivedStateOf { uiState.categories.filterNot { it.isSettlementCategory() } }
     }
-    val analyticsSpends by remember(uiState.spends, settlementCategoryIds) {
+    // Analíticas usa la lista completa (allSpends, carga perezosa al abrir esa pestaña),
+    // no la lista paginada de la pestaña Gastos.
+    val analyticsSpends by remember(uiState.allSpends, settlementCategoryIds) {
         derivedStateOf {
-            uiState.spends.filterNot { it.isSettlementSpend(settlementCategoryIds) }
+            uiState.allSpends.filterNot { it.isSettlementSpend(settlementCategoryIds) }
         }
     }
 
@@ -142,98 +154,54 @@ fun GroupDetailScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // Header estilo fintech con gradiente navy
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(JungleGreen, JungleGreenDark)
-                        )
+                modifier = Modifier.clip(
+                    RoundedCornerShape(
+                        bottomStart = DivvyUpTokens.RadiusHero,
+                        bottomEnd = DivvyUpTokens.RadiusHero
                     )
-                    .statusBarsPadding()
+                )
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Color.White
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = uiState.group?.name ?: "Cargando...",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        uiState.group?.let { group ->
-                            Text(
-                                text = "${uiState.participants.size} participantes - ${group.currency}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.7f)
+                AppTopBar(
+                    title = uiState.group?.name ?: Strings.GroupDetail.LOADING_FALLBACK,
+                    subtitle = uiState.group?.let {
+                        Strings.GroupDetail.participantsHeader(uiState.participants.size, it.currency)
+                    },
+                    variant = TopBarVariant.Gradient,
+                    onBack = onBack,
+                    actions = {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = Strings.GroupDetail.A11Y_GROUP_SETTINGS,
+                                tint = Color.White
                             )
                         }
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Ajustes del grupo",
-                            tint = Color.White
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    GroupDetailTab.entries.forEach { tab ->
-                        val isSelected = uiState.selectedTab == tab
-                        Surface(
-                            onClick = { viewModel.selectTab(tab) },
-                            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                            color = if (isSelected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
-                            contentColor = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = when (tab) {
-                                        GroupDetailTab.GASTOS     -> "Gastos"
-                                        GroupDetailTab.BALANCES   -> "Balances"
-                                        GroupDetailTab.ANALITICAS -> "Analíticas"
-                                    },
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-                }
+                )
+                AppTabsRow(
+                    selectedIndex = uiState.selectedTab.ordinal,
+                    onSelect = { idx -> viewModel.selectTab(GroupDetailTab.entries[idx]) },
+                    tabLabels = listOf(
+                        Strings.GroupDetail.TAB_GASTOS,
+                        Strings.GroupDetail.TAB_BALANCES,
+                        Strings.GroupDetail.TAB_ANALYTICS,
+                        Strings.GroupDetail.TAB_ACTIVITY
+                    )
+                )
             }
         },
         floatingActionButton = {
             when (uiState.selectedTab) {
-                GroupDetailTab.GASTOS -> FintechFab(
+                GroupDetailTab.GASTOS -> PillFab(
                     onClick = onAddSpend,
                     icon = Icons.Default.Add,
-                    label = "Nuevo gasto"
+                    label = Strings.GroupDetail.FAB_NEW_SPEND
                 )
+
                 GroupDetailTab.BALANCES -> {}
-                GroupDetailTab.ANALITICAS -> {} // sin FAB
+                GroupDetailTab.ANALITICAS -> {}
+                GroupDetailTab.ACTIVIDAD -> {}
             }
         }
     ) { padding ->
@@ -255,10 +223,16 @@ fun GroupDetailScreen(
                             categories = uiState.categories,
                             currency = uiState.group?.currency ?: "EUR",
                             spendPersonalImpact = uiState.spendPersonalImpact,
-                            onEditSpend = viewModel::prepareEditSpend,
+                            hasMoreSpends = uiState.hasMoreSpends,
+                            isLoadingMoreSpends = uiState.isLoadingMoreSpends,
+                            onLoadMore = viewModel::loadMoreSpends,
+                            onEditSpend = { spend -> onOpenSpend(spend.id) },
                             onDeleteSpendsByIds = viewModel::deleteSpendsByIds,
-                            onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered
+                            onDeleteSpendsFiltered = viewModel::deleteSpendsFiltered,
+                            isRefreshing = uiState.isLoading,
+                            onRefresh = viewModel::loadAll
                         )
+
                     GroupDetailTab.BALANCES ->
                         BalanceTab(
                             balances = uiState.balances,
@@ -266,12 +240,15 @@ fun GroupDetailScreen(
                             currency = uiState.group?.currency ?: "EUR",
                             onLiquidar = onOpenSettleUp
                         )
+
                     GroupDetailTab.ANALITICAS ->
                         AnalyticsTab(
                             spends = analyticsSpends,
                             categories = analyticsCategories,
                             participants = uiState.participants,
                             settlements = uiState.settlements,
+                            spendSharesBySpend = uiState.spendSharesBySpend,
+                            balances = uiState.balances,
                             currency = uiState.group?.currency ?: "EUR",
                             searchQuery = uiState.analyticsSearchQuery,
                             selectedCategories = uiState.analyticsSelectedCategories,
@@ -281,7 +258,35 @@ fun GroupDetailScreen(
                             onCategoryToggle = viewModel::toggleAnalyticsCategory,
                             onParticipantToggle = viewModel::toggleAnalyticsParticipant,
                             onPeriodChange = viewModel::setAnalyticsPeriod,
-                            onClearFilters = viewModel::clearAnalyticsFilters
+                            onClearFilters = viewModel::clearAnalyticsFilters,
+                            onExportText = { filteredSpends ->
+                                viewModel.exportGroupText(
+                                    filteredSpends
+                                )
+                            },
+                            onExportCsv = { filteredSpends ->
+                                viewModel.exportGroupCsv(
+                                    filteredSpends
+                                )
+                            },
+                            onExportPdf = { filteredSpends, periodLabel ->
+                                viewModel.exportGroupPdf(
+                                    filteredSpends,
+                                    periodLabel
+                                )
+                            },
+                            onExportExcel = { filteredSpends, periodLabel ->
+                                viewModel.exportGroupExcel(
+                                    filteredSpends,
+                                    periodLabel
+                                )
+                            }
+                        )
+
+                    GroupDetailTab.ACTIVIDAD ->
+                        ActivityTab(
+                            activityLog = uiState.activityLog,
+                            onRefresh = viewModel::loadAll
                         )
                 }
             }
@@ -294,16 +299,10 @@ fun GroupDetailScreen(
                         .padding(20.dp),
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
                 ) { Text(errorMsg) }
             }
         }
     }
 
 }
-
-// -- Modelos de datos para gráficas (compartidos por AnalyticsTabScreen) -------
-internal data class DonutEntry(val label: String, val icon: String, val value: Float)
-internal data class BarEntry(val label: String, val value: Float)
-
-

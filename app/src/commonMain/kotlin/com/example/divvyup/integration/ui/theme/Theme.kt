@@ -6,55 +6,40 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.TextFieldColors
-import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.divvyup.integration.ui.SetNavigationBarAppearance
 
-// ── Shapes "Modern Fintech Minimal" — mínimo 12dp, cards 20dp, pills 50dp ────
+// ── Shapes "Soft Rounded" — todo más redondeado y amable ─────────────────────
 private val DivvyUpShapes = Shapes(
-    extraSmall = RoundedCornerShape(12.dp),
-    small      = RoundedCornerShape(14.dp),
-    medium     = RoundedCornerShape(16.dp),
-    large      = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(28.dp)
-)
-
-// ── Tipografía moderna — pesos marcados, números grandes para balances ────────
-private val DivvyUpTypography = Typography(
-    displayLarge  = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 40.sp, lineHeight = 48.sp, letterSpacing = (-1).sp),
-    displayMedium = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 44.sp, letterSpacing = (-0.5).sp),
-    displaySmall  = TextStyle(fontWeight = FontWeight.Bold,      fontSize = 32.sp, lineHeight = 40.sp),
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold,      fontSize = 28.sp, lineHeight = 36.sp),
-    headlineMedium= TextStyle(fontWeight = FontWeight.Bold,      fontSize = 24.sp, lineHeight = 32.sp),
-    headlineSmall = TextStyle(fontWeight = FontWeight.SemiBold,  fontSize = 20.sp, lineHeight = 28.sp),
-    titleLarge    = TextStyle(fontWeight = FontWeight.SemiBold,  fontSize = 20.sp, lineHeight = 28.sp),
-    titleMedium   = TextStyle(fontWeight = FontWeight.SemiBold,  fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = 0.1.sp),
-    titleSmall    = TextStyle(fontWeight = FontWeight.SemiBold,  fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp),
-    bodyLarge     = TextStyle(fontWeight = FontWeight.Normal,    fontSize = 16.sp, lineHeight = 24.sp),
-    bodyMedium    = TextStyle(fontWeight = FontWeight.Normal,    fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall     = TextStyle(fontWeight = FontWeight.Normal,    fontSize = 13.sp, lineHeight = 18.sp),
-    labelLarge    = TextStyle(fontWeight = FontWeight.SemiBold,  fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp),
-    labelMedium   = TextStyle(fontWeight = FontWeight.Medium,    fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.4.sp),
-    labelSmall    = TextStyle(fontWeight = FontWeight.Medium,    fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 0.5.sp),
+    extraSmall = RoundedCornerShape(14.dp),
+    small      = RoundedCornerShape(18.dp),
+    medium     = RoundedCornerShape(22.dp),
+    large      = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(36.dp)
 )
 
 @Composable
 fun DivvyUpTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemePreferenceHolder.themeMode.collectAsState().value,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        darkTheme -> DarkColors
-        else      -> LightColors
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (themeMode) {
+        ThemeMode.DARK   -> true
+        ThemeMode.LIGHT  -> false
+        ThemeMode.SYSTEM -> systemDark
     }
+    val colorScheme = if (darkTheme) DarkColors else LightColors
+
+    SetNavigationBarAppearance(useDarkIcons = !darkTheme)
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography  = DivvyUpTypography,
+        typography  = divvyUpTypography(),
         shapes      = DivvyUpShapes,
         content     = content
     )
@@ -62,8 +47,9 @@ fun DivvyUpTheme(
 
 @Composable
 fun appOutlinedTextFieldColors(): TextFieldColors {
-    val isDark = isSystemInDarkTheme()
-    val focused = if (isDark) DarkTextBeige100 else JungleGreenMid
+    // Deriva del esquema resuelto (no del sistema) para respetar el override de tema.
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val focused = if (isDark) DarkTextBeige100 else JungleGreen
     val unfocused = if (isDark) DarkTextBeige200 else MaterialTheme.colorScheme.outline
     return OutlinedTextFieldDefaults.colors(
         focusedBorderColor = focused,

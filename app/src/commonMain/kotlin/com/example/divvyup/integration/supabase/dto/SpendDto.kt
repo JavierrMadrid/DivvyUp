@@ -18,7 +18,11 @@ data class SpendDto(
     @SerialName("category_id") val categoryId: Long? = null,
     @SerialName("split_type") val splitType: String = "EQUAL",
     val notes: String = "",
-    @SerialName("created_at") val createdAt: String = ""
+    @SerialName("created_at") val createdAt: String = "",
+    val recurrence: String = "NONE",
+    @SerialName("receipt_url") val receiptUrl: String? = null,
+    @SerialName("recurrence_parent_id") val recurrenceParentId: Long? = null,
+    @SerialName("recurrence_next_due") val recurrenceNextDue: String? = null
 )
 
 fun SpendDto.toDomain() = Spend(
@@ -32,7 +36,12 @@ fun SpendDto.toDomain() = Spend(
     splitType = SplitType.valueOf(splitType),
     notes = notes,
     createdAt = if (createdAt.isNotEmpty()) Instant.parse(createdAt)
-                else Instant.fromEpochMilliseconds(0)
+                else Instant.fromEpochMilliseconds(0),
+    recurrence = try { com.example.divvyup.domain.model.Recurrence.valueOf(recurrence) }
+                 catch (_: Exception) { com.example.divvyup.domain.model.Recurrence.NONE },
+    receiptUrl = receiptUrl,
+    recurrenceParentId = recurrenceParentId,
+    recurrenceNextDue = recurrenceNextDue?.takeIf { it.isNotEmpty() }?.let { Instant.parse(it) }
 )
 
 fun Spend.toDto() = SpendDto(
@@ -44,7 +53,11 @@ fun Spend.toDto() = SpendDto(
     payerId = payerId,
     categoryId = categoryId,
     splitType = splitType.name,
-    notes = notes
+    notes = notes,
+    recurrence = recurrence.name,
+    receiptUrl = receiptUrl,
+    recurrenceParentId = recurrenceParentId,
+    recurrenceNextDue = recurrenceNextDue?.toString()
 )
 
 /** DTO sin id para UPDATE — Supabase rechaza actualizar columnas identity. */
@@ -57,7 +70,11 @@ data class SpendUpdateDto(
     @SerialName("payer_id")    val payerId: Long,
     @SerialName("category_id") val categoryId: Long? = null,
     @SerialName("split_type")  val splitType: String,
-    val notes: String
+    val notes: String,
+    val recurrence: String = "NONE",
+    @SerialName("receipt_url") val receiptUrl: String? = null,
+    @SerialName("recurrence_parent_id") val recurrenceParentId: Long? = null,
+    @SerialName("recurrence_next_due") val recurrenceNextDue: String? = null
 )
 
 fun Spend.toUpdateDto() = SpendUpdateDto(
@@ -68,7 +85,11 @@ fun Spend.toUpdateDto() = SpendUpdateDto(
     payerId    = payerId,
     categoryId = categoryId,
     splitType  = splitType.name,
-    notes      = notes
+    notes      = notes,
+    recurrence = recurrence.name,
+    receiptUrl = receiptUrl,
+    recurrenceParentId = recurrenceParentId,
+    recurrenceNextDue  = recurrenceNextDue?.toString()
 )
 
 // --- SpendShare DTO ---

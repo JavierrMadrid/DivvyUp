@@ -48,5 +48,11 @@ class CachedGroupRepository(
     fun invalidateListCache() {
         listCache.invalidate("all")
     }
+
+    /** Limpia toda la caché (útil al cambiar de sesión). */
+    fun clearAll() {
+        listCache.clear()
+        singleCache.clear()
+    }
 }
 

@@ -27,6 +27,8 @@ import com.example.divvyup.integration.ui.theme.JungleGreenDark
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.GroupListViewModel
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 
 /**
  * Pantalla "Crear grupo" — estilo fintech, sin dialog.
@@ -46,6 +48,8 @@ fun CreateGroupScreen(
     var currency    by rememberSaveable { mutableStateOf("EUR") }
     var nameError   by rememberSaveable { mutableStateOf(false) }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -61,12 +65,12 @@ fun CreateGroupScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = Strings.CreateGroup.A11Y_BACK,
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 Text(
-                    text = "Nuevo grupo",
+                    text = Strings.CreateGroup.TITLE,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -78,7 +82,7 @@ fun CreateGroupScreen(
         },
         bottomBar = {
             Surface(
-                shadowElevation = 8.dp,
+                shadowElevation = DivvyUpTokens.ElevationBottomBar,
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Box(
@@ -97,9 +101,9 @@ fun CreateGroupScreen(
                         enabled = !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp)
+                            .height(DivvyUpTokens.PrimaryButtonHeight)
                             .shadow(
-                                elevation = 8.dp,
+                                elevation = DivvyUpTokens.ElevationRaised,
                                 shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                                 ambientColor = JungleGreen.copy(alpha = 0.2f),
                                 spotColor = JungleGreen.copy(alpha = 0.35f)
@@ -118,7 +122,7 @@ fun CreateGroupScreen(
                             )
                         } else {
                             Text(
-                                "Siguiente",
+                                Strings.CreateGroup.NEXT_BUTTON,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp
                             )
@@ -149,19 +153,19 @@ fun CreateGroupScreen(
                     .height(100.dp)
                     .background(
                         brush = Brush.horizontalGradient(listOf(JungleGreen, JungleGreenDark)),
-                        shape = RoundedCornerShape(DivvyUpTokens.RadiusCard)
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusHero)
                     ),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        "Crea tu grupo",
+                        Strings.CreateGroup.HERO_HEADLINE,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        "Paso 1 de 2",
+                        Strings.CreateGroup.HERO_SUBTITLE,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )
@@ -171,7 +175,7 @@ fun CreateGroupScreen(
             // Nombre del grupo
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Nombre del grupo",
+                    Strings.CreateGroup.FIELD_NAME,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -179,10 +183,10 @@ fun CreateGroupScreen(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it; nameError = false },
-                    placeholder = { Text("Ej: Vacaciones Ibiza", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text(Strings.CreateGroup.FIELD_NAME_PLACEHOLDER, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     isError = nameError,
                     supportingText = if (nameError) {
-                        { Text("El nombre es obligatorio") }
+                        { Text(Strings.CreateGroup.ERROR_NAME_REQUIRED) }
                     } else null,
                     singleLine = true,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
@@ -198,7 +202,7 @@ fun CreateGroupScreen(
             // Descripción
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Descripción",
+                    Strings.CreateGroup.FIELD_DESCRIPTION,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -206,7 +210,7 @@ fun CreateGroupScreen(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = { Text("Opcional — describe el propósito del grupo", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text(Strings.CreateGroup.FIELD_DESCRIPTION_PLACEHOLDER, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     singleLine = true,
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusCardMd),
                     modifier = Modifier.fillMaxWidth(),
@@ -221,7 +225,7 @@ fun CreateGroupScreen(
             // Divisa
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    "Divisa",
+                    Strings.CreateGroup.FIELD_CURRENCY,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -241,7 +245,7 @@ fun CreateGroupScreen(
                 Snackbar(
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
                 ) { Text(msg) }
             }
 
@@ -258,12 +262,12 @@ private fun CreateGroupCurrencySelector(
     modifier: Modifier = Modifier
 ) {
     val currencies = listOf(
-        "EUR" to "🇪🇺 Euro",
-        "USD" to "🇺🇸 Dólar",
-        "GBP" to "🇬🇧 Libra",
-        "MXN" to "🇲🇽 Peso MX",
-        "ARS" to "🇦🇷 Peso AR",
-        "COP" to "🇨🇴 Peso CO"
+        "EUR" to Strings.CreateGroup.CURRENCY_EUR,
+        "USD" to Strings.CreateGroup.CURRENCY_USD,
+        "GBP" to Strings.CreateGroup.CURRENCY_GBP,
+        "MXN" to Strings.CreateGroup.CURRENCY_MXN,
+        "ARS" to Strings.CreateGroup.CURRENCY_ARS,
+        "COP" to Strings.CreateGroup.CURRENCY_COP
     )
 
     // Pills de selección de divisa

@@ -33,10 +33,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.divvyup.domain.model.Participant
+import com.example.divvyup.integration.ui.components.AppIconButton
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AddParticipantsViewModel
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppEmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,12 +65,12 @@ fun AddParticipantsScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Añadir participantes",
+                            text = Strings.AddParticipants.TITLE,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Paso 2 de 2",
+                            text = Strings.AddParticipants.STEP_LABEL,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -116,7 +119,7 @@ fun AddParticipantsScreen(
                 )
             } else {
                 Text(
-                    text = "${uiState.participants.size} participante${if (uiState.participants.size != 1) "s" else ""} añadido${if (uiState.participants.size != 1) "s" else ""}",
+                    text = Strings.AddParticipants.participantsAddedCount(uiState.participants.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -144,7 +147,7 @@ fun AddParticipantsScreen(
                 }
                 Snackbar(
                     modifier = Modifier.padding(bottom = 8.dp),
-                    action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                    action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
                 ) { Text(msg) }
             }
         }
@@ -185,7 +188,7 @@ private fun AddParticipantForm(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Nuevo participante",
+                    text = Strings.AddParticipants.FORM_HEADING,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -194,11 +197,11 @@ private fun AddParticipantForm(
             OutlinedTextField(
                 value = name,
                 onValueChange = onNameChange,
-                label = { Text("Nombre *") },
-                placeholder = { Text("Ej: Ana García") },
+                label = { Text(Strings.AddParticipants.FIELD_NAME) },
+                placeholder = { Text(Strings.AddParticipants.FIELD_NAME_PLACEHOLDER) },
                 isError = nameError,
                 supportingText = if (nameError) {
-                    { Text("El nombre es obligatorio") }
+                    { Text(Strings.AddParticipants.ERROR_NAME_REQUIRED) }
                 } else null,
                 singleLine = true,
                 leadingIcon = {
@@ -219,8 +222,8 @@ private fun AddParticipantForm(
             OutlinedTextField(
                 value = email,
                 onValueChange = onEmailChange,
-                label = { Text("Email (opcional)") },
-                placeholder = { Text("ana@ejemplo.com") },
+                label = { Text(Strings.AddParticipants.FIELD_EMAIL) },
+                placeholder = { Text(Strings.AddParticipants.FIELD_EMAIL_PLACEHOLDER) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -250,7 +253,7 @@ private fun AddParticipantForm(
                 }
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Añadir participante")
+                Text(Strings.AddParticipants.BUTTON_ADD)
             }
         }
     }
@@ -314,7 +317,7 @@ private fun ParticipantChipRow(
                 // Toggle "Soy yo"
                 Surface(
                     onClick = onToggleSelf,
-                    shape = RoundedCornerShape(50),
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                     color = if (isSelf) JungleGreen else MaterialTheme.colorScheme.surface,
                     border = if (isSelf) null else androidx.compose.foundation.BorderStroke(
                         1.dp, MaterialTheme.colorScheme.outline
@@ -335,7 +338,7 @@ private fun ParticipantChipRow(
                             Spacer(Modifier.width(4.dp))
                         }
                         Text(
-                            text = "Soy yo",
+                            text = Strings.AddParticipants.SELF_BADGE,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isSelf) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelf) androidx.compose.ui.graphics.Color.White
@@ -344,14 +347,13 @@ private fun ParticipantChipRow(
                     }
                 }
 
-                IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Quitar participante",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                AppIconButton(
+                    onClick = onRemove,
+                    icon = Icons.Default.Close,
+                    contentDescription = Strings.AddParticipants.A11Y_REMOVE,
+                    onClickLabel = Strings.AddParticipants.A11Y_REMOVE_LABEL,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
         }
     }
@@ -359,30 +361,12 @@ private fun ParticipantChipRow(
 
 @Composable
 private fun ParticipantsEmptyHint(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.PersonAdd,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = MaterialTheme.colorScheme.outlineVariant
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "Sin participantes todavía",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Añade al menos uno para continuar",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
+    AppEmptyState(
+        emoji = Strings.AddParticipants.EMPTY_EMOJI,
+        title = Strings.AddParticipants.EMPTY_HEADLINE,
+        body = Strings.AddParticipants.EMPTY_SUBTITLE,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -393,7 +377,7 @@ private fun BottomBar(
 ) {
     Surface(
         modifier = modifier,
-        shadowElevation = 8.dp,
+            shadowElevation = DivvyUpTokens.ElevationBottomBar,
         color = MaterialTheme.colorScheme.surface
     ) {
         Box(
@@ -408,8 +392,8 @@ private fun BottomBar(
                 contentPadding = PaddingValues(vertical = 14.dp)
             ) {
                 Text(
-                    text = if (participantCount == 0) "Continuar sin participantes"
-                    else "Abrir grupo ($participantCount participante${if (participantCount != 1) "s" else ""})",
+                    text = if (participantCount == 0) Strings.AddParticipants.CONTINUE_EMPTY
+                    else Strings.AddParticipants.continueWithCount(participantCount),
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.width(8.dp))

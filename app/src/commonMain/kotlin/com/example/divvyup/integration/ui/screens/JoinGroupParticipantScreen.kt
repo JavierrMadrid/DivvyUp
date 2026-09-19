@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -37,12 +38,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
-import com.example.divvyup.integration.ui.theme.JungleGreen100
 import com.example.divvyup.integration.ui.viewmodel.JoinGroupParticipantViewModel
 
 @Composable
@@ -61,20 +64,23 @@ fun JoinGroupParticipantScreen(
         }
     }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings.JoinGroup.A11Y_BACK)
                 }
                 Text(
-                    text = "Unirse al grupo",
+                    text = Strings.JoinGroup.TITLE,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -86,14 +92,15 @@ fun JoinGroupParticipantScreen(
                 enabled = !uiState.isLoading && !uiState.isSaving && uiState.selectedParticipantId != null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
+                    .padding(horizontal = DivvyUpTokens.ScreenPaddingHLg, vertical = 12.dp)
+                    .height(DivvyUpTokens.PrimaryButtonHeight),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
                 colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = Color.White)
             ) {
                 if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                    CircularProgressIndicator(modifier = Modifier.size(DivvyUpTokens.IconSm), strokeWidth = 2.dp, color = Color.White)
                 } else {
-                    Text("Continuar", fontWeight = FontWeight.SemiBold)
+                    Text(Strings.JoinGroup.BUTTON_CONTINUE, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -114,18 +121,18 @@ fun JoinGroupParticipantScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            contentPadding = PaddingValues(horizontal = DivvyUpTokens.ScreenPaddingHLg, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapMd)
         ) {
             item {
                 Text(
-                    text = "Te han invitado a \"${uiState.groupName}\"",
+                    text = Strings.JoinGroup.invitedToGroup(uiState.groupName),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Selecciona qué participante eres para vincular tu usuario a este grupo.",
+                    text = Strings.JoinGroup.INSTRUCTION,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -136,15 +143,24 @@ fun JoinGroupParticipantScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (isSelected) JungleGreen100 else MaterialTheme.colorScheme.surfaceVariant)
+                        .clip(RoundedCornerShape(DivvyUpTokens.RadiusRow))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        )
                         .clickable { viewModel.selectParticipant(participant.id) }
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .shadow(
+                                DivvyUpTokens.ElevationCard,
+                                CircleShape,
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                            )
+                            .size(DivvyUpTokens.IconLg + 12.dp)
                             .clip(CircleShape)
                             .background(JungleGreen),
                         contentAlignment = Alignment.Center
@@ -155,7 +171,7 @@ fun JoinGroupParticipantScreen(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(Modifier.size(10.dp))
+                    Spacer(Modifier.size(DivvyUpTokens.GapMd))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(participant.name, fontWeight = FontWeight.SemiBold)
                         participant.email?.let {
@@ -177,13 +193,12 @@ fun JoinGroupParticipantScreen(
             LaunchedEffect(message) { viewModel.clearError() }
             Snackbar(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(DivvyUpTokens.ScreenPaddingHLg)
                     .fillMaxWidth(),
-                action = { TextButton(onClick = viewModel::clearError) { Text("OK") } }
+                action = { TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) } }
             ) {
                 Text(message)
             }
         }
     }
 }
-

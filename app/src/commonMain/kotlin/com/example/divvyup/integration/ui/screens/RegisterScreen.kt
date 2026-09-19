@@ -44,6 +44,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppBrandHeader
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
@@ -79,26 +81,14 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("💸", fontSize = 56.sp)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "DivvyUp",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "Crea tu cuenta",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            AppBrandHeader(subtitle = Strings.Register.HEADLINE)
 
             Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Correo electrónico") },
+                label = { Text(Strings.Register.FIELD_EMAIL) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -112,7 +102,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña (mín. 6 caracteres)") },
+                label = { Text(Strings.Register.FIELD_PASSWORD_HINT) },
                 singleLine = true,
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -126,7 +116,7 @@ fun RegisterScreen(
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                            contentDescription = if (passwordVisible) Strings.Auth.A11Y_HIDE_PASSWORD else Strings.Auth.A11Y_SHOW_PASSWORD
                         )
                     }
                 },
@@ -156,13 +146,13 @@ fun RegisterScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Crear cuenta", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text(Strings.Register.BUTTON_CREATE, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 }
             }
 
             TextButton(onClick = onNavigateToLogin) {
                 Text(
-                    "¿Ya tienes cuenta? Inicia sesión",
+                    Strings.Register.PROMPT_LOGIN,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -178,7 +168,7 @@ fun RegisterScreen(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 action = {
-                    TextButton(onClick = viewModel::clearError) { Text("OK") }
+                    TextButton(onClick = viewModel::clearError) { Text(Strings.Common.OK) }
                 }
             ) { Text(msg) }
         }

@@ -38,6 +38,23 @@ class SupabaseCategoryRepository(private val postgrest: Postgrest) : CategoryRep
         throw Exception("Error al crear categoría: ${e.message}", e)
     }
 
+    override suspend fun update(category: Category): Category = try {
+        postgrest.from("categories")
+            .update({
+                set("name", category.name)
+                set("icon", category.icon)
+                set("color", category.color)
+                set("budget", category.budget)
+            }) {
+                filter { eq("id", category.id) }
+                select()
+            }
+            .decodeSingle<CategoryDto>()
+            .toDomain()
+    } catch (e: Exception) {
+        throw Exception("Error al actualizar categoría: ${e.message}", e)
+    }
+
     override suspend fun delete(id: Long) = try {
         postgrest.from("categories")
             .delete { filter { eq("id", id) } }

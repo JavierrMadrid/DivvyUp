@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.divvyup.domain.model.DebtTransfer
 import com.example.divvyup.domain.model.ParticipantBalance
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.components.AppAvatar
+import com.example.divvyup.integration.ui.components.AppCard
+import com.example.divvyup.integration.ui.components.AppCardLevel
+import com.example.divvyup.integration.ui.components.AppEmptyState
+import com.example.divvyup.integration.ui.components.AmountWithSign
+import com.example.divvyup.integration.ui.components.participantAvatarPalette
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreen100
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
@@ -44,15 +54,11 @@ internal fun BalanceTab(
 ) {
     if (balances.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(40.dp)
-            ) {
-                Text("⚖️", fontSize = 48.sp)
-                Text("Sin balances todavía", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
-                Text("Añade gastos para ver cómo se reparte", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            AppEmptyState(
+                emoji = Strings.BalanceTab.EMOJI_EMPTY,
+                title = Strings.BalanceTab.EMPTY_HEADLINE,
+                body = Strings.BalanceTab.EMPTY_SUBTITLE
+            )
         }
         return
     }
@@ -67,7 +73,7 @@ internal fun BalanceTab(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Balances individuales", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(Strings.BalanceTab.SECTION_BALANCES, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
         }
         items(balances, key = { it.participantId }) { balance ->
             BalanceCard(
@@ -84,11 +90,19 @@ internal fun BalanceTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Liquidaciones sugeridas", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = onLiquidar) {
-                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text(Strings.BalanceTab.SECTION_TRANSFERS, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    Button(
+                        onClick = onLiquidar,
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = JungleGreen,
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconSm))
                         Spacer(Modifier.width(4.dp))
-                        Text("Liquidar", fontWeight = FontWeight.SemiBold, color = JungleGreen)
+                        Text(Strings.BalanceTab.TRANSFER_BUTTON, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -102,16 +116,16 @@ internal fun BalanceTab(
 private fun List<DebtTransfer>?.toDebtSubtitle(balance: ParticipantBalance): String {
     if (this.isNullOrEmpty()) {
         return if (balance.netBalance < 0) {
-            "Debe: ${(-balance.netBalance).fmt2()}"
+            "${Strings.BalanceTab.DEBT_COLON_PREFIX} ${(-balance.netBalance).fmt2()}"
         } else {
-            "Sin deuda pendiente"
+            Strings.BalanceTab.NO_DEBT
         }
     }
     val totalDebt = this.sumOf { it.amount }
     return if (this.size == 1) {
-        "Debe: ${totalDebt.fmt2()} a ${this.first().toName}"
+        "${Strings.BalanceTab.DEBT_COLON_PREFIX} ${totalDebt.fmt2()} a ${this.first().toName}"
     } else {
-        "Debe: ${totalDebt.fmt2()} a ${this.first().toName} y ${this.size - 1} más"
+        "${Strings.BalanceTab.DEBT_COLON_PREFIX} ${totalDebt.fmt2()} a ${this.first().toName} y ${this.size - 1} más"
     }
 }
 
@@ -133,24 +147,39 @@ internal fun BalanceCard(
     }
     val avatarColor = participantAvatarPalette[balance.participantName.length % participantAvatarPalette.size]
 
-    Card(
-        modifier = modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(0.dp)
+    AppCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                // Anunciar el estado del balance para TalkBack:
+                // "Te deben 12,50 EUR" / "Debes 12,50 EUR" / "Balance 0 EUR".
+                // Formato construido en Strings.BalanceTab.talkBackBalance —
+                // byte-for-byte idéntico al audit de Phase 5.
+                stateDescription = Strings.BalanceTab.talkBackBalance(balance.netBalance, currency)
+                liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+            },
+        level = AppCardLevel.Flat,
+        contentPadding = PaddingValues(DivvyUpTokens.ScreenPaddingH)
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(avatarColor), contentAlignment = Alignment.Center) {
                 Text(balance.participantName.first().uppercaseChar().toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.White)
             }
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(DivvyUpTokens.GapMdPlus))
             Column(modifier = Modifier.weight(1f)) {
                 Text(balance.participantName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(debtSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = "${if (isPositive) "+" else ""}${balance.netBalance.fmt2()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = amountColor)
-                Text(currency, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AmountWithSign(
+                    amount = balance.netBalance,
+                    currency = currency,
+                    positiveColor = amountColor,
+                    negativeColor = amountColor,
+                    neutralColor = amountColor,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
         }
     }
@@ -178,7 +207,7 @@ internal fun TransferCard(
     Card(
         onClick = { if (isSelectable) onToggle() },
         modifier = modifier.fillMaxWidth()
-            .shadow(3.dp, RoundedCornerShape(DivvyUpTokens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.05f), spotColor = Color.Black.copy(alpha = 0.08f))
+            .shadow(DivvyUpTokens.ElevationCard, RoundedCornerShape(DivvyUpTokens.RadiusCard), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
             .then(if (isSelectable) Modifier.border(width = if (isSelected) 2.dp else 0.dp, color = borderColor, shape = RoundedCornerShape(DivvyUpTokens.RadiusCard)) else Modifier),
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(containerColor = if (isSelected) JungleGreen.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface),
@@ -215,7 +244,7 @@ internal fun TransferCard(
                             )
                         }
                         Text(
-                            "Pago sugerido",
+                            Strings.BalanceTab.TRANSFER_SUGGESTED,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -223,14 +252,14 @@ internal fun TransferCard(
                     }
                     Surface(
                         shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-                        color = JungleGreen100
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
-                            text = "${transfer.amount.fmt2()} $currency",
+                            text = Strings.Common.amountCurrency(transfer.amount.fmt2(), currency),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            color = JungleGreenDark
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
@@ -252,7 +281,7 @@ internal fun TransferCard(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
-                                "Debe",
+                                Strings.BalanceTab.TRANSFER_DEBTOR_CHIP,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = debtorChipText.copy(alpha = 0.8f)
                             )
@@ -290,7 +319,7 @@ internal fun TransferCard(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
-                                "A",
+                                Strings.BalanceTab.TRANSFER_CREDITOR_CHIP,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = creditorChipText.copy(alpha = 0.8f)
                             )
@@ -426,7 +455,7 @@ internal fun TransferCard(
                     }
                 }
                 Text(
-                    "${transfer.amount.fmt2()} $currency",
+                    Strings.Common.amountCurrency(transfer.amount.fmt2(), currency),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = amountColor,

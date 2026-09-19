@@ -22,7 +22,12 @@ class CachedCategoryRepository(
 
     override suspend fun create(category: Category): Category {
         val result = delegate.create(category)
-        // groupId es nullable (null = categoría global, cacheada bajo clave 0L)
+        cache.invalidate(category.groupId ?: 0L)
+        return result
+    }
+
+    override suspend fun update(category: Category): Category {
+        val result = delegate.update(category)
         cache.invalidate(category.groupId ?: 0L)
         return result
     }

@@ -2,6 +2,8 @@ package com.example.divvyup.integration.supabase
 
 import com.example.divvyup.domain.model.Spend
 import com.example.divvyup.domain.model.SpendShare
+import com.example.divvyup.domain.repository.SpendCursor
+import com.example.divvyup.domain.repository.SpendPage
 import com.example.divvyup.domain.repository.SpendRepository
 import com.example.divvyup.integration.supabase.dto.SpendDto
 import com.example.divvyup.integration.supabase.dto.SpendShareDto
@@ -9,6 +11,10 @@ import com.example.divvyup.integration.supabase.dto.toDomain
 import com.example.divvyup.integration.supabase.dto.toDto
 import com.example.divvyup.integration.supabase.dto.toUpdateDto
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.time.Instant
 
 class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepository {
 
@@ -25,6 +31,62 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
         throw Exception("Error al obtener gastos: ${e.message}", e)
     }
 
+    override suspend fun getSpendsPage(
+        groupId: Long,
+        pageSize: Int,
+        before: SpendCursor?
+    ): SpendPage = try {
+        // Paginación keyset por (date DESC, id DESC). Se piden pageSize + 1 filas para
+        // detectar si existen más páginas sin una query de COUNT adicional.
+        // Índice compuesto (group_id, date DESC, id DESC) usado aquí.
+        val rows = postgrest.from("spends")
+            .select {
+                filter {
+                    eq("group_id", groupId)
+                    if (before != null) {
+                        // (date < before.date) OR (date = before.date AND id < before.id)
+                        or {
+                            lt("date", before.date.toString())
+                            and {
+                                eq("date", before.date.toString())
+                                lt("id", before.id)
+                            }
+                        }
+                    }
+                }
+                order("date", Order.DESCENDING)
+                order("id", Order.DESCENDING)
+                limit((pageSize + 1).toLong())
+            }
+            .decodeList<SpendDto>()
+            .map { it.toDomain() }
+
+        SpendPage(
+            items = rows.take(pageSize),
+            hasMore = rows.size > pageSize
+        )
+    } catch (e: Exception) {
+        throw Exception("Error al obtener gastos: ${e.message}", e)
+    }
+
+    override suspend fun getLastSpendDate(groupId: Long): Instant? = try {
+        // Query ligera: solo la fila más reciente (order + limit), sin descargar
+        // todos los gastos del grupo (índice compuesto (group_id, date DESC)).
+        postgrest.from("spends")
+            .select {
+                filter { eq("group_id", groupId) }
+                order("date", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                limit(1)
+            }
+            .decodeList<SpendDto>()
+            .firstOrNull()
+            ?.date
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { Instant.parse(it) }
+    } catch (e: Exception) {
+        throw Exception("Error al obtener la última actividad del grupo: ${e.message}", e)
+    }
+
     override suspend fun getSharesBySpend(spendId: Long): List<SpendShare> = try {
         postgrest.from("spend_shares")
             .select { filter { eq("spend_id", spendId) } }
@@ -32,6 +94,33 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
             .map { it.toDomain() }
     } catch (e: Exception) {
         throw Exception("Error al obtener el reparto del gasto: ${e.message}", e)
+    }
+
+    override suspend fun getSharesByGroup(groupId: Long): List<SpendShare> = try {
+        // Obtiene shares de todos los gastos del grupo en una sola query
+        val spendIds = postgrest.from("spends")
+            .select { filter { eq("group_id", groupId) } }
+            .decodeList<SpendDto>()
+            .map { it.id }
+        if (spendIds.isEmpty()) return emptyList()
+        postgrest.from("spend_shares")
+            .select { filter { isIn("spend_id", spendIds) } }
+            .decodeList<SpendShareDto>()
+            .map { it.toDomain() }
+    } catch (e: Exception) {
+        throw Exception("Error al obtener los repartos del grupo: ${e.message}", e)
+    }
+
+    override suspend fun getSharesBySpendIds(spendIds: List<Long>): List<SpendShare> {
+        if (spendIds.isEmpty()) return emptyList()
+        return try {
+            postgrest.from("spend_shares")
+                .select { filter { isIn("spend_id", spendIds) } }
+                .decodeList<SpendShareDto>()
+                .map { it.toDomain() }
+        } catch (e: Exception) {
+            throw Exception("Error al obtener los repartos de los gastos: ${e.message}", e)
+        }
     }
 
     override suspend fun getSharesByParticipant(participantId: Long): List<SpendShare> = try {
@@ -98,5 +187,32 @@ class SupabaseSpendRepository(private val postgrest: Postgrest) : SpendRepositor
             throw Exception("Error al eliminar los gastos: ${e.message}", e)
         }
     }
-}
 
+    override suspend fun getRecurringRootsDue(groupId: Long, dueBeforeOrAt: Instant): List<Spend> = try {
+        postgrest.from("spends")
+            .select {
+                filter {
+                    eq("group_id", groupId)
+                    neq("recurrence", "NONE")
+                    // Filtrar solo raíces (parent_id IS NULL) y vencidos (next_due <= dueBeforeOrAt)
+                    exact("recurrence_parent_id", null)
+                    lte("recurrence_next_due", dueBeforeOrAt.toString())
+                }
+            }
+            .decodeList<SpendDto>()
+            .map { it.toDomain() }
+    } catch (e: Exception) {
+        println("DEBUG SupabaseSpendRepository: getRecurringRootsDue error — ${e.message}")
+        emptyList()
+    }
+
+    override suspend fun updateNextDue(spendId: Long, nextDue: Instant) = try {
+        postgrest.from("spends")
+            .update(buildJsonObject { put("recurrence_next_due", nextDue.toString()) }) {
+                filter { eq("id", spendId) }
+            }
+        Unit
+    } catch (e: Exception) {
+        println("DEBUG SupabaseSpendRepository: updateNextDue error — ${e.message}")
+    }
+}

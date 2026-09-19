@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
@@ -80,6 +82,8 @@ fun ChangePasswordScreen(
         authViewModel.clearError()
     }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -95,12 +99,12 @@ fun ChangePasswordScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = Strings.ChangePassword.A11Y_BACK,
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 Text(
-                    text = "Cambiar contraseña",
+                    text = Strings.ChangePassword.TITLE,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f).padding(start = 4.dp),
@@ -121,7 +125,7 @@ fun ChangePasswordScreen(
 
             // Descripción
             Text(
-                "Introduce tu contraseña actual para verificar tu identidad y luego escribe la nueva contraseña dos veces para confirmarla.",
+                Strings.ChangePassword.INTRO,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -140,7 +144,7 @@ fun ChangePasswordScreen(
                     OutlinedTextField(
                         value = currentPassword,
                         onValueChange = { currentPassword = it },
-                        label = { Text("Contraseña actual") },
+                        label = { Text(Strings.ChangePassword.FIELD_CURRENT) },
                         singleLine = true,
                         visualTransformation = if (showCurrent) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -161,7 +165,7 @@ fun ChangePasswordScreen(
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
-                        label = { Text("Nueva contraseña") },
+                        label = { Text(Strings.ChangePassword.FIELD_NEW) },
                         singleLine = true,
                         visualTransformation = if (showNew) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -175,7 +179,7 @@ fun ChangePasswordScreen(
                         },
                         supportingText = {
                             if (newPassword.isNotBlank() && newPassword.length < 6) {
-                                Text("Mínimo 6 caracteres", color = MaterialTheme.colorScheme.error)
+                                Text(Strings.ChangePassword.FIELD_NEW_HINT, color = MaterialTheme.colorScheme.error)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -187,7 +191,7 @@ fun ChangePasswordScreen(
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
-                        label = { Text("Confirmar nueva contraseña") },
+                        label = { Text(Strings.ChangePassword.FIELD_CONFIRM) },
                         singleLine = true,
                         visualTransformation = if (showConfirm) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -201,7 +205,7 @@ fun ChangePasswordScreen(
                         },
                         supportingText = {
                             if (confirmPassword.isNotBlank() && confirmPassword != newPassword) {
-                                Text("Las contraseñas no coinciden", color = MaterialTheme.colorScheme.error)
+                                Text(Strings.ChangePassword.ERROR_MISMATCH, color = MaterialTheme.colorScheme.error)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -225,9 +229,9 @@ fun ChangePasswordScreen(
                     )
                 },
                 enabled = canSubmit,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
-                colors = ButtonDefaults.buttonColors(containerColor = JungleGreen)
+                modifier = Modifier.fillMaxWidth().height(DivvyUpTokens.PrimaryButtonHeight),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                colors = ButtonDefaults.buttonColors(containerColor = JungleGreen, contentColor = androidx.compose.ui.graphics.Color.White)
             ) {
                 if (authState.isSavingProfile) {
                     CircularProgressIndicator(
@@ -238,7 +242,7 @@ fun ChangePasswordScreen(
                 } else {
                     Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
-                    Text("Actualizar contraseña", fontWeight = FontWeight.Bold)
+                    Text(Strings.ChangePassword.BUTTON_UPDATE, fontWeight = FontWeight.Bold)
                 }
             }
 

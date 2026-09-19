@@ -3,6 +3,7 @@ package com.example.divvyup.application
 
 import com.example.divvyup.domain.model.Category
 import com.example.divvyup.domain.model.DebtTransfer
+import com.example.divvyup.domain.model.Participant
 import com.example.divvyup.domain.model.ParticipantBalance
 import com.example.divvyup.domain.model.Settlement
 import com.example.divvyup.domain.model.Spend
@@ -30,11 +31,10 @@ class SettlementService(
 ) {
 
     private companion object {
-        const val SETTLEMENT_CATEGORY_NAME = "Liquidación"
-        const val SETTLEMENT_CATEGORY_ICON = "💸"
+        const val SETTLEMENT_CATEGORY_NAME  = "Liquidación"
+        const val SETTLEMENT_CATEGORY_ICON  = "💸"
         const val SETTLEMENT_CATEGORY_COLOR = "#14B8A6"
-        const val SETTLEMENT_SPEND_CONCEPT = "Liquidación"
-        const val SETTLEMENT_NOTE_PREFIX = "__settlement_id:"
+        const val SETTLEMENT_SPEND_CONCEPT  = "Liquidación"
     }
 
     suspend fun getSettlements(groupId: Long): List<Settlement> =
@@ -44,10 +44,19 @@ class SettlementService(
         val participants = participantRepository.getByGroup(groupId)
         val spends = spendRepository.getByGroup(groupId)
         val settlements = settlementRepository.getByGroup(groupId)
+        val shares = spendRepository.getSharesByGroup(groupId)
+        return getBalances(participants, spends, settlements, shares)
+    }
 
-        val shares = spends.flatMap { spend ->
-            spendRepository.getSharesBySpend(spend.id)
-        }
+    suspend fun getBalances(
+        participants: List<Participant>,
+        spends: List<Spend>,
+        settlements: List<Settlement>,
+        shares: List<SpendShare> = emptyList()
+    ): List<ParticipantBalance> {
+        val resolvedShares = if (shares.isEmpty() && spends.isNotEmpty()) {
+            spendRepository.getSharesBySpendIds(spends.map { it.id })
+        } else shares
 
         val mirroredSettlementIds = spends.mapNotNull { extractMirroredSettlementId(it.notes) }.toSet()
         val unmatchedSettlements = settlements.filter { it.id !in mirroredSettlementIds }
@@ -58,7 +67,7 @@ class SettlementService(
                 .sumOf { it.amount }
                 .roundMoney()
 
-            val totalOwed = shares
+            val totalOwed = resolvedShares
                 .filter { it.participantId == participant.id }
                 .sumOf { it.amount }
                 .roundMoney()

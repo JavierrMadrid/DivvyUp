@@ -28,6 +28,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.filled.Brightness6
+import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,6 +46,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,9 +67,16 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.divvyup.integration.ui.Strings
+import com.example.divvyup.integration.ui.ThemedSystemBarAppearance
+import com.example.divvyup.integration.ui.rememberImagePickerLauncher
+import com.example.divvyup.integration.ui.components.AppIconButton
 import com.example.divvyup.integration.ui.theme.DivvyUpTokens
 import com.example.divvyup.integration.ui.theme.JungleGreen
 import com.example.divvyup.integration.ui.theme.JungleGreenDark
+import com.example.divvyup.integration.ui.theme.NotificationPreferenceHolder
+import com.example.divvyup.integration.ui.theme.ThemeMode
+import com.example.divvyup.integration.ui.theme.ThemePreferenceHolder
 import com.example.divvyup.integration.ui.theme.appOutlinedTextFieldColors
 import com.example.divvyup.integration.ui.viewmodel.AuthViewModel
 
@@ -75,7 +88,6 @@ fun UserSettingsScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToChangePassword: () -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val authState by authViewModel.uiState.collectAsState()
@@ -87,6 +99,8 @@ fun UserSettingsScreen(
         authViewModel.consumeProfileSavedMessage()
     }
 
+    ThemedSystemBarAppearance()
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -96,21 +110,18 @@ fun UserSettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(
+                        start = DivvyUpTokens.ScreenPaddingHLg,
+                        end = DivvyUpTokens.ScreenPaddingHLg,
+                        top = 12.dp,
+                        bottom = 8.dp
+                    ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
                 Text(
-                    text = "Perfil y cuenta",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = Strings.UserSettings.TITLE,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f).padding(start = 4.dp),
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -155,11 +166,46 @@ private fun AuthenticatedContent(
         if (authState.profileSavedMessage != null) isEditMode = false
     }
 
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapLg)
-    ) {
+    val logoutButtonHeight = DivvyUpTokens.PrimaryButtonHeight + 24.dp + 16.dp
+    var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
+
+    val pickAvatar = rememberImagePickerLauncher { imageBytes ->
+        if (imageBytes != null) authViewModel.uploadAvatarAndSave(imageBytes)
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text(Strings.Common.LOGOUT, fontWeight = FontWeight.Bold) },
+            text = { Text(Strings.UserSettings.LOGOUT_CONFIRM_BODY) },
+            confirmButton = {
+                Button(
+                    onClick = { showLogoutDialog = false; authViewModel.logout() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusPill)
+                ) { Text(Strings.Common.LOGOUT, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showLogoutDialog = false },
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusPill)
+                ) { Text(Strings.Common.CANCEL) }
+            }
+        )
+    }
+
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = logoutButtonHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapLg)
+        ) {
         Spacer(Modifier.height(16.dp))
 
         // ── Avatar ────────────────────────────────────────────────────────
@@ -167,7 +213,7 @@ private fun AuthenticatedContent(
             Box(
                 modifier = Modifier
                     .size(96.dp)
-                    .shadow(4.dp, CircleShape)
+                    .shadow(DivvyUpTokens.ElevationCard, CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f))
                     .clip(CircleShape)
                     .background(JungleGreen)
                     .border(3.dp, MaterialTheme.colorScheme.background, CircleShape),
@@ -189,27 +235,28 @@ private fun AuthenticatedContent(
                     )
                 }
             }
-            // Badge cámara (placeholder — conectar a image picker en el futuro)
+            // Badge cámara — abre galería para cambiar avatar
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .shadow(2.dp, CircleShape)
+                    .shadow(DivvyUpTokens.ElevationCard, CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.26f))
                     .clip(CircleShape)
                     .background(JungleGreenDark)
                     .border(2.dp, MaterialTheme.colorScheme.background, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = "Cambiar foto de perfil",
-                    tint = Color.White,
-                    modifier = Modifier.size(DivvyUpTokens.IconSm)
+                AppIconButton(
+                    onClick = pickAvatar,
+                    icon = Icons.Default.CameraAlt,
+                    contentDescription = Strings.UserSettings.A11Y_CHANGE_AVATAR,
+                    onClickLabel = Strings.UserSettings.A11Y_CHANGE_AVATAR,
+                    tint = Color.White
                 )
             }
         }
 
         Text(
-            text = authState.userEmail.ifBlank { "Sesión iniciada" },
+            text = authState.userEmail.ifBlank { Strings.UserSettings.EMAIL_FALLBACK },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -234,7 +281,7 @@ private fun AuthenticatedContent(
 
         // ── Sección: Información del perfil ───────────────────────────────
         ProfileSectionCard(
-            title = "Información del perfil",
+            title = Strings.UserSettings.SECTION_PROFILE,
             headerAction = if (!isEditMode) ({
                 IconButton(
                     onClick = { isEditMode = true },
@@ -242,7 +289,7 @@ private fun AuthenticatedContent(
                 ) {
                     Icon(
                         Icons.Default.Edit,
-                        contentDescription = "Editar perfil",
+                        contentDescription = Strings.UserSettings.A11Y_EDIT_PROFILE,
                         tint = JungleGreen,
                         modifier = Modifier.size(DivvyUpTokens.IconSm)
                     )
@@ -251,15 +298,15 @@ private fun AuthenticatedContent(
         ) {
             // Email (solo lectura)
             ProfileFieldReadOnly(
-                label = "Correo electrónico",
-                value = authState.userEmail.ifBlank { "—" }
+                label = Strings.UserSettings.FIELD_EMAIL,
+                value = authState.userEmail.ifBlank { Strings.UserSettings.EMAIL_EMDASH_FALLBACK }
             )
             // Nombre para mostrar
             if (isEditMode) {
                 OutlinedTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
-                    label = { Text("Nombre para mostrar") },
+                    label = { Text(Strings.UserSettings.FIELD_DISPLAY_NAME) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
@@ -287,7 +334,7 @@ private fun AuthenticatedContent(
                     ) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconSm))
                         Spacer(Modifier.size(4.dp))
-                        Text("Cancelar", fontWeight = FontWeight.SemiBold)
+                        Text(Strings.Common.CANCEL, fontWeight = FontWeight.SemiBold)
                     }
                     Button(
                         onClick = { authViewModel.updateDisplayName(displayName) },
@@ -301,19 +348,20 @@ private fun AuthenticatedContent(
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconSm))
                         Spacer(Modifier.size(4.dp))
-                        Text("Guardar", fontWeight = FontWeight.SemiBold)
+                        Text(Strings.Common.SAVE, fontWeight = FontWeight.SemiBold)
                     }
                 }
             } else {
                 ProfileFieldReadOnly(
-                    label = "Nombre para mostrar",
-                    value = authState.displayName.ifBlank { "Sin nombre" }
+                    label = Strings.UserSettings.FIELD_DISPLAY_NAME,
+                    value = authState.displayName.ifBlank { Strings.UserSettings.DISPLAY_NAME_FALLBACK }
                 )
             }
         }
 
+
         // ── Sección: Seguridad ────────────────────────────────────────────
-        ProfileSectionCard(title = "Seguridad") {
+        ProfileSectionCard(title = Strings.UserSettings.SECTION_SECURITY) {
             Button(
                 onClick = onNavigateToChangePassword,
                 modifier = Modifier
@@ -328,34 +376,45 @@ private fun AuthenticatedContent(
                 Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconSm))
                 Spacer(Modifier.size(DivvyUpTokens.GapSm))
                 Text(
-                    "Cambiar contraseña",
+                    Strings.UserSettings.CHANGE_PASSWORD,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        // ── Sección: Apariencia ───────────────────────────────────────────
+        ThemeSection()
+        NotificationSection()
 
-        // ── Cerrar sesión ─────────────────────────────────────────────────
-        OutlinedButton(
-            onClick = { authViewModel.logout() },
+        Spacer(Modifier.height(8.dp))
+        } // fin Column scrollable
+
+        // ── Cerrar sesión fijo en la parte inferior ───────────────────────────
+        Column(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(DivvyUpTokens.PrimaryButtonHeight),
-            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-            border = androidx.compose.foundation.BorderStroke(
-                1.5.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-            ),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                .background(MaterialTheme.colorScheme.background)
+                .padding(bottom = 24.dp, top = 16.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconMd))
-            Spacer(Modifier.size(DivvyUpTokens.GapSm))
-            Text("Cerrar sesión", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Button(
+                onClick = { showLogoutDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(DivvyUpTokens.PrimaryButtonHeight),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconMd))
+                Spacer(Modifier.size(DivvyUpTokens.GapSm))
+                Text(Strings.Common.LOGOUT, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            }
         }
-
-        Spacer(Modifier.height(24.dp))
-    }
+    } // fin Box
 }
 
 /**
@@ -372,14 +431,14 @@ private fun ProfileSectionCard(
     Card(
         shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 4.dp,
+                elevation = DivvyUpTokens.ElevationCard,
                 shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
             )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -444,135 +503,199 @@ private fun UnauthenticatedContent(
     onNavigateToRegister: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapLg)
-    ) {
-        Spacer(Modifier.height(32.dp))
+    // Altura total de los dos botones + espaciado + padding inferior
+    val bottomBarHeight = DivvyUpTokens.PrimaryButtonHeight * 2 + DivvyUpTokens.GapMd + 24.dp + 16.dp
 
-        // Icono ilustrativo
-        Box(
+    Box(modifier = modifier) {
+        Column(
             modifier = Modifier
-                .size(96.dp)
-                .shadow(4.dp, CircleShape)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = bottomBarHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapLg)
         ) {
-            Icon(
-                Icons.Default.LockOpen,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(52.dp)
-            )
-        }
+            Spacer(Modifier.height(32.dp))
 
-        Text(
-            text = "Sin sesión iniciada",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center
-        )
-
-        // Banner modo invitado — usa tertiaryContainer para contraste garantizado
-        if (isAnonymous) {
-            Surface(
-                shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                color = MaterialTheme.colorScheme.tertiaryContainer,
-                modifier = Modifier.fillMaxWidth()
+            // Icono ilustrativo
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .shadow(DivvyUpTokens.ElevationCard, CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.30f))
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Icon(
+                    Icons.Default.LockOpen,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(52.dp)
+                )
+            }
+
+            Text(
+                text = Strings.UserSettings.UNAUTH_HEADLINE,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+
+            // Banner modo invitado
+            if (isAnonymous) {
+                Surface(
+                    shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("☁️", fontSize = 20.sp)
-                    Text(
-                        "Estás en modo invitado. Tus grupos se guardan en la nube de forma temporal. " +
-                        "Crea una cuenta para acceder a ellos desde cualquier dispositivo.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(Strings.UserSettings.UNAUTH_EMOJI, fontSize = 20.sp)
+                        Text(
+                            Strings.UserSettings.UNAUTH_GUEST_TEXT,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
+
+            // Mensaje informativo
+            Card(
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = DivvyUpTokens.ElevationCard,
+                        shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                    )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        Strings.UserSettings.UNAUTH_PERKS_HEADER,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    BenefitItem(Strings.UserSettings.UNAUTH_PERK_CLOUD_EMOJI, Strings.UserSettings.UNAUTH_PERK_CLOUD)
+                    BenefitItem(Strings.UserSettings.UNAUTH_PERK_DEVICE_EMOJI, Strings.UserSettings.UNAUTH_PERK_DEVICE)
+                    BenefitItem(Strings.UserSettings.UNAUTH_PERK_COMMUNITY_EMOJI, Strings.UserSettings.UNAUTH_PERK_COMMUNITY)
+                    BenefitItem(Strings.UserSettings.UNAUTH_PERK_SECURE_EMOJI, Strings.UserSettings.UNAUTH_PERK_SECURE)
+                }
+            }
+
+            // ── Sección: Apariencia ───────────────────────────────────────
+            ThemeSection()
+            NotificationSection()
         }
 
-        // Mensaje informativo
-        Card(
-            shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        // ── Botones fijos en la parte inferior ────────────────────────────
+        Column(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .shadow(
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(DivvyUpTokens.RadiusCard),
-                    ambientColor = Color.Black.copy(alpha = 0.05f),
-                    spotColor = Color.Black.copy(alpha = 0.08f)
-                )
+                .background(MaterialTheme.colorScheme.background)
+                .padding(bottom = 24.dp, top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapMd)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+            Button(
+                onClick = onNavigateToLogin,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(DivvyUpTokens.PrimaryButtonHeight),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = JungleGreen,
+                    contentColor = Color.White
+                )
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconMd))
+                Spacer(Modifier.size(10.dp))
+                Text(
+                    Strings.UserSettings.BUTTON_LOGIN,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            OutlinedButton(
+                onClick = onNavigateToRegister,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(DivvyUpTokens.PrimaryButtonHeight),
+                shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.5.dp, MaterialTheme.colorScheme.primary
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text(
-                    "Puedes usar DivvyUp sin cuenta, pero si inicias sesión podrás:",
+                    Strings.UserSettings.BUTTON_REGISTER,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.SemiBold
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                BenefitItem("☁️", "Guardar tus grupos en la nube")
-                BenefitItem("📱", "Acceder desde cualquier dispositivo")
-                BenefitItem("👥", "Unirte a grupos de otros usuarios")
-                BenefitItem("🔒", "Mantener tus datos seguros")
             }
         }
+    }
+}
 
-        Spacer(Modifier.height(8.dp))
+@Composable
+internal fun NotificationSection(modifier: Modifier = Modifier) {
+    val enabled by NotificationPreferenceHolder.spendNotificationsEnabled.collectAsState()
 
-        // Botón principal: Iniciar sesión
-        Button(
-            onClick = onNavigateToLogin,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(DivvyUpTokens.PrimaryButtonHeight),
-            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = JungleGreen,
-                contentColor = Color.White
-            )
+    ProfileSectionCard(title = Strings.UserSettings.SECTION_NOTIFICATIONS, modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapSm)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(DivvyUpTokens.IconMd))
-            Spacer(Modifier.size(10.dp))
-            Text(
-                "Iniciar sesión",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(DivvyUpTokens.IconSm)
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = Strings.UserSettings.NOTIFICATION_FIELD,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = Strings.UserSettings.NOTIFICATION_HELPER,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = { NotificationPreferenceHolder.setSpendNotificationsEnabled(it) }
             )
         }
-
-        // Enlace para registrarse
-        OutlinedButton(
-            onClick = onNavigateToRegister,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(DivvyUpTokens.PrimaryButtonHeight),
-            shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, JungleGreen),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = JungleGreenDark)
-        ) {
-            Text(
-                "Crear cuenta nueva",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -591,3 +714,89 @@ private fun BenefitItem(emoji: String, text: String) {
         )
     }
 }
+
+// ---------------------------------------------------------------------------
+// ThemeSection — selector de tema (sistema / claro / oscuro)
+// ---------------------------------------------------------------------------
+
+@Composable
+internal fun ThemeSection(modifier: Modifier = Modifier) {
+    val currentMode by ThemePreferenceHolder.themeMode.collectAsState()
+
+    ProfileSectionCard(title = Strings.UserSettings.SECTION_APPEARANCE, modifier = modifier) {
+        Text(
+            text = Strings.UserSettings.THEME_SUBTITLE,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(DivvyUpTokens.GapSm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(DivvyUpTokens.GapSm)
+        ) {
+            ThemeModeChip(
+                label = Strings.UserSettings.THEME_SYSTEM,
+                icon = Icons.Default.Brightness6,
+                selected = currentMode == ThemeMode.SYSTEM,
+                onClick = { ThemePreferenceHolder.setThemeMode(ThemeMode.SYSTEM) },
+                modifier = Modifier.weight(1f)
+            )
+            ThemeModeChip(
+                label = Strings.UserSettings.THEME_LIGHT,
+                icon = Icons.Default.Brightness7,
+                selected = currentMode == ThemeMode.LIGHT,
+                onClick = { ThemePreferenceHolder.setThemeMode(ThemeMode.LIGHT) },
+                modifier = Modifier.weight(1f)
+            )
+            ThemeModeChip(
+                label = Strings.UserSettings.THEME_DARK,
+                icon = Icons.Default.Brightness4,
+                selected = currentMode == ThemeMode.DARK,
+                onClick = { ThemePreferenceHolder.setThemeMode(ThemeMode.DARK) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeChip(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (selected) JungleGreen else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor   = if (selected) Color.White  else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(DivvyUpTokens.RadiusPill),
+        color = containerColor,
+        modifier = modifier.height(DivvyUpTokens.ControlHeight)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(DivvyUpTokens.IconSm)
+            )
+            Spacer(Modifier.size(4.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
+            )
+        }
+    }
+}
+

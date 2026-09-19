@@ -22,5 +22,8 @@ class CategoryService(private val categoryRepository: CategoryRepository) {
 
     suspend fun deleteCategory(id: Long) =
         categoryRepository.delete(id)
+
+    suspend fun updateCategoryBudget(category: Category, budget: Double?): Category =
+        categoryRepository.update(category.copy(budget = budget))
 }
 
