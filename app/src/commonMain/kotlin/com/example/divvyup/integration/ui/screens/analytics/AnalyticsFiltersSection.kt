@@ -279,7 +279,7 @@ internal fun PeriodDropdown(
             shape = RoundedCornerShape(DivvyUpTokens.RadiusControl),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(44.dp)
+                .heightIn(min = DivvyUpTokens.ControlHeight)
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             textStyle = MaterialTheme.typography.bodyMedium,
             colors = appOutlinedTextFieldColors()
