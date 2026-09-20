@@ -37,11 +37,22 @@ internal fun PeriodFilterSelector(
     period: AnalyticsPeriod,
     currentYear: Int,
     currentMonth: Month,
+    availableYears: List<Int>,
     onPeriodChange: (AnalyticsPeriod) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val chipPalette = rememberAppFilterChipPalette(selectedColor = JungleGreen)
-    val availableYears = remember(currentYear) { (currentYear - 2..currentYear).toList().reversed() }
+    // Año activo según el período; si no aplica (Todo o Rango) se usa el año actual.
+    val selectedYear = when (period) {
+        is AnalyticsPeriod.PorMes -> period.year
+        is AnalyticsPeriod.PorAnyo -> period.year
+        else -> currentYear
+    }
+    // Garantiza que el año seleccionado siempre esté entre las opciones del desplegable.
+    val yearOptions = remember(availableYears, selectedYear) {
+        if (selectedYear in availableYears) availableYears
+        else (availableYears + selectedYear).distinct().sortedDescending()
+    }
     val periodControlBorderColor =
         if (isSystemInDarkTheme()) DarkTextBeige200 else MaterialTheme.colorScheme.outline
 
@@ -118,7 +129,7 @@ internal fun PeriodFilterSelector(
             is AnalyticsPeriod.PorAnyo -> {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PeriodDropdown(
-                        options = availableYears.map { it to it.toString() },
+                        options = yearOptions.map { it to it.toString() },
                         selected = period.year,
                         onSelect = { onPeriodChange(AnalyticsPeriod.PorAnyo(it)) },
                         modifier = Modifier.weight(1f)
@@ -161,7 +172,12 @@ internal fun PeriodFilterSelector(
                         onSelect = { onPeriodChange(AnalyticsPeriod.PorMes(Month.entries[it - 1], period.year)) },
                         modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.weight(1f))
+                    PeriodDropdown(
+                        options = yearOptions.map { it to it.toString() },
+                        selected = period.year,
+                        onSelect = { onPeriodChange(period.copy(year = it)) },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }

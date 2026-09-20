@@ -84,6 +84,12 @@ internal fun AnalyticsTab(
     }
     val now = remember { System.now().toLocalDateTime(TimeZone.currentSystemDefault()) }
     val defaultPeriod = remember(now) { AnalyticsPeriod.PorMes(now.month, now.year) }
+    // Años seleccionables: los que tienen gastos más el año actual, de más reciente a más antiguo.
+    val availableYears = remember(spends, now) {
+        (spends.map { it.date.toLocalDateTime(TimeZone.currentSystemDefault()).year } + now.year)
+            .distinct()
+            .sortedDescending()
+    }
 
     val hasActiveFilters by remember(searchQuery, selectedCategories, selectedParticipants, period, defaultPeriod) {
         derivedStateOf {
@@ -407,6 +413,7 @@ internal fun AnalyticsTab(
                     period = period,
                     currentYear = now.year,
                     currentMonth = now.month,
+                    availableYears = availableYears,
                     onPeriodChange = onPeriodChange
                 )
             }
