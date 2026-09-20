@@ -317,8 +317,8 @@ fun GroupListScreen(
                             },
                             onDeleteGroup = viewModel::deleteGroup,
                             onOpenAdvancedDelete = { showAdvancedDeleteForGroup = it },
-                            getParticipants = { viewModel.getParticipantsForGroup(it) },
-                            getCategories = { viewModel.getCategoriesForGroup(it) }
+                            participantsByGroup = uiState.participantsByGroup,
+                            categoriesByGroup = uiState.categoriesByGroup
                         )
                     }
                 }
@@ -431,8 +431,8 @@ private fun GroupList(
     onGroupLongClick: (Long) -> Unit,
     onDeleteGroup: (Long) -> Unit,
     onOpenAdvancedDelete: (Long) -> Unit,
-    getParticipants: (Long) -> List<Participant>,
-    getCategories: (Long) -> List<Category>,
+    participantsByGroup: Map<Long, List<Participant>>,
+    categoriesByGroup: Map<Long, List<Category>>,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -474,8 +474,8 @@ private fun GroupList(
                     onLongClick = { onGroupLongClick(group.id) },
                     onDelete = { onDeleteGroup(group.id) },
                     onOpenAdvancedDelete = { onOpenAdvancedDelete(group.id) },
-                    participants = getParticipants(group.id),
-                    categories = getCategories(group.id)
+                    participants = participantsByGroup[group.id].orEmpty(),
+                    categories = categoriesByGroup[group.id].orEmpty()
                 )
             }
         }

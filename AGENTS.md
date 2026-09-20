@@ -4,6 +4,17 @@
 
 DivvyUp is a **Kotlin Multiplatform (KMP)** expense-splitting app using **Compose Multiplatform** for shared UI and **Supabase** (Postgres) as backend. Users create groups, add participants, categorize and track shared expenses, and settle balances. The UI language is **Spanish**.
 
+## Agent Routing (orchestrator → subagents)
+
+The default agent is `orchestrator` (`.opencode/agent/orchestrator.md`). It classifies each request and delegates to one specialist subagent; it does not implement code itself.
+
+| Work | Delegate to | Skills loaded by default |
+|---|---|---|
+| `domain/`, `application/`, `integration/supabase/`, `integration/cache/`, DTOs, SQL migrations, repositories, services, ViewModels, DI wiring | `kotlin-backend` | `kotlin-multiplatform`, `android-clean-architecture`, `android-kotlin`, `invite-link-postgres-best-practices` |
+| `integration/ui/` screens, theme, components, navigation, motion, tokens, accessibility, Spanish copy | `ux-design` | `mobile-android-design`, `mobile-app-ui-design`, `android-jetpack-compose`, `compose-component-design`, `compose-state-and-effects`, `compose-animations` |
+
+Cross-cutting feature → split by layer: `kotlin-backend` implements data/logic first (domain → repository → service → ViewModel), then `ux-design` builds the screen against the resulting `UiState`. Verify with `.\gradlew.bat test` and `.\gradlew.bat assembleDebug`.
+
 ## Architecture — Clean Architecture / Hexagonal (KMP)
 
 Three-layer hexagonal architecture under `app/src/commonMain/kotlin/com/example/divvyup/`:
@@ -67,93 +78,24 @@ On iOS, `MainViewController()` currently wires the same services with direct `Su
 
 ## Data Layer — Supabase / Postgres
 
-### Schema Design (follow Supabase best practices)
-- **Primary keys**: Use `bigint generated always as identity` for sequential IDs, or UUIDv7 for distributed/exposed IDs. Avoid random UUIDv4 on large tables (causes index fragmentation).
-- **Data types**: Use `text` (not `varchar(n)`), `timestamptz` (not `timestamp`), `numeric` for money (not `float`), `boolean` (not string).
-- **Foreign keys**: Always create an index on FK columns — Postgres does NOT auto-index them.
-- **Row Level Security (RLS)**: Enable RLS on every table with user data. Use `auth.uid()` in policies for tenant isolation.
+**Source of truth (read, do not re-derive):** `docs/DATABASE_MODEL.md` (ER diagram + full current schema) and applied migrations in `docs/sql/V0xx__*.sql` (currently V001–V020). Never paste or guess the full DDL — read those files. Never edit an applied migration; add a new `V0xx__*.sql`.
 
-### Supabase Tables (normalized, not embedded arrays)
-```sql
--- groups table
-create table groups (
-  id bigint generated always as identity primary key,
-  name text not null,
-  description text not null default '',
-  currency text not null default 'EUR',
-  created_at timestamptz default now()
-);
+Core normalized tables (no embedded arrays): `groups`, `participants`, `categories` (NULL `group_id` = global default), `spends`, `spend_shares`, `settlements`; plus `activity_log`, `user_profiles`, `recurring_spends` added later. See docs for the authoritative, evolved schema.
 
--- participants table (FK to groups)
-create table participants (
-  id bigint generated always as identity primary key,
-  group_id bigint references groups(id) on delete cascade,
-  name text not null,
-  email text
-);
-create index participants_group_id_idx on participants (group_id);
+### Schema Design Rules (Supabase best practices)
+- **Primary keys**: `bigint generated always as identity`; UUIDv7 for distributed IDs. Avoid random UUIDv4 on large tables (index fragmentation).
+- **Data types**: `text` (not `varchar(n)`), `timestamptz` (not `timestamp`), `numeric` for money (not `float`), `boolean` (not string).
+- **Foreign keys**: always create an index on FK columns — Postgres does NOT auto-index them.
+- **RLS**: enable on every table with user data; use `auth.uid()` in policies.
 
--- categories table (NULL group_id = global default category)
-create table categories (
-  id bigint generated always as identity primary key,
-  group_id bigint references groups(id) on delete cascade,
-  name text not null,
-  icon text not null default '📦',
-  color text not null default '#6366F1',
-  is_default boolean not null default false
-);
-
--- spends table (FK to groups + payer + category)
-create table spends (
-  id bigint generated always as identity primary key,
-  group_id bigint references groups(id) on delete cascade,
-  concept text not null,
-  amount numeric(12,2) not null,
-  date timestamptz default now(),
-  payer_id bigint references participants(id),
-  category_id bigint references categories(id) on delete set null,
-  split_type text not null default 'EQUAL',
-  notes text not null default ''
-);
-create index spends_group_id_date_idx on spends (group_id, date desc);
-create index spends_payer_id_idx on spends (payer_id);
-
--- spend_shares table (persisted share amounts per participant)
-create table spend_shares (
-  id bigint generated always as identity primary key,
-  spend_id bigint references spends(id) on delete cascade,
-  participant_id bigint references participants(id) on delete cascade,
-  amount numeric(12,2) not null,
-  percentage numeric(5,2),
-  unique (spend_id, participant_id)
-);
-
--- settlements table (explicit transfers between participants)
-create table settlements (
-  id bigint generated always as identity primary key,
-  group_id bigint references groups(id) on delete cascade,
-  from_participant_id bigint references participants(id),
-  to_participant_id bigint references participants(id),
-  amount numeric(12,2) not null,
-  date timestamptz default now(),
-  notes text not null default ''
-);
-```
-The SQL source of truth lives in `docs/sql/V001__initial_schema.sql`, `docs/sql/V002__seed_default_categories.sql`, `docs/sql/V003__fix_settlement_balances_and_add_settlement_category.sql`, and `docs/DATABASE_MODEL.md`.
-
-### Repository Pattern
+### Repository & Query Rules
 - All repository methods are `suspend` functions.
-- Repository interfaces live in `domain/repository/`; Supabase implementations live in `integration/supabase/`; cache decorators live in `integration/cache/`.
-- Use `kotlinx.serialization` `@Serializable` for DTOs in `integration/supabase/dto/`; map to domain models via extension functions.
-- `Supabase*Repository` classes currently receive a shared `Postgrest` instance, not the full Supabase client.
-- Error handling: wrap Supabase exceptions into domain `Exception` with Spanish messages.
-
-### Supabase Query Best Practices
-- Always add indexes on WHERE/JOIN columns.
-- Keep repositories table-focused and explicit (example: `SupabaseGroupRepository` uses `postgrest.from("groups")...decodeSingle<GroupDto>()`).
-- Keep mirrored settlement linkage consistent: `SettlementService` writes settlement spend notes with `__settlement_id:<id>`, and `GroupDetailViewModel` relies on that prefix when deleting mirrored records.
-- Current balance/analytics source of truth is split between application services (`SettlementService.getBalances`) and SQL views documented in `docs/sql/V001__initial_schema.sql`.
-- Keep transactions short to avoid lock contention.
+- Interfaces in `domain/repository/`; Supabase impls in `integration/supabase/` (+ `dto/` with `@Serializable` DTOs + mapper extensions); cache decorators in `integration/cache/`.
+- `Supabase*Repository` receive a shared `Postgrest` instance, not the full Supabase client.
+- Wrap Supabase exceptions into domain `Exception` with Spanish messages.
+- Always index WHERE/JOIN columns; keep transactions short.
+- Mirrored settlement linkage: `SettlementService` writes notes `__settlement_id:<id>`; `GroupDetailViewModel` relies on that prefix.
+- Balances/analytics source of truth: `SettlementService.getBalances` + SQL views in `docs/sql/`.
 
 ## UI Patterns
 
